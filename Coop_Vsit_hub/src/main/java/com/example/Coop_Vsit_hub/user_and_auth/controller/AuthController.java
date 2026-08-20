@@ -30,7 +30,7 @@ public class AuthController {
     @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
     @Operation(
             summary = "Register Bank Staff Account (Admin Only)",
-            description = "Onboards a new CoopBank user. Accessible only by authenticated Administrators with ROLE_ADMIN.",
+            description = "Onboards a new CoopBank user. System auto-generates temporary password and dispatches MailHog onboarding email with 24-hour verification link.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     public ResponseEntity<AuthResponse> register(
@@ -41,6 +41,30 @@ public class AuthController {
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthResponse response = authService.register(request, ipAddress, userAgent);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/verify-email")
+    @Operation(
+            summary = "Verify Email Address via Link (Public)",
+            description = "Confirms staff email address using token link received via MailHog email."
+    )
+    public ResponseEntity<Map<String, String>> verifyEmailGet(@RequestParam("token") String token) {
+        authService.verifyEmail(token);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Email verified successfully! You may now log in with your temporary password and update your initial password.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(
+            summary = "Verify Email Address via JSON Body (Public)",
+            description = "Confirms staff email address using JSON token payload."
+    )
+    public ResponseEntity<Map<String, String>> verifyEmailPost(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.getToken());
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Email verified successfully! You may now log in with your temporary password and update your initial password.");
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")

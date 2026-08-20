@@ -39,7 +39,13 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public Authentication Endpoints
-                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
+                .requestMatchers(
+                    "/api/v1/auth/login", 
+                    "/api/v1/auth/refresh", 
+                    "/api/v1/auth/forgot-password", 
+                    "/api/v1/auth/reset-password", 
+                    "/api/v1/auth/verify-email/**"
+                ).permitAll()
                 // Public Swagger UI & OpenAPI Documentation Endpoints
                 .requestMatchers(
                     "/swagger-ui.html",
@@ -49,7 +55,10 @@ public class SecurityConfig {
                     "/webjars/**"
                 ).permitAll()
                 // Public Customer Feedback Survey Endpoints
-                .requestMatchers("/api/v1/feedback/verify/**", "/api/v1/feedback/submit").permitAll()
+                .requestMatchers(
+                    "/api/v1/feedback/verify/**", 
+                    "/api/v1/feedback/submit"
+                ).permitAll()
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )

@@ -18,5 +18,11 @@ public class AuthResponse {
 
     private String refreshToken;
 
+    private boolean isEmailVerified;
+
+    private boolean mustChangePassword;
+
+    private String message;
+
     private UserProfileResponse user;
 }

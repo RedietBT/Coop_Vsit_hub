@@ -27,6 +27,8 @@ INSERT INTO users (
     phone_number,
     is_enabled,
     is_account_non_locked,
+    is_email_verified,
+    must_change_password,
     failed_login_attempts,
     password_changed_at
 ) VALUES (
@@ -41,6 +43,8 @@ INSERT INTO users (
     '+251911000000',
     TRUE,
     TRUE,
+    TRUE,
+    FALSE,
     0,
     CURRENT_TIMESTAMP
 ) ON CONFLICT (username) DO NOTHING;

@@ -51,4 +51,6 @@ public interface AuthService {
             String ipAddress,
             String userAgent
     );
+
+    void verifyEmail(String token);
 }

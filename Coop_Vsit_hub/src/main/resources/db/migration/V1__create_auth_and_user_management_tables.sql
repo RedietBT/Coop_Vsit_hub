@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone_number VARCHAR(20),
     is_enabled BOOLEAN DEFAULT TRUE NOT NULL,
     is_account_non_locked BOOLEAN DEFAULT TRUE NOT NULL,
+    is_email_verified BOOLEAN DEFAULT FALSE NOT NULL,
+    must_change_password BOOLEAN DEFAULT TRUE NOT NULL,
     failed_login_attempts INT DEFAULT 0 NOT NULL,
     lock_time TIMESTAMP WITH TIME ZONE,
     password_changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,

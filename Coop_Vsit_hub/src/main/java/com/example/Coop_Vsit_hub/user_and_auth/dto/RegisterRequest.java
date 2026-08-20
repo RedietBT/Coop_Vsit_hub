@@ -27,10 +27,6 @@ public class RegisterRequest {
     )
     private String email;
 
-    @NotBlank(message = "Password is required.")
-    @StrongPassword
-    private String password;
-
     @NotBlank(message = "First name is required.")
     @Size(max = 50, message = "First name cannot exceed 50 characters.")
     @Pattern(

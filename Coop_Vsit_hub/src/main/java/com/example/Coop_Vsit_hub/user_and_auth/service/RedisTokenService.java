@@ -19,6 +19,33 @@ public class RedisTokenService {
     private static final String REFRESH_USER_PREFIX = "jwt:refresh_user:";
     private static final String FAILED_ATTEMPTS_PREFIX = "auth:failed:";
     private static final String RESET_TOKEN_PREFIX = "password_reset:";
+    private static final String EMAIL_VERIFY_PREFIX = "email_verify:";
+
+    /**
+     * Stores a single-use Email Verification Token in Redis with TTL.
+     */
+    public void storeEmailVerificationToken(String verifyToken, String username, long ttlHours) {
+        String key = EMAIL_VERIFY_PREFIX + verifyToken;
+        redisTemplate.opsForValue().set(key, username, ttlHours, TimeUnit.HOURS);
+        log.info("Email verification token stored in Redis for user: {}", username);
+    }
+
+    /**
+     * Retrieves username associated with an Email Verification Token from Redis.
+     */
+    public String getUsernameFromEmailVerificationToken(String verifyToken) {
+        String key = EMAIL_VERIFY_PREFIX + verifyToken;
+        return redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * Deletes an Email Verification Token from Redis after verification.
+     */
+    public void deleteEmailVerificationToken(String verifyToken) {
+        String key = EMAIL_VERIFY_PREFIX + verifyToken;
+        redisTemplate.delete(key);
+        log.info("Email verification token consumed and deleted from Redis.");
+    }
 
     /**
      * Stores a single-use Password Reset Token in Redis with TTL.

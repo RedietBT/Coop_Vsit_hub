@@ -23,5 +23,7 @@ public class UserProfileResponse {
     private String phoneNumber;
     private boolean isEnabled;
     private boolean isAccountNonLocked;
+    private boolean isEmailVerified;
+    private boolean mustChangePassword;
     private Set<String> roles;
 }

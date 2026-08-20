@@ -9,6 +9,7 @@ import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.user_and_auth.repository.RoleRepository;
 import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
 import com.example.coop_vsit_hub.user_and_auth.security.JwtUtils;
+import com.example.coop_vsit_hub.user_and_auth.security.TemporaryPasswordGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,10 +66,12 @@ public class AuthServiceImpl implements AuthService {
             roles.add(defaultRole);
         }
 
+        String tempPassword = TemporaryPasswordGenerator.generateTemporaryPassword();
+
         User user = User.builder()
                 .username(request.getUsername().trim())
                 .email(request.getEmail().trim().toLowerCase())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(passwordEncoder.encode(tempPassword))
                 .firstName(request.getFirstName().trim())
                 .middleName(request.getMiddleName() != null ? request.getMiddleName().trim() : null)
                 .lastName(request.getLastName().trim())
@@ -76,13 +79,27 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber().trim() : null)
                 .isEnabled(true)
                 .isAccountNonLocked(true)
+                .isEmailVerified(false)
+                .mustChangePassword(true)
                 .failedLoginAttempts(0)
                 .roles(roles)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        // Audit Logging
+        // Generate Email Verification Token in Redis for 24 hours
+        String verificationToken = UUID.randomUUID().toString();
+        redisTokenService.storeEmailVerificationToken(verificationToken, savedUser.getUsername(), 24);
+
+        // Send Onboarding Email via MailHog
+        emailService.sendStaffOnboardingEmail(
+                savedUser.getEmail(),
+                savedUser.getFullName(),
+                savedUser.getUsername(),
+                tempPassword,
+                verificationToken
+        );
+
         auditLoggerService.logEvent(
                 savedUser,
                 savedUser.getUsername(),
@@ -90,10 +107,47 @@ public class AuthServiceImpl implements AuthService {
                 AuditStatus.SUCCESS,
                 ipAddress,
                 userAgent,
-                "New user registered successfully with roles: " + roles.stream().map(r -> r.getName().name()).collect(Collectors.joining(","))
+                "New user registered with temporary password and verification token dispatched via MailHog."
         );
 
-        return buildAuthResponse(savedUser);
+        return AuthResponse.builder()
+                .isEmailVerified(false)
+                .mustChangePassword(true)
+                .message("User registered successfully. Temporary password and email verification link sent via MailHog to " + savedUser.getEmail())
+                .user(buildUserProfileResponse(savedUser))
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        log.info("Processing email verification request.");
+
+        String rawToken = token.trim();
+        String username = redisTokenService.getUsernameFromEmailVerificationToken(rawToken);
+
+        if (username == null) {
+            log.warn("Invalid or expired email verification token provided.");
+            throw new IllegalArgumentException("Invalid or expired email verification link. Please contact CoopBank system administrator.");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User account associated with verification token not found."));
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        redisTokenService.deleteEmailVerificationToken(rawToken);
+
+        auditLoggerService.logEvent(
+                user,
+                username,
+                AuditEventType.LOGIN_SUCCESS,
+                AuditStatus.SUCCESS,
+                "127.0.0.1",
+                "System Verification Link",
+                "Email address verified successfully via verification token."
+        );
     }
 
     @Override
@@ -110,33 +164,18 @@ public class AuthServiceImpl implements AuthService {
             auditLoggerService.logEvent(
                     user,
                     identifier,
-                    AuditEventType.ACCOUNT_LOCKED,
+                    AuditEventType.LOGIN_FAILED,
                     AuditStatus.BLOCKED,
                     ipAddress,
                     userAgent,
-                    "Login attempt rejected. Account is locked due to repeated failed attempts."
+                    "Locked account attempted login."
             );
             throw new IllegalStateException("Account is temporarily locked due to 5 consecutive failed login attempts. Please try again after 15 minutes.");
         }
 
-        // Security Check 2: Invalid User or Password Match Failure
+        // Security Check 2: Password Verification
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            boolean isLockedNow = bruteForceProtectionService.recordFailedAttempt(user, identifier);
-
-            auditLoggerService.logEvent(
-                    user,
-                    identifier,
-                    AuditEventType.LOGIN_FAILED,
-                    AuditStatus.FAILURE,
-                    ipAddress,
-                    userAgent,
-                    isLockedNow ? "Invalid password. Account threshold exceeded and locked." : "Invalid credentials supplied."
-            );
-
-            if (isLockedNow) {
-                throw new IllegalStateException("Account is now locked due to 5 consecutive failed login attempts. Try again after 15 minutes.");
-            }
-
+            bruteForceProtectionService.recordFailedAttempt(user, identifier);
             throw new IllegalArgumentException("Invalid username/email or password.");
         }
 
@@ -146,8 +185,25 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("User account is disabled. Please contact CoopBank system administrator.");
         }
 
-        // Successful Authentication: Reset counters & issue tokens
+        // Security Check 4: Email Verification Check
+        if (!user.isEmailVerified()) {
+            auditLoggerService.logEvent(user, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Unverified email account attempted login.");
+            throw new IllegalStateException("Your email address is not verified. Please verify your email via the link sent to your inbox before signing in.");
+        }
+
+        // Successful Authentication: Reset counters
         bruteForceProtectionService.recordSuccess(user, identifier);
+
+        // Security Check 5: Mandatory Initial Password Change Check
+        if (user.isMustChangePassword()) {
+            auditLoggerService.logEvent(user, user.getUsername(), AuditEventType.LOGIN_SUCCESS, AuditStatus.SUCCESS, ipAddress, userAgent, "Authenticated with temporary password. First-time password change required.");
+            return AuthResponse.builder()
+                    .isEmailVerified(true)
+                    .mustChangePassword(true)
+                    .message("Temporary password recognized. Please change your initial password before accessing system features.")
+                    .user(buildUserProfileResponse(user))
+                    .build();
+        }
 
         auditLoggerService.logEvent(
                 user,
@@ -257,6 +313,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setPasswordChangedAt(java.time.Instant.now());
+        user.setMustChangePassword(false);
         userRepository.save(user);
 
         // Revoke active refresh token in Redis to force clean session refresh
@@ -335,6 +392,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setPasswordChangedAt(java.time.Instant.now());
+        user.setMustChangePassword(false);
         userRepository.save(user);
 
         // Delete single-use token from Redis
@@ -366,6 +424,8 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .expiresInMs(jwtUtils.getJwtExpirationMs())
                 .refreshToken(refreshToken)
+                .isEmailVerified(user.isEmailVerified())
+                .mustChangePassword(user.isMustChangePassword())
                 .user(buildUserProfileResponse(user))
                 .build();
     }
@@ -387,6 +447,8 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(user.getPhoneNumber())
                 .isEnabled(user.isEnabled())
                 .isAccountNonLocked(user.isAccountNonLocked())
+                .isEmailVerified(user.isEmailVerified())
+                .mustChangePassword(user.isMustChangePassword())
                 .roles(roles)
                 .build();
     }
