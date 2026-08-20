@@ -18,6 +18,33 @@ public class RedisTokenService {
     private static final String REFRESH_PREFIX = "jwt:refresh:";
     private static final String REFRESH_USER_PREFIX = "jwt:refresh_user:";
     private static final String FAILED_ATTEMPTS_PREFIX = "auth:failed:";
+    private static final String RESET_TOKEN_PREFIX = "password_reset:";
+
+    /**
+     * Stores a single-use Password Reset Token in Redis with TTL.
+     */
+    public void storePasswordResetToken(String resetToken, String username, long ttlMinutes) {
+        String key = RESET_TOKEN_PREFIX + resetToken;
+        redisTemplate.opsForValue().set(key, username, ttlMinutes, TimeUnit.MINUTES);
+        log.info("Password reset token stored in Redis for user: {}", username);
+    }
+
+    /**
+     * Retrieves username associated with a Password Reset Token from Redis.
+     */
+    public String getUsernameFromResetToken(String resetToken) {
+        String key = RESET_TOKEN_PREFIX + resetToken;
+        return redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * Deletes a Password Reset Token from Redis after consumption.
+     */
+    public void deletePasswordResetToken(String resetToken) {
+        String key = RESET_TOKEN_PREFIX + resetToken;
+        redisTemplate.delete(key);
+        log.info("Password reset token consumed and deleted from Redis.");
+    }
 
     /**
      * Blacklists an Access JWT Token in Redis until its natural expiration.

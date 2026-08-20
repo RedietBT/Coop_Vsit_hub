@@ -31,5 +31,24 @@ public interface AuthService {
 
     UserProfileResponse getUserProfile(
         String username
-        );
+    );
+
+    void changePassword(
+            String username,
+            ChangePasswordRequest request,
+            String ipAddress,
+            String userAgent
+    );
+
+    void forgotPassword(
+            ForgotPasswordRequest request,
+            String ipAddress,
+            String userAgent
+    );
+
+    void resetPassword(
+            ResetPasswordRequest request,
+            String ipAddress,
+            String userAgent
+    );
 }

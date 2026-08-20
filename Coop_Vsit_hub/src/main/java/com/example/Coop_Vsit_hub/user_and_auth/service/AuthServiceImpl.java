@@ -33,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTokenService redisTokenService;
     private final BruteForceProtectionService bruteForceProtectionService;
     private final AuditLoggerService auditLoggerService;
+    private final EmailService emailService;
 
     @Value("${coopbank.security.jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
@@ -231,6 +232,126 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with username: " + username));
         return buildUserProfileResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String username, ChangePasswordRequest request, String ipAddress, String userAgent) {
+        log.info("Processing password change request for user: {}", username);
+
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new IllegalArgumentException("New password and confirmation password do not match.");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found."));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            auditLoggerService.logEvent(user, username, AuditEventType.PASSWORD_CHANGE, AuditStatus.FAILURE, ipAddress, userAgent, "Current password validation failed.");
+            throw new IllegalArgumentException("Incorrect current password.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password cannot be identical to your current password.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordChangedAt(java.time.Instant.now());
+        userRepository.save(user);
+
+        // Revoke active refresh token in Redis to force clean session refresh
+        redisTokenService.deleteRefreshToken(username);
+
+        auditLoggerService.logEvent(
+                user,
+                username,
+                AuditEventType.PASSWORD_CHANGE,
+                AuditStatus.SUCCESS,
+                ipAddress,
+                userAgent,
+                "Password changed successfully by authenticated user."
+        );
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request, String ipAddress, String userAgent) {
+        String identifier = request.getIdentifier().trim();
+        log.info("Processing forgot password request for identifier: {}", identifier);
+
+        User user = userRepository.findByUsernameOrEmailOrPhoneNumber(identifier).orElse(null);
+
+        if (user != null && user.isEnabled() && user.isAccountNonLocked()) {
+            String resetToken = UUID.randomUUID().toString();
+
+            // Store single-use reset token in Redis for 15 minutes
+            redisTokenService.storePasswordResetToken(resetToken, user.getUsername(), 15);
+
+            // Send email notification via MailHog strictly to user's registered email
+            emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), resetToken);
+
+            auditLoggerService.logEvent(
+                    user,
+                    user.getUsername(),
+                    AuditEventType.PASSWORD_CHANGE,
+                    AuditStatus.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    "Password reset token generated and email dispatched to: " + user.getEmail()
+            );
+        } else {
+            auditLoggerService.logEvent(
+                    null,
+                    identifier,
+                    AuditEventType.PASSWORD_CHANGE,
+                    AuditStatus.FAILURE,
+                    ipAddress,
+                    userAgent,
+                    "Forgot password requested for non-existent or locked account identifier."
+            );
+        }
+        // Always return silently without revealing account existence to prevent user enumeration
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request, String ipAddress, String userAgent) {
+        log.info("Processing reset password completion.");
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirmation password do not match.");
+        }
+
+        String rawToken = request.getToken().trim();
+        String username = redisTokenService.getUsernameFromResetToken(rawToken);
+
+        if (username == null) {
+            log.warn("Invalid or expired password reset token supplied.");
+            throw new IllegalArgumentException("Invalid or expired password reset link. Please request a new password reset.");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User account associated with reset token not found."));
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordChangedAt(java.time.Instant.now());
+        userRepository.save(user);
+
+        // Delete single-use token from Redis
+        redisTokenService.deletePasswordResetToken(rawToken);
+
+        // Revoke active refresh token session
+        redisTokenService.deleteRefreshToken(username);
+
+        auditLoggerService.logEvent(
+                user,
+                username,
+                AuditEventType.PASSWORD_CHANGE,
+                AuditStatus.SUCCESS,
+                ipAddress,
+                userAgent,
+                "Password reset completed successfully using reset token."
+        );
     }
 
     private AuthResponse buildAuthResponse(User user) {

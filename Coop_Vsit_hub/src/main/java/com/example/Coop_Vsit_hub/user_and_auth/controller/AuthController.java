@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -93,6 +95,64 @@ public class AuthController {
         String username = authentication.getName();
         UserProfileResponse profile = authService.getUserProfile(username);
         return ResponseEntity.ok(profile);
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Change Staff Account Password",
+            description = "Allows an authenticated user to change their account password. Revokes active sessions in Redis upon completion.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        String username = authentication.getName();
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        authService.changePassword(username, request, ipAddress, userAgent);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Password changed successfully. Active sessions have been invalidated for security.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(
+            summary = "Request Password Reset Link (Public)",
+            description = "Initiates a password reset request. Accepts Username, Email, or Phone Number. Sends HTML email with 15-minute token via MailHog."
+    )
+    public ResponseEntity<Map<String, String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        authService.forgotPassword(request, ipAddress, userAgent);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "If an account matches the provided information, a password reset link has been dispatched to the registered email address.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(
+            summary = "Complete Password Reset (Public)",
+            description = "Resets user password using single-use Redis-backed token received via email."
+    )
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        authService.resetPassword(request, ipAddress, userAgent);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Password reset successfully. You may now sign in with your new password.");
+        return ResponseEntity.ok(response);
     }
 
     private String getClientIp(HttpServletRequest request) {
