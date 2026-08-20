@@ -2,15 +2,22 @@ package com.example.coop_vsit_hub.config;
 
 import com.example.coop_vsit_hub.user_and_auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -20,7 +27,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Global Spring Security & Statutory Access Control Configuration.
+ * Global Spring Security & Access Control Configuration.
+ * Protects Swagger UI with HTTP Basic Authentication using env credentials,
+ * and business APIs via stateless JWT authentication.
  */
 @Configuration
 @EnableWebSecurity
@@ -31,10 +40,28 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
 
+    @Value("${coopbank.security.swagger.username}")
+    private String swaggerUsername;
+
+    @Value("${coopbank.security.swagger.password}")
+    private String swaggerPassword;
+
+    @Bean
+    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
+        UserDetails swaggerAdmin = User.builder()
+                .username(swaggerUsername)
+                .password(passwordEncoder.encode(swaggerPassword))
+                .roles("SWAGGER_ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(swaggerAdmin);
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(Customizer.withDefaults())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -46,20 +73,23 @@ public class SecurityConfig {
                     "/api/v1/auth/reset-password", 
                     "/api/v1/auth/verify-email/**"
                 ).permitAll()
-                // Public Swagger UI & OpenAPI Documentation Endpoints
-                .requestMatchers(
-                    "/swagger-ui.html",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-resources/**",
-                    "/webjars/**"
-                ).permitAll()
                 // Public Customer Feedback Survey Endpoints
                 .requestMatchers(
                     "/api/v1/feedback/verify/**", 
                     "/api/v1/feedback/submit"
                 ).permitAll()
-                // All other endpoints require authentication
+                // Public Error and Favicon Assets
+                .requestMatchers("/error", "/favicon.ico").permitAll()
+                // Protected Swagger UI & OpenAPI Documentation (Requires HTTP Basic Auth)
+                .requestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs",
+                    "/v3/api-docs/**",
+                    "/swagger-resources/**",
+                    "/webjars/**"
+                ).hasRole("SWAGGER_ADMIN")
+                // All other business endpoints require authentication (handled by JWT filter)
                 .anyRequest().authenticated()
             )
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)

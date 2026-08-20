@@ -44,5 +44,9 @@ coopbank.security.brute-force.max-attempts=5
 coopbank.security.brute-force.lock-duration-minutes=15
 coopbank.security.rate-limit.requests-per-minute=60
 
+# Swagger UI Access Credentials
+coopbank.security.swagger.username=${SWAGGER_ADMIN_USER:coop_admin}
+coopbank.security.swagger.password=${SWAGGER_ADMIN_PASS:CoopBank#DxValley2026!}
+
 # Server Port
 server.port=8080
