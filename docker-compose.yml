@@ -39,7 +39,24 @@ services:
       - "8025:8025" # Web UI dashboard
 
   # ---------------------------------------------------------------------------
-  # 3. CoopBank Visit Hub Backend (Spring Boot Service)
+  # 3. Redis In-Memory Cache & Token Store
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: coop-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 4. CoopBank Visit Hub Backend (Spring Boot Service)
   # ---------------------------------------------------------------------------
   backend:
     build:
@@ -53,11 +70,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-coop_visit_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-coop_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-coop_secure_pass}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       mailhog:
         condition: service_started
@@ -67,4 +88,6 @@ services:
 # -----------------------------------------------------------------------------
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
