@@ -1,0 +1,22 @@
+# Target directories
+target/
+**/target/
+
+# Environment and Secret Property Files (Security Policy: Never commit secrets)
+.env
+.env.*
+!.env.example
+application.properties
+application.yml
+*.properties
+!application.properties.example
+
+# IDE Files
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS Files
+.DS_Store
+Thumbs.db

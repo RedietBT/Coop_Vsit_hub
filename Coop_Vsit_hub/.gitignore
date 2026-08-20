@@ -4,6 +4,15 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Security & Secret Property Files (NEVER TRACK CREDENTIALS IN GIT) ###
+application.properties
+application.yml
+*.env
+.env
+.env.*
+*.properties
+!application.properties.example
+
 ### STS ###
 .apt_generated
 .classpath

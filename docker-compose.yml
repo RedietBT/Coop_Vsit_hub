@@ -1,0 +1,70 @@
+# =============================================================================
+# Docker Compose Suite - CoopBank Visit Hub
+# Cooperative Bank of Oromia (CoopBank DxValley)
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: coop-postgres-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coop_visit_db}
+      POSTGRES_USER: ${POSTGRES_USER:-coop_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coop_secure_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coop_user} -d ${POSTGRES_DB:-coop_visit_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 2. MailHog SMTP & Email Verification Service
+  # ---------------------------------------------------------------------------
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: coop-mailhog
+    restart: always
+    ports:
+      - "1025:1025" # SMTP server port
+      - "8025:8025" # Web UI dashboard
+
+  # ---------------------------------------------------------------------------
+  # 3. CoopBank Visit Hub Backend (Spring Boot Service)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./Coop_Vsit_hub
+      dockerfile: Dockerfile
+    container_name: coop-visit-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-coop_visit_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-coop_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-coop_secure_pass}
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+# -----------------------------------------------------------------------------
+# Persistent Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
