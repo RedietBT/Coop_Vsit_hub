@@ -48,5 +48,13 @@ coopbank.security.rate-limit.requests-per-minute=60
 coopbank.security.swagger.username=${SWAGGER_ADMIN_USER:coop_admin}
 coopbank.security.swagger.password=${SWAGGER_ADMIN_PASS:CoopBank#DxValley2026!}
 
+# Springdoc OpenAPI / Swagger UI Settings
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operations-sorter=alpha
+springdoc.swagger-ui.tags-sorter=alpha
+springdoc.swagger-ui.display-request-duration=true
+springdoc.swagger-ui.doc-expansion=none
+springdoc.api-docs.path=/v3/api-docs
+
 # Server Port
 server.port=8080
