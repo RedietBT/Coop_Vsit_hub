@@ -35,7 +35,7 @@ INSERT INTO users (
     '00000000-0000-0000-0000-000000000001',
     'admin',
     'admin@coopbank.com.et',
-    '$2a$12$K8d2ZgR5YdK1Qz6KzJ8eEOp1L/4m9r5xY8wZ6vK8z9J2YdK1Qz6Kz', -- BCrypt hash of ChangeMe@CoopBank2026!
+    '$2a$12$uvh5MjmixYPbWrWP7MmldubCrxvjbP9F/Ano0xTZjMX6l4hrG.OzW', -- BCrypt hash of ChangeMe@CoopBank2026!
     'System',
     'DxValley',
     'Administrator',
