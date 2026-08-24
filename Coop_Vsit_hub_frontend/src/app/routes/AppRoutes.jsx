@@ -4,8 +4,9 @@ import ProtectedRoute from './ProtectedRoute';
 import RoleGuard from './RoleGuard';
 import DashboardLayout from '@/core/layouts/DashboardLayout';
 import LoginPage from '@/modules/auth/pages/LoginPage';
-import VerifyEmailPage from '@/modules/auth/pages/VerifyEmailPage';
+import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
+import VerifyEmailPage from '@/modules/auth/pages/VerifyEmailPage';
 import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboardPage';
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
@@ -13,15 +14,22 @@ import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
 import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
 import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
+import PublicSurveyPage from '@/modules/feedback/pages/PublicSurveyPage';
 
 export const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public Auth Routes */}
+      {/* Public Auth & Guest Survey Routes */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      {/* Public Post-Visit Customer Satisfaction (CSAT) Survey */}
+      <Route path="/feedback/:token" element={<PublicSurveyPage />} />
+      <Route path="/feedback/verify/:token" element={<PublicSurveyPage />} />
+      <Route path="/survey/:token" element={<PublicSurveyPage />} />
 
       {/* Protected Routes inside Global DashboardLayout Shell */}
       <Route

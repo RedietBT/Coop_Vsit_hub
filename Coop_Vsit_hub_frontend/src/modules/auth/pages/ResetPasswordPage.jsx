@@ -47,6 +47,7 @@ export const ResetPasswordPage = () => {
       await authApi.resetPassword({
         token: data.token,
         newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
       });
       setIsSuccess(true);
       soundPlayer.playNotificationChime();
