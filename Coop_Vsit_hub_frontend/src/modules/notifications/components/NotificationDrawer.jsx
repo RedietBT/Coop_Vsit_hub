@@ -40,7 +40,8 @@ export const NotificationDrawer = () => {
   }, [isDrawerOpen, fetchNotifications]);
 
   const filteredNotifications = notifications.filter((n) => {
-    if (filterTab === 'unread') return !n.isRead;
+    const isRead = n.read ?? n.isRead ?? false;
+    if (filterTab === 'unread') return !isRead;
     return true;
   });
 
@@ -191,13 +192,14 @@ export const NotificationDrawer = () => {
                   </div>
                 ) : (
                   filteredNotifications.map((item) => {
-                    const { icon: ItemIcon, color: iconStyle } = getNotificationIcon(item.type);
+                    const isRead = item.read ?? item.isRead ?? false;
+                    const { icon: ItemIcon, color: iconStyle } = getNotificationIcon(item.notificationType || item.type);
                     return (
                       <div
                         key={item.id}
                         onClick={() => handleNotificationClick(item)}
                         className={`group relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
-                          item.isRead
+                          isRead
                             ? 'bg-white border-slate-200/80 hover:border-slate-300'
                             : 'bg-sky-50/40 border-[#00adef]/30 hover:border-[#00adef] shadow-xs'
                         }`}
@@ -213,7 +215,7 @@ export const NotificationDrawer = () => {
                             <div className="flex items-center justify-between gap-2">
                               <h4
                                 className={`text-xs truncate ${
-                                  item.isRead ? 'font-semibold text-slate-800' : 'font-black text-[#000000]'
+                                  isRead ? 'font-semibold text-slate-800' : 'font-black text-[#000000]'
                                 }`}
                               >
                                 {item.title || 'System Notification'}
@@ -239,7 +241,7 @@ export const NotificationDrawer = () => {
                               )}
 
                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {!item.isRead && (
+                                {!isRead && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -266,7 +268,7 @@ export const NotificationDrawer = () => {
                         </div>
 
                         {/* Unread indicator bar */}
-                        {!item.isRead && (
+                        {!isRead && (
                           <div className="absolute left-0 top-3 bottom-3 w-1 bg-[#00adef] rounded-r-full" />
                         )}
                       </div>

@@ -1,16 +1,16 @@
 import apiClient from '@/core/api/apiClient';
 
 export const notificationApi = {
-  getMyNotifications: async (page = 0, size = 20) => {
+  getMyNotifications: async (page = 0, size = 20, unreadOnly = false) => {
     const response = await apiClient.get('/api/v1/notifications', {
-      params: { page, size },
+      params: { page, size, unreadOnly },
     });
     return response.data;
   },
 
   getUnreadCount: async () => {
     const response = await apiClient.get('/api/v1/notifications/unread-count');
-    return response.data; // { count: number }
+    return response.data; // { unreadCount: number }
   },
 
   markAsRead: async (notificationId) => {
@@ -19,7 +19,7 @@ export const notificationApi = {
   },
 
   markAllAsRead: async () => {
-    const response = await apiClient.patch('/api/v1/notifications/read-all');
+    const response = await apiClient.patch('/api/v1/notifications/mark-all-read');
     return response.data;
   },
 
