@@ -12,12 +12,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CheckInRequest {
 
-    @Schema(description = "Optional custom badge code. If left blank, system auto-generates sequential badge e.g. COOPV2026080001", example = "")
+    @Schema(description = "(Optional) Custom badge code. If left blank or null, system auto-generates sequential badge e.g. COOPV2026080001", example = "")
     private String customBadgeNumber;
 
-    @Schema(description = "Government ID / Passport / Driver License verified by security desk", example = "EP2948194")
+    @Schema(description = "(Optional) Government ID / Passport / Driver License verified by security desk", example = "")
     private String verifiedIdNumber;
 
-    @Schema(description = "Front desk check-in notes or security clearances", example = "Visitor cleared security screening, badge issued.")
+    @Schema(description = "(Optional) Front desk check-in notes or security clearances", example = "Visitor cleared security screening.")
     private String checkInNotes;
 }
