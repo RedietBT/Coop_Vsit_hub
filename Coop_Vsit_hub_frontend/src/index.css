@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --coop-gold: #F39200;
+    --coop-gold-light: #FDB714;
+    --coop-gold-dark: #D47E00;
+    --coop-navy: #002D62;
+    --coop-navy-dark: #001C3D;
+    --coop-navy-light: #00408A;
+    --coop-charcoal: #0B1B3D;
+    --coop-surface: #F8FAFC;
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: #F8FAFC;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--font-heading);
+  }
+}
+
+/* Custom CoopBank Utility Classes */
+.bg-coop-navy { background-color: #002D62; }
+.bg-coop-navy-dark { background-color: #001C3D; }
+.bg-coop-gold { background-color: #F39200; }
+.bg-coop-gold-light { background-color: #FDB714; }
+.bg-coop-charcoal { background-color: #0B1B3D; }
+
+.text-coop-navy { color: #002D62; }
+.text-coop-gold { color: #F39200; }
+.text-coop-gold-light { color: #FDB714; }
+
+.border-coop-gold { border-color: #F39200; }
+.border-coop-navy { border-color: #002D62; }
+
+.shadow-gold {
+  box-shadow: 0 4px 20px -2px rgba(243, 146, 0, 0.25);
+}
+
+.shadow-navy {
+  box-shadow: 0 4px 20px -2px rgba(0, 45, 98, 0.2);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-card-dark {
+  background: rgba(11, 27, 61, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
