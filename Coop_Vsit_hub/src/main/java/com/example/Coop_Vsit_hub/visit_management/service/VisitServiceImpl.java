@@ -1,0 +1,492 @@
+package com.example.coop_vsit_hub.visit_management.service;
+
+import com.example.coop_vsit_hub.user_and_auth.dto.PageResponse;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditEventType;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
+import com.example.coop_vsit_hub.user_and_auth.model.User;
+import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
+import com.example.coop_vsit_hub.user_and_auth.service.AuditLoggerService;
+import com.example.coop_vsit_hub.visit_management.dto.*;
+import com.example.coop_vsit_hub.visit_management.enums.GuestCategory;
+import com.example.coop_vsit_hub.visit_management.enums.VisitPriority;
+import com.example.coop_vsit_hub.visit_management.enums.VisitStatus;
+import com.example.coop_vsit_hub.visit_management.enums.VisitType;
+import com.example.coop_vsit_hub.visit_management.model.Organization;
+import com.example.coop_vsit_hub.visit_management.model.Visit;
+import com.example.coop_vsit_hub.visit_management.repository.OrganizationRepository;
+import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
+import com.example.coop_vsit_hub.visit_management.repository.VisitSpecification;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class VisitServiceImpl implements VisitService {
+
+    private final VisitRepository visitRepository;
+    private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
+    private final AuditLoggerService auditLoggerService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<VisitSummaryResponse> getAllVisits(
+            String search,
+            VisitStatus status,
+            VisitPriority priority,
+            VisitType visitType,
+            GuestCategory guestCategory,
+            String department,
+            String locationRoom,
+            UUID requesterId,
+            UUID sponsorId,
+            UUID approverId,
+            Instant fromDate,
+            Instant toDate,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection
+    ) {
+        log.info("Searching visits with status={}, priority={}, dept={}, room={}, page={}, size={}",
+                status, priority, department, locationRoom, page, size);
+
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        String sortProperty = (sortBy != null && !sortBy.isBlank()) ? sortBy : "scheduledStartTime";
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty));
+
+        Specification<Visit> spec = VisitSpecification.filterVisits(
+                search, status, priority, visitType, guestCategory, department, locationRoom,
+                requesterId, sponsorId, approverId, fromDate, toDate
+        );
+
+        Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
+        Page<VisitSummaryResponse> dtoPage = visitPage.map(VisitSummaryResponse::from);
+
+        return PageResponse.from(dtoPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VisitDetailResponse getVisitById(UUID id) {
+        log.info("Fetching visit details for ID: {}", id);
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+        return VisitDetailResponse.from(visit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VisitDetailResponse getVisitByCode(String visitCode) {
+        log.info("Fetching visit details for code: {}", visitCode);
+        Visit visit = visitRepository.findByVisitCode(visitCode.trim().toUpperCase())
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with Code: " + visitCode));
+        return VisitDetailResponse.from(visit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VisitStatsResponse getVisitStatistics() {
+        log.info("Computing executive visit statistics and pipeline aggregates");
+
+        long total = visitRepository.count();
+        BigDecimal pipelineValue = visitRepository.sumActivePipelineValue();
+        long inProgress = visitRepository.countByStatus(VisitStatus.IN_PROGRESS);
+        long completed = visitRepository.countByStatus(VisitStatus.COMPLETED);
+        long awaitingApproval = visitRepository.countByStatus(VisitStatus.SUBMITTED) + visitRepository.countByStatus(VisitStatus.UNDER_REVIEW);
+        long upcoming = visitRepository.findUpcomingScheduledVisits(Instant.now()).size();
+
+        Map<String, Long> statusMap = new LinkedHashMap<>();
+        for (Object[] row : visitRepository.countVisitsByStatusGroup()) {
+            VisitStatus s = (VisitStatus) row[0];
+            Long count = (Long) row[1];
+            statusMap.put(s.name(), count);
+        }
+
+        Map<String, Long> priorityMap = new LinkedHashMap<>();
+        for (Object[] row : visitRepository.countVisitsByPriorityGroup()) {
+            VisitPriority p = (VisitPriority) row[0];
+            Long count = (Long) row[1];
+            priorityMap.put(p.name(), count);
+        }
+
+        Map<String, Long> deptMap = new LinkedHashMap<>();
+        for (Object[] row : visitRepository.countVisitsByDepartmentGroup()) {
+            String dept = (String) row[0];
+            Long count = (Long) row[1];
+            deptMap.put(dept, count);
+        }
+
+        return VisitStatsResponse.builder()
+                .totalVisits(total)
+                .activePipelineValue(pipelineValue)
+                .pipelineCurrency("USD")
+                .upcomingScheduledVisitsCount(upcoming)
+                .inProgressVisitsCount(inProgress)
+                .completedVisitsCount(completed)
+                .awaitingApprovalCount(awaitingApproval)
+                .visitsByStatus(statusMap)
+                .visitsByPriority(priorityMap)
+                .visitsByDepartment(deptMap)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse createVisit(CreateVisitRequest request, String requesterUsername) {
+        log.info("Creating new visit request by user '{}'", requesterUsername);
+
+        User requester = userRepository.findByUsername(requesterUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Requester user not found: " + requesterUsername));
+
+        validateSchedule(request.getScheduledStartTime(), request.getScheduledEndTime());
+
+        if (StringUtils.hasText(request.getLocationRoom()) && request.getScheduledStartTime() != null && request.getScheduledEndTime() != null) {
+            validateRoomConflict(request.getLocationRoom(), request.getScheduledStartTime(), request.getScheduledEndTime(), null);
+        }
+
+        Organization guestOrg = null;
+        if (request.getGuestCategory() == GuestCategory.ORGANIZATION) {
+            if (request.getGuestOrganizationId() == null) {
+                throw new IllegalArgumentException("Guest organization ID is required when guestCategory is ORGANIZATION.");
+            }
+            guestOrg = organizationRepository.findById(request.getGuestOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + request.getGuestOrganizationId()));
+        }
+
+        User sponsor = null;
+        if (request.getSponsorId() != null) {
+            sponsor = userRepository.findById(request.getSponsorId())
+                    .orElseThrow(() -> new IllegalArgumentException("Sponsor user not found with ID: " + request.getSponsorId()));
+        }
+
+        String visitCode = generateVisitCode();
+        VisitStatus initialStatus = Boolean.TRUE.equals(request.getIsDraft()) ? VisitStatus.DRAFT : VisitStatus.SUBMITTED;
+
+        Visit visit = Visit.builder()
+                .visitCode(visitCode)
+                .title(request.getTitle().trim())
+                .requestingDepartment(request.getRequestingDepartment().trim())
+                .visitType(request.getVisitType() != null ? request.getVisitType() : VisitType.EXTERNAL)
+                .visitObjective(request.getVisitObjective().trim())
+                .expectedOutcome(request.getExpectedOutcome() != null ? request.getExpectedOutcome().trim() : null)
+                .priorityLevel(request.getPriorityLevel() != null ? request.getPriorityLevel() : VisitPriority.MEDIUM)
+                .status(initialStatus)
+                .opportunityValue(request.getOpportunityValue() != null ? request.getOpportunityValue() : BigDecimal.ZERO)
+                .currency(StringUtils.hasText(request.getCurrency()) ? request.getCurrency().trim().toUpperCase() : "USD")
+                .presentationTheme(request.getPresentationTheme() != null ? request.getPresentationTheme().trim() : null)
+                .sensitiveTopics(request.getSensitiveTopics() != null ? request.getSensitiveTopics().trim() : null)
+                .locationRoom(request.getLocationRoom() != null ? request.getLocationRoom().trim() : null)
+                .visitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1)
+                .guestCategory(request.getGuestCategory())
+                .guestOrganization(guestOrg)
+                .individualGuestFirstName(request.getIndividualGuestFirstName() != null ? request.getIndividualGuestFirstName().trim() : null)
+                .individualGuestMiddleName(request.getIndividualGuestMiddleName() != null ? request.getIndividualGuestMiddleName().trim() : null)
+                .individualGuestLastName(request.getIndividualGuestLastName() != null ? request.getIndividualGuestLastName().trim() : null)
+                .individualGuestEmail(request.getIndividualGuestEmail() != null ? request.getIndividualGuestEmail().trim().toLowerCase() : null)
+                .individualGuestPhone(request.getIndividualGuestPhone() != null ? request.getIndividualGuestPhone().trim() : null)
+                .individualGuestTitle(request.getIndividualGuestTitle() != null ? request.getIndividualGuestTitle().trim() : null)
+                .individualGuestIdNumber(request.getIndividualGuestIdNumber() != null ? request.getIndividualGuestIdNumber().trim() : null)
+                .requester(requester)
+                .sponsor(sponsor)
+                .scheduledStartTime(request.getScheduledStartTime())
+                .scheduledEndTime(request.getScheduledEndTime())
+                .build();
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                requester,
+                requester.getUsername(),
+                AuditEventType.VISIT_CREATED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "VISIT_MODULE",
+                String.format("Visit created with code '%s' and status '%s'", saved.getVisitCode(), saved.getStatus())
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse updateVisit(UUID id, UpdateVisitRequest request, String requesterUsername) {
+        log.info("Updating visit ID: {} by user: {}", id, requesterUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (visit.getStatus() != VisitStatus.DRAFT && visit.getStatus() != VisitStatus.SUBMITTED) {
+            throw new IllegalArgumentException("Visit cannot be modified once it is in status: " + visit.getStatus());
+        }
+
+        validateSchedule(request.getScheduledStartTime(), request.getScheduledEndTime());
+
+        if (StringUtils.hasText(request.getLocationRoom()) && request.getScheduledStartTime() != null && request.getScheduledEndTime() != null) {
+            validateRoomConflict(request.getLocationRoom(), request.getScheduledStartTime(), request.getScheduledEndTime(), id);
+        }
+
+        Organization guestOrg = null;
+        if (request.getGuestCategory() == GuestCategory.ORGANIZATION) {
+            if (request.getGuestOrganizationId() == null) {
+                throw new IllegalArgumentException("Guest organization ID is required when guestCategory is ORGANIZATION.");
+            }
+            guestOrg = organizationRepository.findById(request.getGuestOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + request.getGuestOrganizationId()));
+        }
+
+        User sponsor = null;
+        if (request.getSponsorId() != null) {
+            sponsor = userRepository.findById(request.getSponsorId())
+                    .orElseThrow(() -> new IllegalArgumentException("Sponsor user not found with ID: " + request.getSponsorId()));
+        }
+
+        visit.setTitle(request.getTitle().trim());
+        visit.setRequestingDepartment(request.getRequestingDepartment().trim());
+        visit.setVisitType(request.getVisitType());
+        visit.setVisitObjective(request.getVisitObjective().trim());
+        visit.setExpectedOutcome(request.getExpectedOutcome() != null ? request.getExpectedOutcome().trim() : null);
+        visit.setPriorityLevel(request.getPriorityLevel());
+        visit.setOpportunityValue(request.getOpportunityValue() != null ? request.getOpportunityValue() : BigDecimal.ZERO);
+        visit.setCurrency(StringUtils.hasText(request.getCurrency()) ? request.getCurrency().trim().toUpperCase() : "USD");
+        visit.setPresentationTheme(request.getPresentationTheme() != null ? request.getPresentationTheme().trim() : null);
+        visit.setSensitiveTopics(request.getSensitiveTopics() != null ? request.getSensitiveTopics().trim() : null);
+        visit.setLocationRoom(request.getLocationRoom() != null ? request.getLocationRoom().trim() : null);
+        visit.setVisitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1);
+        visit.setGuestCategory(request.getGuestCategory());
+        visit.setGuestOrganization(guestOrg);
+        visit.setIndividualGuestFirstName(request.getIndividualGuestFirstName() != null ? request.getIndividualGuestFirstName().trim() : null);
+        visit.setIndividualGuestMiddleName(request.getIndividualGuestMiddleName() != null ? request.getIndividualGuestMiddleName().trim() : null);
+        visit.setIndividualGuestLastName(request.getIndividualGuestLastName() != null ? request.getIndividualGuestLastName().trim() : null);
+        visit.setIndividualGuestEmail(request.getIndividualGuestEmail() != null ? request.getIndividualGuestEmail().trim().toLowerCase() : null);
+        visit.setIndividualGuestPhone(request.getIndividualGuestPhone() != null ? request.getIndividualGuestPhone().trim() : null);
+        visit.setIndividualGuestTitle(request.getIndividualGuestTitle() != null ? request.getIndividualGuestTitle().trim() : null);
+        visit.setIndividualGuestIdNumber(request.getIndividualGuestIdNumber() != null ? request.getIndividualGuestIdNumber().trim() : null);
+        visit.setSponsor(sponsor);
+        visit.setScheduledStartTime(request.getScheduledStartTime());
+        visit.setScheduledEndTime(request.getScheduledEndTime());
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                null,
+                requesterUsername,
+                AuditEventType.VISIT_UPDATED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "VISIT_MODULE",
+                String.format("Visit '%s' details updated by '%s'", saved.getVisitCode(), requesterUsername)
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse transitionVisitStatus(UUID id, VisitStatusTransitionRequest request, String approverUsername) {
+        log.info("Transitioning status for visit ID: {} to: {} by user: {}", id, request.getStatus(), approverUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        User approver = userRepository.findByUsername(approverUsername)
+                .orElse(null);
+
+        VisitStatus current = visit.getStatus();
+        VisitStatus target = request.getStatus();
+
+        // State Machine validation rules
+        if (target == VisitStatus.APPROVED) {
+            if (current != VisitStatus.SUBMITTED && current != VisitStatus.UNDER_REVIEW) {
+                throw new IllegalArgumentException(String.format("Cannot approve visit currently in '%s' status.", current));
+            }
+            visit.setApprover(approver);
+        } else if (target == VisitStatus.REJECTED) {
+            if (current != VisitStatus.SUBMITTED && current != VisitStatus.UNDER_REVIEW) {
+                throw new IllegalArgumentException(String.format("Cannot reject visit currently in '%s' status.", current));
+            }
+            visit.setApprover(approver);
+        } else if (target == VisitStatus.CANCELLED) {
+            if (current == VisitStatus.COMPLETED || current == VisitStatus.IN_PROGRESS) {
+                throw new IllegalArgumentException(String.format("Cannot cancel visit that is already '%s'.", current));
+            }
+        }
+
+        visit.setStatus(target);
+        if (StringUtils.hasText(request.getDecisionNotes())) {
+            visit.setDecisionNotes(request.getDecisionNotes().trim());
+        }
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                approver,
+                approverUsername,
+                AuditEventType.VISIT_STATUS_CHANGED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "VISIT_MODULE",
+                String.format("Visit '%s' status transitioned from '%s' to '%s' by '%s'",
+                        saved.getVisitCode(), current, target, approverUsername)
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse checkInVisitor(UUID id, CheckInRequest request, String securityUsername) {
+        log.info("Security desk check-in for visit ID: {} by user: {}", id, securityUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (visit.getStatus() != VisitStatus.APPROVED && visit.getStatus() != VisitStatus.SCHEDULED && visit.getStatus() != VisitStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException(String.format("Cannot check-in visitor. Visit must be APPROVED or SCHEDULED, but is currently '%s'.", visit.getStatus()));
+        }
+
+        // Generate badge number if not already assigned
+        String badgeNumber = request.getCustomBadgeNumber();
+        if (!StringUtils.hasText(badgeNumber)) {
+            badgeNumber = StringUtils.hasText(visit.getVisitorBadgeNumber()) ? visit.getVisitorBadgeNumber() : generateBadgeNumber();
+        }
+
+        visit.setVisitorBadgeNumber(badgeNumber);
+        visit.setActualCheckInTime(Instant.now());
+        visit.setStatus(VisitStatus.IN_PROGRESS);
+
+        if (StringUtils.hasText(request.getVerifiedIdNumber())) {
+            visit.setIndividualGuestIdNumber(request.getVerifiedIdNumber().trim());
+        }
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                null,
+                securityUsername,
+                AuditEventType.VISITOR_CHECKED_IN,
+                AuditStatus.SUCCESS,
+                "SECURITY_DESK",
+                "FRONT_DESK_PANEL",
+                String.format("Visitor checked in for visit '%s' with badge '%s' by security staff '%s'",
+                        saved.getVisitCode(), badgeNumber, securityUsername)
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse checkOutVisitor(UUID id, CheckOutRequest request, String securityUsername) {
+        log.info("Security desk check-out for visit ID: {} by user: {}", id, securityUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (visit.getStatus() != VisitStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException(String.format("Cannot check-out visitor. Visit is not currently IN_PROGRESS (current status: '%s').", visit.getStatus()));
+        }
+
+        visit.setActualCheckOutTime(Instant.now());
+        visit.setStatus(VisitStatus.COMPLETED);
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                null,
+                securityUsername,
+                AuditEventType.VISITOR_CHECKED_OUT,
+                AuditStatus.SUCCESS,
+                "SECURITY_DESK",
+                "FRONT_DESK_PANEL",
+                String.format("Visitor checked out for visit '%s' by security staff '%s'",
+                        saved.getVisitCode(), securityUsername)
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteVisit(UUID id, String authenticatedUsername) {
+        log.info("Deleting visit ID: {} by user: {}", id, authenticatedUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (visit.getStatus() == VisitStatus.IN_PROGRESS || visit.getStatus() == VisitStatus.COMPLETED) {
+            throw new IllegalArgumentException("Cannot delete a visit that is ongoing or already completed.");
+        }
+
+        visitRepository.delete(visit);
+
+        auditLoggerService.logEvent(
+                null,
+                authenticatedUsername,
+                AuditEventType.VISIT_DELETED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "VISIT_MODULE",
+                String.format("Visit '%s' was deleted by '%s'", visit.getVisitCode(), authenticatedUsername)
+        );
+    }
+
+    private void validateSchedule(Instant start, Instant end) {
+        if (start != null && end != null && !end.isAfter(start)) {
+            throw new IllegalArgumentException("Scheduled end time must be strictly after scheduled start time.");
+        }
+    }
+
+    private void validateRoomConflict(String room, Instant start, Instant end, UUID excludeId) {
+        List<Visit> conflicts = visitRepository.findOverlappingRoomVisits(room, start, end, excludeId);
+        if (!conflicts.isEmpty()) {
+            Visit conflicting = conflicts.get(0);
+            throw new IllegalArgumentException(String.format(
+                    "Room Conflict: '%s' is already booked for visit '%s' (%s) between %s and %s.",
+                    room, conflicting.getVisitCode(), conflicting.getTitle(),
+                    conflicting.getScheduledStartTime(), conflicting.getScheduledEndTime()
+            ));
+        }
+    }
+
+    private String generateVisitCode() {
+        String year = DateTimeFormatter.ofPattern("yyyy").withZone(ZoneOffset.UTC).format(Instant.now());
+        String prefix = "VIS-" + year + "-";
+        long nextNum = visitRepository.countByVisitCodeStartingWith(prefix) + 1;
+
+        String code = String.format("%s%04d", prefix, nextNum);
+        while (visitRepository.existsByVisitCode(code)) {
+            nextNum++;
+            code = String.format("%s%04d", prefix, nextNum);
+        }
+        return code;
+    }
+
+    private String generateBadgeNumber() {
+        String yearMonth = DateTimeFormatter.ofPattern("yyyyMM").withZone(ZoneOffset.UTC).format(Instant.now());
+        String prefix = "COOPV" + yearMonth;
+        long nextNum = visitRepository.countByVisitorBadgeNumberStartingWith(prefix) + 1;
+
+        String badge = String.format("%s%04d", prefix, nextNum);
+        while (visitRepository.existsByVisitorBadgeNumber(badge)) {
+            nextNum++;
+            badge = String.format("%s%04d", prefix, nextNum);
+        }
+        return badge;
+    }
+}
