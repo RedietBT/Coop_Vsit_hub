@@ -28,22 +28,23 @@ public class BruteForceProtectionService {
     /**
      * Records a failed login attempt in Redis and locks account if threshold exceeded.
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public boolean recordFailedAttempt(User user, String identifier) {
         long currentAttempts = redisTokenService.incrementFailedAttempts(identifier, lockDurationMinutes);
         log.warn("Failed login attempt #{} for identifier: {}", currentAttempts, identifier);
 
         if (user != null) {
-            user.setFailedLoginAttempts((int) currentAttempts);
+            User freshUser = userRepository.findById(user.getId()).orElse(user);
+            freshUser.setFailedLoginAttempts((int) currentAttempts);
 
             if (currentAttempts >= maxAttempts) {
-                user.setAccountNonLocked(false);
-                user.setLockTime(Instant.now());
-                userRepository.save(user);
-                log.error("ACCOUNT LOCKED: User [{}] locked due to {} consecutive failed login attempts.", user.getUsername(), currentAttempts);
+                freshUser.setAccountNonLocked(false);
+                freshUser.setLockTime(Instant.now());
+                userRepository.save(freshUser);
+                log.error("ACCOUNT LOCKED: User [{}] locked due to {} consecutive failed login attempts.", freshUser.getUsername(), currentAttempts);
                 return true; // Account is now locked
             } else {
-                userRepository.save(user);
+                userRepository.save(freshUser);
             }
         }
         return false;

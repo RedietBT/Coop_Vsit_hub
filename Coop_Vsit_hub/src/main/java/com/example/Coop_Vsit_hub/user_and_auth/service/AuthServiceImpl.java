@@ -170,7 +170,8 @@ public class AuthServiceImpl implements AuthService {
                     userAgent,
                     "Locked account attempted login."
             );
-            throw new IllegalStateException("Account is temporarily locked due to 5 consecutive failed login attempts. Please try again after 15 minutes.");
+            throw new IllegalStateException(String.format("Account is temporarily locked due to %d consecutive failed login attempts. Please try again after %d minutes.",
+                    bruteForceProtectionService.getMaxAttempts(), bruteForceProtectionService.getLockDurationMinutes()));
         }
 
         // Security Check 2: Password Verification
