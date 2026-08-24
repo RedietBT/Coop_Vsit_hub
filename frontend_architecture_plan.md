@@ -1,6 +1,6 @@
-# 🎨 CoopBank Visit Hub – Frontend Architecture & Implementation Roadmap
+# 🎨 CoopBank Visit Hub – Frontend Clean Code Architecture & Implementation Roadmap
 
-Comprehensive architectural blueprint, design system, API integration sequence, state management strategy, and UI component hierarchy for **Cooperative Bank of Oromia (CoopBank DxValley)**.
+Comprehensive architectural blueprint, design system, API integration sequence, state management strategy, and Clean Code Modular Architecture for **Cooperative Bank of Oromia (CoopBank DxValley)**.
 
 ---
 
@@ -11,8 +11,8 @@ Comprehensive architectural blueprint, design system, API integration sequence, 
 | **Framework** | **React.js (SPA)** | `React 18 + Vite` | Fast Hot Module Replacement (HMR) & clean modular architecture |
 | **Language** | **JavaScript (ES6+)** | Modern JS / JSX | Dynamic, readable, and clean component structure |
 | **Styling** | **Tailwind CSS** | `Tailwind v3.4+` | Utility-first CSS with custom CoopBank brand design tokens |
-| **UI Components** | **Headless UI / Radix / Lucide** | `lucide-react` | Enterprise SVG icons and accessible headless modals/menus |
-| **State Management** | **Zustand** | `zustand` | Lightweight, scalable state stores (Auth, Visits, Notifications, UI) |
+| **UI Components** | **Headless UI / Lucide** | `lucide-react` | Enterprise SVG icons and accessible headless modals/menus |
+| **State Management** | **Zustand** | `zustand` | Lightweight, domain-isolated state stores |
 | **Form Handling** | **React Hook Form** | `react-hook-form` | High-performance uncontrolled forms with minimal re-renders |
 | **Validation** | **Zod** | `zod` + `@hookform/resolvers` | Client-side schema validation, regex checks, and sanitization |
 | **HTTP Client** | **Axios** | `axios` | Global interceptors for JWT Bearer token & automatic token refresh |
@@ -23,88 +23,235 @@ Comprehensive architectural blueprint, design system, API integration sequence, 
 
 ---
 
-## 🎨 2. CoopBank Brand Design System & Aesthetics
+## 🏗️ 2. Clean Code & Domain-Driven Modular Folder Architecture
 
-### 2.1 Official Color Palette
-The UI adheres strictly to the official **Cooperative Bank of Oromia (CoopBank)** corporate visual identity:
-
-* **Primary Gold / Yellow**: `#F39200` (Accent / CTA Buttons / Badges / Highlight Glow)
-* **Secondary Gold**: `#FDB714` (Hover states / Gradient blend)
-* **Primary Deep Navy**: `#002D62` (Sidebar / Header accents / Primary text contrast)
-* **Dark Slate / Charcoal**: `#0B1B3D` & `#0F172A` (Card backgrounds / Dark theme foundations)
-* **Surface Light**: `#F8FAFC` & `#FFFFFF` (Light mode backgrounds / Card containers)
-* **Status Accents**:
-  * `APPROVED` / `COMPLETED`: `#10B981` (Emerald Green)
-  * `SUBMITTED` / `UNDER_REVIEW`: `#3B82F6` (Electric Blue)
-  * `IN_PROGRESS`: `#F59E0B` (Amber Orange)
-  * `REJECTED` / `CANCELLED`: `#EF4444` (Rose Red)
-
-### 2.2 Typography & Hierarchy
-* **Headings & Display**: `Outfit` (Google Fonts) – modern, geometric, banking-grade aesthetic.
-* **Body, Data Grids & Forms**: `Inter` – ultra-clean legibility for financial numbers and tables.
-
-### 2.3 Visual Design Features
-* **Glassmorphism & Frosted Glass**: Modern backdrop blur (`backdrop-blur-md bg-white/80 dark:bg-slate-900/80`).
-* **Micro-Interactions**: Button click scale dips, smooth card hover lifts, badge pulse indicators for active check-ins.
-* **CoopBank Logo Integration**: Official high-res logo with responsive scaling in Navbar and Auth screens.
-
----
-
-## 🔔 3. Real-Time Notifications & Auditory Feedback System
-
-### 3.1 Audio Alert Chime (Web Audio API)
-* Whenever a new notification is triggered (e.g., visitor arrives at security desk, new visit requested, or survey submitted), a pleasant, low-frequency 2-tone melodic chime plays:
-  * Tone 1: `523.25 Hz` (C5) for 120ms
-  * Tone 2: `659.25 Hz` (E5) for 240ms
-* Configurable sound toggle (Mute / Unmute) saved in user preferences.
-
-### 3.2 Toast System (`Sonner`)
-* Position: `top-right` with auto-dismiss (4.5 seconds).
-* Displays icon matching `notificationType` (`VISIT_REQUESTED`, `VISIT_APPROVED`, `VISITOR_CHECKED_IN`, `FEEDBACK_SUBMITTED`).
-* Direct click-action taking staff to the exact visit detail view.
-
----
-
-## 🗄️ 4. Zustand State Management Architecture
+The application adopts a **Clean Code / Feature-Sliced Domain Architecture**. Each business feature is an autonomous module containing its own API integration, components, hooks, pages, schemas, and state store:
 
 ```
-src/store/
-├── useAuthStore.js          # User profile, tokens, login/logout, RBAC permissions
-├── useVisitStore.js         # Visits list, filters, selected visit, calendar state
-├── useOrganizationStore.js  # Partner organizations catalog & stats
-├── useGuestStore.js         # VIP Individual guests directory & stats
-├── useNotificationStore.js  # Notifications list, unread badge counter, audio player
-└── useUIStore.js            # Dark/light theme, sidebar toggle, modal states
+src/
+├── app/                                # 🌐 Application Bootstrap & Config Layer
+│   ├── providers/                      # ThemeProvider, ToastProvider, RouterProvider
+│   ├── routes/                         # AppRoutes.jsx, ProtectedRoute.jsx, RoleGuard.jsx
+│   └── App.jsx                         # Main Root Component
+│
+├── core/                               # ⚙️ Core Infrastructure & Global Utilities
+│   ├── api/                            # Axios client instance, interceptors, error envelope handler
+│   │   ├── apiClient.js
+│   │   └── errorHandler.js
+│   ├── assets/                         # CoopBank official logos, vector illustrations, audio chimes
+│   │   ├── logo-gold.svg
+│   │   ├── logo-navy.svg
+│   │   └── sounds/                     # Web Audio fallback
+│   ├── config/                         # Environment variables, app constants, navigation menus
+│   │   └── constants.js
+│   ├── hooks/                          # Reusable infrastructure hooks
+│   │   ├── useDebounce.js
+│   │   ├── useMediaQuery.js
+│   │   └── useAudioNotification.js     # Melodic Web Audio synthesizer (C5-E5 chime)
+│   ├── layouts/                        # Global Shell Layouts
+│   │   ├── DashboardLayout.jsx         # Sidebar + Topbar + Content Shell
+│   │   ├── AuthLayout.jsx              # Branded Center Split Screen
+│   │   └── PublicLayout.jsx            # Public Guest Portal Shell
+│   └── utils/                          # Pure business & formatting utilities
+│       ├── currencyFormatter.js        # USD / ETB currency formatters
+│       ├── dateFormatter.js           # ISO timestamp to human-readable date/time
+│       ├── xssSanitizer.js             # Client-side string sanitization
+│       └── soundPlayer.js              # Web Audio API 2-tone melodic chime
+│
+├── shared/                             # 🧱 Shared Design System (Dumb UI Components)
+│   ├── components/
+│   │   ├── ui/                         # Base Atomic Components
+│   │   │   ├── Button.jsx              # Gold/Navy/Outline/Ghost variants
+│   │   │   ├── Input.jsx               # Floating label & error state input
+│   │   │   ├── Modal.jsx               # Accessible glassmorphism dialog
+│   │   │   ├── Badge.jsx               # Status & priority badges with glowing dots
+│   │   │   ├── Card.jsx                # Glassmorphism container with hover lift
+│   │   │   ├── Table.jsx               # Responsive data grid with pagination controls
+│   │   │   ├── Dropdown.jsx            # Action menu & filter selectors
+│   │   │   ├── Tabs.jsx                # Pill & underline tab switchers
+│   │   │   ├── Spinner.jsx             # CoopBank gold branded loading spinner
+│   │   │   └── Avatar.jsx              # User & guest initials avatar
+│   │   ├── forms/                      # Form-specific Field Wrappers
+│   │   │   ├── FormInput.jsx
+│   │   │   ├── FormSelect.jsx
+│   │   │   ├── FormTextarea.jsx
+│   │   │   └── FormDatePicker.jsx
+│   │   ├── feedback/                   # Alert & Feedback UI
+│   │   │   ├── AlertBanner.jsx         # Info/Warning/Error banners
+│   │   │   ├── ConfirmDialog.jsx       # Destructive action confirmations
+│   │   │   └── AudioChimeIndicator.jsx # Sound toggle status icon
+│   │   └── navigation/                 # Layout Navigation Elements
+│   │       ├── Sidebar.jsx             # Role-aware navigation sidebar
+│   │       ├── Topbar.jsx              # Search, user menu & notification bell
+│   │       ├── NotificationBell.jsx    # Animated bell with unread pulse counter
+│   │       └── Breadcrumbs.jsx         # Dynamic path navigation
+│   └── schemas/                        # Shared Validation Schemas
+│       └── commonSchemas.js
+│
+└── modules/                            # 🚀 Business Domain Modules (Clean Architecture Layer)
+    │
+    ├── auth/                           # Module 1: Authentication & User Profile
+    │   ├── api/authApi.js              # login(), refresh(), forgotPassword(), resetPassword(), verifyEmail()
+    │   ├── components/
+    │   │   ├── LoginForm.jsx
+    │   │   ├── ForgotPasswordModal.jsx
+    │   │   ├── ResetPasswordForm.jsx
+    │   │   └── LockoutCountdown.jsx    # 15-minute brute-force lockout timer
+    │   ├── hooks/useAuth.js
+    │   ├── pages/
+    │   │   ├── LoginPage.jsx
+    │   │   ├── ForgotPasswordPage.jsx
+    │   │   ├── ResetPasswordPage.jsx
+    │   │   └── VerifyEmailPage.jsx
+    │   ├── schemas/authSchemas.js      # Zod validation schemas
+    │   └── store/authStore.js          # Zustand store (user, tokens, permissions)
+    │
+    ├── visits/                         # Module 2: Visits Lifecycle Management
+    │   ├── api/visitApi.js             # listVisits(), getVisit(), createVisit(), updateVisit(), transitionStatus(), checkIn(), checkOut()
+    │   ├── components/
+    │   │   ├── VisitListTable.jsx
+    │   │   ├── VisitFilterToolbar.jsx  # Multi-criteria filter
+    │   │   ├── CreateVisitModal.jsx    # 3-step wizard with room conflict checking
+    │   │   ├── RoomConflictAlert.jsx   # Conflict warning banner
+    │   │   ├── StatusTransitionModal.jsx # Approve / Reject / Cancel dialog
+    │   │   ├── CheckInModal.jsx        # Front desk badge generator & ID logger
+    │   │   ├── CheckOutModal.jsx       # Departure confirmation & survey trigger
+    │   │   └── VisitTimelineStepper.jsx # Visual visit state progression
+    │   ├── hooks/
+    │   │   ├── useVisits.js
+    │   │   └── useRoomConflictCheck.js
+    │   ├── pages/
+    │   │   ├── VisitsListPage.jsx
+    │   │   ├── VisitDetailPage.jsx
+    │   │   ├── VisitCalendarPage.jsx   # Visual room & time slot calendar
+    │   │   └── SecurityDeskPage.jsx    # Front desk arrival cockpit
+    │   ├── schemas/visitSchemas.js
+    │   └── store/visitStore.js
+    │
+    ├── organizations/                  # Module 3: Guest Organizations Intelligence
+    │   ├── api/organizationApi.js      # listOrgs(), getOrg(), createOrg(), getOrgStats()
+    │   ├── components/
+    │   │   ├── OrganizationCard.jsx
+    │   │   ├── OrganizationProfileHeader.jsx
+    │   │   ├── RelationshipScoreGauge.jsx # 0-100 visual health badge
+    │   │   ├── AddOrganizationModal.jsx
+    │   │   └── OrgVisitHistoryTable.jsx
+    │   ├── hooks/useOrganizations.js
+    │   ├── pages/
+    │   │   ├── OrganizationsListPage.jsx
+    │   │   └── OrganizationDetailPage.jsx
+    │   ├── schemas/organizationSchemas.js
+    │   └── store/organizationStore.js
+    │
+    ├── guests/                         # Module 3.1: VIP Individual Guests Intelligence
+    │   ├── api/guestApi.js             # listGuests(), getGuest(), createGuest(), getGuestStats()
+    │   ├── components/
+    │   │   ├── GuestCard.jsx
+    │   │   ├── VipTierBadge.jsx        # VIP_TIER_1, VIP_TIER_2, STANDARD
+    │   │   ├── AddGuestModal.jsx       # Passport / National ID validation
+    │   │   └── GuestProfileHeader.jsx
+    │   ├── hooks/useGuests.js
+    │   ├── pages/
+    │   │   ├── GuestsListPage.jsx
+    │   │   └── GuestDetailPage.jsx
+    │   ├── schemas/guestSchemas.js
+    │   └── store/guestStore.js
+    │
+    ├── feedback/                       # Module 4: Customer Feedback & Public Booking
+    │   ├── api/feedbackApi.js          # verifyToken(), submitFeedback(), getAnalytics(), publicBooking()
+    │   ├── components/
+    │   │   ├── StarRatingInput.jsx     # Interactive 5-Star component
+    │   │   ├── NpsScoreSlider.jsx      # 0-10 NPS rating component
+    │   │   ├── FeedbackMetricsOverview.jsx # CSAT %, NPS Score, Promoters breakdown
+    │   │   ├── PublicBookingForm.jsx   # External client self-service form
+    │   │   └── ConfettiCelebration.jsx # canvas-confetti survey completion
+    │   ├── hooks/useFeedback.js
+    │   ├── pages/
+    │   │   ├── PublicBookingPage.jsx   # /book-visit
+    │   │   ├── FeedbackSurveyPage.jsx  # /feedback/:token
+    │   │   └── FeedbackAnalyticsPage.jsx # Executive CSAT analytics
+    │   ├── schemas/feedbackSchemas.js
+    │   └── store/feedbackStore.js
+    │
+    ├── analytics/                      # Module 5: Executive Analytics Dashboard
+    │   ├── api/analyticsApi.js         # getDashboardMetrics()
+    │   ├── components/
+    │   │   ├── PipelineKpiCard.jsx     # Financial pipeline $ USD
+    │   │   ├── ConversionRateGauge.jsx # Conversion & approval %
+    │   │   ├── PipelineTrendAreaChart.jsx
+    │   │   ├── StatusBreakdownDonutChart.jsx
+    │   │   ├── TopPartnersRankTable.jsx
+    │   │   └── LiveSecurityDeskFeed.jsx
+    │   ├── hooks/useDashboardAnalytics.js
+    │   ├── pages/
+    │   │   └── ExecutiveDashboardPage.jsx # /dashboard
+    │   └── store/analyticsStore.js
+    │
+    ├── notifications/                  # Module 6: Staff Notifications & Auditory Alert System
+    │   ├── api/notificationApi.js      # listNotifications(), getUnreadCount(), markAsRead(), markAllAsRead(), dismiss()
+    │   ├── components/
+    │   │   ├── NotificationDrawer.jsx  # Slide-out interactive alert center
+    │   │   ├── NotificationItem.jsx    # Type-colored notification card
+    │   │   ├── NotificationBadge.jsx   # Pulsing unread counter
+    │   │   └── AudioToggleSwitch.jsx   # Enable / Mute sound chime
+    │   ├── hooks/
+    │   │   ├── useNotifications.js
+    │   │   └── useNotificationSound.js
+    │   └── store/notificationStore.js
+    │
+    └── users/                          # Module 7: Staff User & Access Control Management
+        ├── api/userApi.js              # listUsers(), getUser(), updateRoles(), updateStatus(), registerStaff()
+        ├── components/
+        │   ├── UserRosterTable.jsx
+        │   ├── RegisterStaffModal.jsx  # Department & role assignment
+        │   ├── UserRoleDrawer.jsx
+        │   └── AccountLockToggle.jsx
+        ├── hooks/useUsers.js
+        ├── pages/
+        │   └── UsersManagementPage.jsx # /users (Admin only)
+        ├── schemas/userSchemas.js
+        └── store/userStore.js
 ```
-
-### 4.1 Auth Store & Silent Refresh Flow
-* `useAuthStore` stores `user`, `accessToken`, `refreshToken`, `isAuthenticated`, and `roles`.
-* Axios request interceptor injects `Authorization: Bearer <accessToken>`.
-* Axios response interceptor intercepts `401 Unauthorized`, automatically calls `POST /api/v1/auth/refresh`, updates the token, and replays the failed request seamlessly without logging the user out.
 
 ---
 
-## 🛡️ 5. Form Validation & Client-Side Security
+## 🎨 3. CoopBank Brand Design System & Tokens
 
-All forms use **React Hook Form + Zod**:
+### 3.1 Official Corporate Color Palette
+* **Primary Gold / Yellow**: `#F39200` (Main brand color, Primary CTA buttons, Badges)
+* **Secondary Gold**: `#FDB714` (Hover states, gradient glows)
+* **Primary Deep Navy**: `#002D62` (Sidebar, Navbar headers, High-contrast text)
+* **Dark Slate / Charcoal**: `#0B1B3D` & `#0F172A` (Card backdrops, Dark theme foundation)
+* **Surface Light**: `#F8FAFC` & `#FFFFFF` (Backgrounds, clean card panels)
 
-1. **Login Form**:
-   * Username / Email: Minimum 3 characters, trimmed.
-   * Password: Required.
-   * Lockout alert: Listens for `429 Access Restricted` and displays live 15-minute countdown timer.
-2. **Visit Request Form**:
-   * Title: 5 to 150 chars.
-   * Opportunity Value: Positive currency numbers.
-   * Room Selection: Dynamic real-time room availability validation.
-   * Start / End Time: `scheduledEndTime` must be after `scheduledStartTime`.
-   * Either `guestOrganizationId` OR `individualGuestFirstName` + `individualGuestLastName` is enforced dynamically depending on `guestCategory`.
-3. **Check-In Form**:
-   * Custom badge number: Optional (`COOPV...`).
-   * Verified ID number: Optional.
-4. **Customer Feedback Form**:
-   * Hospitality, Facility, Objective: 1 to 5 Stars required.
-   * NPS Score: 0 to 10 Scale required.
-   * Comments: Max 1000 characters, XSS escaped.
+### 3.2 Typography & Hierarchy
+* **Display & Headings**: `Outfit` (Google Fonts) – modern, geometric banking aesthetic.
+* **Body, Data Grids & Forms**: `Inter` – high legibility for financial figures and tables.
+
+---
+
+## 🔔 4. Auditory Feedback & Toast Notification System
+
+### 4.1 Web Audio API Melodic Chime (`soundPlayer.js`)
+When an event occurs (e.g. new visit request, security desk check-in, or survey received):
+* Generates a 2-tone melodic chime via browser `AudioContext` (no external MP3 file dependency):
+  * **Tone 1**: `523.25 Hz` (C5 Note) for 120ms
+  * **Tone 2**: `659.25 Hz` (E5 Note) for 240ms
+* Supports mute/unmute toggle in topbar stored in `localStorage`.
+
+### 4.2 Toast Notifications (`Sonner`)
+* Position: `top-right` with 4.5s auto-dismiss.
+* Actionable buttons taking the user directly to the relevant visit or survey.
+
+---
+
+## 📋 5. Form Validation & Client-Side Security (Zod + React Hook Form)
+
+Every form has dedicated Zod validation schemas with XSS escaping:
+* **Login Form**: Required identifier, min 3 chars, 15-minute countdown on 429 lockout.
+* **Visit Booking Form**: Title, date range (`endTime > startTime`), dynamic room conflict check, opportunity value currency validation.
+* **Front Desk Check-In**: Optional custom badge (`COOPV...`), optional verified ID.
+* **Customer Feedback**: 1-5 Star Ratings, 0-10 NPS slider, max 1000 character escaped comments.
 
 ---
 
@@ -134,85 +281,43 @@ CoopBank Visit Hub UI
 
 ---
 
-## 🚀 7. Step-by-Step Frontend Implementation Sequence
+## 🚀 7. Phased Implementation Roadmap
 
-### Phase 1: Project Scaffolding & Design Foundation
-1. Initialize Vite React project in `Coop_Vsit_hub_frontend`.
-2. Install dependencies: `tailwindcss`, `lucide-react`, `zustand`, `axios`, `react-router-dom`, `react-hook-form`, `zod`, `@hookform/resolvers`, `recharts`, `sonner`, `framer-motion`, `canvas-confetti`.
-3. Configure `tailwind.config.js` with CoopBank gold, navy, and dark mode palette.
-4. Set up `api/client.js` with Axios interceptors and token refresh handler.
-5. Create sound utility (`utils/audioChime.js`) for notifications.
+* **Phase 1: Foundation & Design System Setup**:
+  * Initialize Vite React in `Coop_Vsit_hub_frontend`.
+  * Setup Tailwind CSS with CoopBank gold/navy design tokens and `Outfit`/`Inter` fonts.
+  * Implement `core/api/apiClient.js` with Axios interceptors and silent token refresh.
+  * Implement `core/utils/soundPlayer.js` (Web Audio API chime).
 
-### Phase 2: Authentication & Onboarding Module
-1. Build `useAuthStore.js`.
-2. Implement **Login Screen** (`/login`) with error banners and lockout timer.
-3. Implement **Email Verification** (`/verify-email/:token`) & **Password Reset** (`/forgot-password`, `/reset-password`).
-4. Implement `ProtectedRoute` with Role-Based Access Control (`ROLE_ADMIN`, `ROLE_RELATIONSHIP_MANAGER`, `ROLE_APPROVER`, `ROLE_SECURITY_DESK`).
+* **Phase 2: Auth Module (`modules/auth`)**:
+  * Login with brute-force lockout countdown timer.
+  * Email verification and password reset flows.
+  * Role-based route guards (`RoleGuard.jsx`, `ProtectedRoute.jsx`).
 
-### Phase 3: Global Shell & Notification System
-1. Implement **Sidebar Navigation** with active route highlights and CoopBank logo.
-2. Implement **Top Navbar**:
-   * Global search bar.
-   * **Notification Bell** with unread count badge, real-time audio chime, and interactive dropdown drawer.
-   * User profile menu & 1-click logout with token revocation.
-3. Implement `useNotificationStore.js` with polling and notification management.
+* **Phase 3: Core Shell & Navigation (`shared/components/navigation`)**:
+  * Brand Sidebar with CoopBank Logo.
+  * Topbar with live search, theme toggle, and audio chime notification bell.
 
-### Phase 4: Executive Analytics Dashboard (`/dashboard`)
-1. Implement `GET /api/v1/analytics/dashboard` integration.
-2. Key KPI Metric Cards:
-   * Total Financial Pipeline ($ USD) & Realized Value.
-   * Deal Conversion Rate % & CSAT Score Gauge.
-   * Active, In-Progress, and Scheduled Visits.
-3. Interactive Charts:
-   * Monthly Pipeline Trends (Area Chart).
-   * Visit Status Breakdown (Donut Chart).
-   * Top Partner Organizations & VIP Guests Table.
-   * Live Security Desk Activity Stream.
+* **Phase 4: Executive Analytics Module (`modules/analytics`)**:
+  * `/dashboard` executive cockpit with Recharts (Pipeline Trends, CSAT gauge, KPIs).
 
-### Phase 5: Visits Lifecycle Management (`/visits`)
-1. Implement Paginated & Filterable Visits Data Grid (`GET /api/v1/visits`).
-2. Multi-criteria filters (Search text, Status pill selector, Priority, Room, Date range).
-3. **Create Visit Modal / Multi-step Wizard**:
-   * Step 1: Visit Details & Objectives ($ pipeline value).
-   * Step 2: Guest Category (Select from Partner Org or Individual VIP).
-   * Step 3: Room Selection with live double-booking conflict prevention alerts.
-4. Visit Detail View (`/visits/:id`):
-   * Status workflow action bar (`Approve`, `Reject`, `Cancel`).
-   * Timeline stepper (`Draft` ➡️ `Submitted` ➡️ `Approved` ➡️ `In Progress` ➡️ `Completed`).
-   * Meeting notes, sensitive topics, and presentation theme details.
+* **Phase 5: Visits Lifecycle Module (`modules/visits`)**:
+  * Paginated & filtered data grid.
+  * Multi-step Visit Booking Wizard with real-time room conflict detection.
+  * Visit Detail timeline and Approver workflow (`Approve`, `Reject`, `Cancel`).
 
-### Phase 6: Front Desk Security Cockpit (`/security-desk`)
-1. Filtered view of `APPROVED` & `IN_PROGRESS` visits for the current day.
-2. Quick Search by Visitor Name, Company, or Visit Code (`VIS-2026-XXXX`).
-3. **1-Click Check-In Modal**:
-   * Displays visitor details.
-   * Optional custom badge or auto-generates badge (`COOPV2026080001`).
-   * Optional verified ID number.
-   * Check-in confirmation with instant badge print preview.
-4. **1-Click Check-Out Modal**:
-   * Departure timestamp recording.
-   * Triggers automatic customer satisfaction survey email dispatch.
+* **Phase 6: Front Desk Security Cockpit (`modules/visits/pages/SecurityDeskPage`)**:
+  * 1-Click Check-In with auto-generated badge (`COOPV2026080001`).
+  * 1-Click Check-Out with departure timestamping & survey email dispatch.
 
-### Phase 7: Guest Organizations & VIP Individual Intelligence
-1. **Organizations Catalog** (`/organizations`):
-   * Corporate cards with Relationship Health Score badges (0–100).
-   * Add Partner Org modal (`POST /api/v1/organizations`).
-   * Org Profile with attended visit logs and deal value summary.
-2. **VIP Individual Guests Directory** (`/guests`):
-   * Tiered VIP badges (`VIP_TIER_1`, `VIP_TIER_2`, `STANDARD_GUEST`).
-   * Add VIP Guest modal with Passport / National ID validation.
+* **Phase 7: Intelligence Catalogs (`modules/organizations` & `modules/guests`)**:
+  * Partner Organizations cards with 0-100 relationship score gauges.
+  * VIP Individual Guests catalog with tiered badges (`VIP_TIER_1`, `VIP_TIER_2`).
 
-### Phase 8: Public Client Portals
-1. **Public Visit Request Portal** (`/book-visit`):
-   * Sleek, branded self-service form for external clients to request an executive visit.
-   * Confirmation screen with human-readable tracking code.
-2. **Post-Visit CSAT & NPS Survey Portal** (`/feedback/:token`):
-   * Validates survey token on page load (`GET /api/v1/feedback/verify/:token`).
-   * Interactive 5-Star rating components for Hospitality, Facilities, and Objectives.
-   * 0–10 Net Promoter Score (NPS) slider.
-   * Submit survey with confetti celebration animation (`canvas-confetti`).
+* **Phase 8: Public Portals (`modules/feedback`)**:
+  * `/book-visit` public booking self-service portal.
+  * `/feedback/:token` 5-Star interactive survey with confetti celebration animation.
 
-### Phase 9: Staff User & Access Control Management (`/users`)
-1. User Management roster (Admin only).
-2. Register staff member modal with department & role multi-select.
-3. User profile details, lock/unlock toggle, and role modification drawer.
+* **Phase 9: Notifications & User Management (`modules/notifications` & `modules/users`)**:
+  * Slide-out interactive notification drawer.
+  * Admin user onboarding and role assignment.
