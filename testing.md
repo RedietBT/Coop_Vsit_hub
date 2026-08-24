@@ -17,6 +17,19 @@ Complete step-by-step testing manual and request payload library for **Cooperati
 
 ---
 
+## 🏢 Live Seed Data (Pre-Populated UUIDs)
+
+* **Partner Organizations**:
+  * **Ethio Telecom**: `19ddf220-4a81-4da2-b58d-caeaf8cc23d2`
+  * **Visa Inc.**: `716a1372-8b1c-4dfd-845e-4148800d021a`
+  * **Safaricom Ethiopia**: `0519132c-9d52-4a5a-816f-043013fbeeba`
+* **VIP Individual Guests**:
+  * **Dawit Alemu (Principal Advisor)**: `789f3eb2-1708-4463-8800-48bbef5648e8`
+* **Admin User ID**:
+  * **System Admin**: `00000000-0000-0000-0000-000000000001`
+
+---
+
 ## 📋 Table of Contents
 1. [Module 1: Authentication & User Management](#module-1-authentication--user-management)
 2. [Module 2: Visits Lifecycle Management](#module-2-visits-lifecycle-management)
@@ -44,14 +57,14 @@ Authenticate to receive the JWT Bearer Access Token.
 * **Expected Response (`200 OK`)**:
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlcyI6WyJST0xFX0FETUlOIl0sImZ1bGxOYW1lIjoiU3lzdGVtIER4VmFsbGV5IEFkbWluIiwidXNlcklkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBjb29wYmFuay5jb20uZXQiLCJzdWIiOiJhZG1pbiIsImlhdCI6MTc4NzU1NTc4MSwiZXhwIjoxNzg3NTU2NjgxfQ...",
   "refreshToken": "48c2b740-f655-46a4-8ec5-18147d3d758f",
   "tokenType": "Bearer",
   "expiresInMs": 1800000,
   "isEmailVerified": true,
   "mustChangePassword": false,
   "user": {
-    "id": "11111111-1111-1111-1111-111111111111",
+    "id": "00000000-0000-0000-0000-000000000001",
     "username": "admin",
     "email": "admin@coopbank.com.et",
     "fullName": "System DxValley Admin",
@@ -99,7 +112,7 @@ Authenticate to receive the JWT Bearer Access Token.
 * **Request Body**:
 ```json
 {
-  "refreshToken": "<REFRESH_TOKEN_UUID>"
+  "refreshToken": "48c2b740-f655-46a4-8ec5-18147d3d758f"
 }
 ```
 
@@ -128,14 +141,14 @@ Attempt to login with wrong credentials 3 times:
 
 ### 1.6 User Management Endpoints (Admin Access)
 * **List Users**: `GET http://localhost:8080/api/v1/users?page=0&size=10`
-* **Get User Profile**: `GET http://localhost:8080/api/v1/users/{userId}`
-* **Update Roles**: `PATCH http://localhost:8080/api/v1/users/{userId}/roles`
+* **Get User Profile**: `GET http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000001`
+* **Update Roles**: `PATCH http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000001/roles`
 ```json
 {
-  "roles": ["ROLE_RELATIONSHIP_MANAGER", "ROLE_APPROVER"]
+  "roles": ["ROLE_ADMIN", "ROLE_APPROVER"]
 }
 ```
-* **Update Account Status (Lock/Unlock)**: `PATCH http://localhost:8080/api/v1/users/{userId}/status`
+* **Update Account Status (Lock/Unlock)**: `PATCH http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000001/status`
 ```json
 {
   "enabled": true,
@@ -147,7 +160,7 @@ Attempt to login with wrong credentials 3 times:
 
 # Module 2: Visits Lifecycle Management
 
-### 2.1 Create Formal Executive Visit Request (`POST /api/v1/visits`)
+### 2.1A Create Visit for a Partner Organization (`POST /api/v1/visits`)
 * **Headers**: `Authorization: Bearer <TOKEN>`
 * **Endpoint**: `POST http://localhost:8080/api/v1/visits`
 * **Request Body**:
@@ -163,30 +176,65 @@ Attempt to login with wrong credentials 3 times:
   "currency": "USD",
   "presentationTheme": "CoopBank Open Banking 2.0 Architecture",
   "sensitiveTopics": "Core banking middleware credentials and SLA penalties",
-  "locationRoom": "DxValley Boardroom A",
+  "locationRoom": "DxValley Executive Room B",
   "visitorCount": 3,
   "guestCategory": "ORGANIZATION",
-  "guestOrganizationId": "<ORGANIZATION_UUID>",
+  "guestOrganizationId": "19ddf220-4a81-4da2-b58d-caeaf8cc23d2",
   "individualGuestFirstName": "Samuel",
   "individualGuestLastName": "Kassaye",
   "individualGuestEmail": "samuel.k@fintechsolutions.com",
   "individualGuestPhone": "+251911998877",
   "individualGuestTitle": "Chief Technology Officer",
-  "scheduledStartTime": "2026-10-05T09:00:00Z",
-  "scheduledEndTime": "2026-10-05T11:30:00Z",
+  "scheduledStartTime": "2026-10-15T09:00:00Z",
+  "scheduledEndTime": "2026-10-15T11:30:00Z",
   "isDraft": false
 }
 ```
-* **Expected Response (`201 Created`)**: Returns `VIS-2026-XXXX` with status `SUBMITTED`.
+* **Expected Response (`201 Created`)**: Returns auto-generated code like `VIS-2026-0005` with status `SUBMITTED`.
+
+---
+
+### 2.1B Create Visit for an Individual VIP Guest (`POST /api/v1/visits`)
+* **Headers**: `Authorization: Bearer <TOKEN>`
+* **Endpoint**: `POST http://localhost:8080/api/v1/visits`
+* **Request Body**:
+```json
+{
+  "title": "National Remittance & Regulatory Framework Consultation",
+  "requestingDepartment": "Treasury & International Banking",
+  "visitType": "VIP_DELEGATION",
+  "visitObjective": "Advisory discussion on bilateral cross-border remittance frameworks.",
+  "expectedOutcome": "Regulatory compliance blueprint",
+  "priorityLevel": "CRITICAL",
+  "opportunityValue": 1800000.00,
+  "currency": "USD",
+  "locationRoom": "DxValley Boardroom A",
+  "visitorCount": 2,
+  "guestCategory": "INDIVIDUAL",
+  "individualGuestId": "789f3eb2-1708-4463-8800-48bbef5648e8",
+  "individualGuestFirstName": "Dawit",
+  "individualGuestMiddleName": "Tadesse",
+  "individualGuestLastName": "Alemu",
+  "individualGuestEmail": "dawit.alemu@advisory.et",
+  "individualGuestPhone": "+251911223344",
+  "individualGuestTitle": "Principal Financial Sector Advisor",
+  "scheduledStartTime": "2026-10-20T14:00:00Z",
+  "scheduledEndTime": "2026-10-20T16:00:00Z",
+  "isDraft": false
+}
+```
 
 ---
 
 ### 2.2 Room Double-Booking Conflict Prevention Check
-Submit another visit booking for the exact same room (`DxValley Boardroom A`) overlapping `2026-10-05T09:00:00Z` to `2026-10-05T11:30:00Z`.
+Submit another visit booking for the exact same room (`DxValley Executive Room B`) overlapping `2026-10-15T09:00:00Z` to `2026-10-15T11:30:00Z`.
 * **Expected Response (`400 Bad Request`)**:
 ```json
 {
-  "error": "Room Conflict: 'DxValley Boardroom A' is already booked for visit 'VIS-2026-XXXX' between 2026-10-05T09:00:00Z and 2026-10-05T11:30:00Z."
+  "path": "/api/v1/visits",
+  "error": "Bad Request",
+  "message": "Room Conflict: 'DxValley Executive Room B' is already booked for visit 'VIS-2026-0005' between 2026-10-15T09:00:00Z and 2026-10-15T11:30:00Z.",
+  "status": 400
 }
 ```
 
@@ -194,7 +242,7 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 
 ### 2.3 Approve / Reject Visit (`PUT /api/v1/visits/{id}/status`)
 * **Headers**: `Authorization: Bearer <APPROVER_OR_ADMIN_TOKEN>`
-* **Endpoint**: `PUT http://localhost:8080/api/v1/visits/{visitId}/status`
+* **Endpoint**: `PUT http://localhost:8080/api/v1/visits/e9771714-325f-494c-9e42-c4fe02ca8bb6/status`
 * **Request Body (Approve)**:
 ```json
 {
@@ -207,7 +255,7 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 
 ### 2.4 Front Desk Security Check-In (`POST /api/v1/visits/{id}/check-in`)
 * **Headers**: `Authorization: Bearer <SECURITY_DESK_TOKEN>`
-* **Endpoint**: `POST http://localhost:8080/api/v1/visits/{visitId}/check-in`
+* **Endpoint**: `POST http://localhost:8080/api/v1/visits/e9771714-325f-494c-9e42-c4fe02ca8bb6/check-in`
 * **Request Body**:
 ```json
 {
@@ -220,7 +268,7 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 ---
 
 ### 2.5 Front Desk Security Check-Out (`POST /api/v1/visits/{id}/check-out`)
-* **Endpoint**: `POST http://localhost:8080/api/v1/visits/{visitId}/check-out`
+* **Endpoint**: `POST http://localhost:8080/api/v1/visits/e9771714-325f-494c-9e42-c4fe02ca8bb6/check-out`
 * **Request Body**:
 ```json
 {}
@@ -251,12 +299,12 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 ---
 
 ### 3.2 Fetch Organization Profile & Deal History (`GET /api/v1/organizations/{id}`)
-* **Endpoint**: `GET http://localhost:8080/api/v1/organizations/{orgId}`
+* **Endpoint**: `GET http://localhost:8080/api/v1/organizations/19ddf220-4a81-4da2-b58d-caeaf8cc23d2`
 * **Expected Response**:
 ```json
 {
-  "id": "...",
-  "name": "Ethiopian Airlines Technology Group",
+  "id": "19ddf220-4a81-4da2-b58d-caeaf8cc23d2",
+  "name": "Ethio Telecom",
   "relationshipScore": 95,
   "totalVisitsAttended": 3,
   "totalOpportunityPipelineValue": 12500000.00,
@@ -491,7 +539,7 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 ---
 
 ### 6.3 Mark Notification Read (`PATCH /api/v1/notifications/{id}/read`)
-* **Endpoint**: `PATCH http://localhost:8080/api/v1/notifications/{notifId}/read`
+* **Endpoint**: `PATCH http://localhost:8080/api/v1/notifications/e8964205-0916-466d-ad69-13840e4fbc87/read`
 
 ---
 
@@ -501,4 +549,4 @@ Submit another visit booking for the exact same room (`DxValley Boardroom A`) ov
 ---
 
 ### 6.5 Dismiss Notification (`DELETE /api/v1/notifications/{id}`)
-* **Endpoint**: `DELETE http://localhost:8080/api/v1/notifications/{notifId}`
+* **Endpoint**: `DELETE http://localhost:8080/api/v1/notifications/e8964205-0916-466d-ad69-13840e4fbc87`
