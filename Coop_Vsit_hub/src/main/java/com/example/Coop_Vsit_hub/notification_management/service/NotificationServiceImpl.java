@@ -168,7 +168,7 @@ public class NotificationServiceImpl implements NotificationService {
                 visit.getTitle(), visit.getGuestDisplayName(), visit.getRequestingDepartment(), visit.getVisitorCount());
 
         notifyRoles(
-                List.of(RoleName.ROLE_APPROVER, RoleName.ROLE_ADMIN, RoleName.ROLE_BUSINESS_SPONSOR),
+                List.of(RoleName.ROLE_APPROVER, RoleName.ROLE_ADMIN),
                 title, message, NotificationType.VISIT_REQUESTED, visit.getId(), visit.getVisitCode(), true
         );
     }

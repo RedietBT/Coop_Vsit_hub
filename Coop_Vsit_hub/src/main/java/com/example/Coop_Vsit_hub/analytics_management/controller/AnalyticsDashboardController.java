@@ -27,7 +27,7 @@ public class AnalyticsDashboardController {
     private final AnalyticsService analyticsService;
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).BUSINESS_SPONSOR, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).APPROVER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER)")
+    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).APPROVER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER)")
     @Operation(summary = "Executive Cockpit & Bank Analytics Dashboard", description = "Retrieves unified executive KPIs: pipeline valuation ($M USD), conversion rates, CSAT/NPS scores, lifecycle status distribution, and upcoming schedule.")
     public ResponseEntity<ExecutiveDashboardResponse> getExecutiveDashboard() {
         return ResponseEntity.ok(analyticsService.getExecutiveDashboard());
