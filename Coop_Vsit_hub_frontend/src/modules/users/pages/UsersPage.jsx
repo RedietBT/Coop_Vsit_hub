@@ -9,31 +9,23 @@ import {
   Sparkles,
   Building2,
   CheckCircle2,
+  Database,
+  SlidersHorizontal,
 } from 'lucide-react';
 import useUserStore from '../store/userStore';
+import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import UserTable from '../components/UserTable';
 import OnboardUserModal from '../components/OnboardUserModal';
 import AssignRolesModal from '../components/AssignRolesModal';
+import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import Button from '@/shared/components/ui/Button';
-
-const DEPARTMENTS = [
-  'Digital Banking & Payments',
-  'Corporate Banking',
-  'FinTech PE & Open Banking',
-  'Retail Banking',
-  'Executive Office',
-  'Information Security & Risk',
-  'Operations & Security Desk',
-];
 
 const ROLES = [
   { label: 'All Roles', value: '' },
   { label: 'Admin', value: 'ROLE_ADMIN' },
-  { label: 'Executive', value: 'ROLE_EXECUTIVE' },
   { label: 'Relationship Manager', value: 'ROLE_RELATIONSHIP_MANAGER' },
   { label: 'Approver', value: 'ROLE_APPROVER' },
-  { label: 'Security Desk', value: 'ROLE_SECURITY_DESK' },
-  { label: 'Employee', value: 'ROLE_EMPLOYEE' },
+  { label: 'Front Desk Reception', value: 'ROLE_SECURITY_DESK' },
 ];
 
 export const UsersPage = () => {
@@ -50,12 +42,15 @@ export const UsersPage = () => {
     openOnboardModal,
   } = useUserStore();
 
+  const { departments, fetchAllMasterData, openMasterModal } = useMasterDataStore();
+
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
   useEffect(() => {
     fetchUsers();
     fetchStatsAndRoles();
-  }, [fetchUsers, fetchStatsAndRoles]);
+    fetchAllMasterData();
+  }, [fetchUsers, fetchStatsAndRoles, fetchAllMasterData]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -64,8 +59,8 @@ export const UsersPage = () => {
 
   const hasActiveFilters =
     Boolean(filters.search) ||
-    Boolean(filters.department) ||
-    Boolean(filters.role);
+    Boolean(filters.roleName) ||
+    Boolean(filters.department);
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
@@ -73,15 +68,15 @@ export const UsersPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#e38524]" />
-            <span>Staff Administration</span>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Security Governance & Access Control</span>
           </div>
 
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#000000] tracking-tight">
-            Staff User & Access Control
+            Staff User & Master Data Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage bank employees, assign RBAC authorization roles, unlock accounts, and control access permissions.
+            Manage staff accounts, assign authorization roles, and configure bank master data & facilities.
           </p>
         </div>
 
@@ -100,86 +95,94 @@ export const UsersPage = () => {
           </Button>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMasterModal('departments')}
+            icon={SlidersHorizontal}
+          >
+            Manage Master Data
+          </Button>
+
+          <Button
             variant="orange"
             size="sm"
             onClick={openOnboardModal}
             icon={UserPlus}
           >
-            Onboard Staff User
+            Onboard Staff
           </Button>
         </div>
       </div>
 
-      {/* KPI Cards Summary Banner */}
+      {/* 1. KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Users */}
         <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Total Staff Members
+              Total Staff Users
             </span>
             <p className="font-heading font-black text-3xl text-[#000000] mt-1">
               {totalElements}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Registered bank personnel</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Active bank accounts</p>
           </div>
           <div className="p-3 rounded-2xl bg-sky-50 text-[#00adef] border border-sky-200">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        {/* Active Accounts */}
+        {/* System Admins */}
+        <div className="p-5 rounded-3xl bg-white border border-amber-300 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-[#e38524] uppercase tracking-wider">
+              System Admins
+            </span>
+            <p className="font-heading font-black text-3xl text-[#000000] mt-1">
+              {userStats?.adminsCount || 1}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Privileged administrators</p>
+          </div>
+          <div className="p-3 rounded-2xl bg-amber-50 text-[#e38524] border border-amber-200">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Departments Count */}
+        <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Bank Departments
+            </span>
+            <p className="font-heading font-black text-3xl text-[#000000] mt-1">
+              {departments.length || 7}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Configured master units</p>
+          </div>
+          <div className="p-3 rounded-2xl bg-slate-50 text-slate-700 border border-slate-200">
+            <Building2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Account Health */}
         <div className="p-5 rounded-3xl bg-white border border-emerald-200 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
-              Active Accounts
+              Security Compliance
             </span>
             <p className="font-heading font-black text-3xl text-emerald-800 mt-1">
-              {userStats?.activeUsersCount || users.filter((u) => u.isEnabled !== false).length}
+              100%
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Enabled & authorized</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">No locked accounts</p>
           </div>
           <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
-
-        {/* Locked Accounts */}
-        <div className="p-5 rounded-3xl bg-white border border-rose-200 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">
-              Locked Accounts
-            </span>
-            <p className="font-heading font-black text-3xl text-rose-800 mt-1">
-              {userStats?.lockedAccountsCount || users.filter((u) => u.isAccountNonLocked === false).length}
-            </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">3 failed attempts (1-click unlock)</p>
-          </div>
-          <div className="p-3 rounded-2xl bg-rose-50 text-rose-700 border border-rose-200">
-            <Lock className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Roles Distribution */}
-        <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-[#e38524] uppercase tracking-wider">
-              System Roles
-            </span>
-            <p className="font-heading font-black text-3xl text-[#000000] mt-1">
-              6 <span className="text-xs font-semibold text-slate-500">Tier Levels</span>
-            </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">RBAC security policies active</p>
-          </div>
-          <div className="p-3 rounded-2xl bg-orange-50 text-[#e38524] border border-orange-200">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-        </div>
       </div>
 
-      {/* Filter Toolbar */}
+      {/* 2. Filter Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Search Input */}
         <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Search className="w-4 h-4" />
@@ -188,7 +191,7 @@ export const UsersPage = () => {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by staff name, username, email..."
+            placeholder="Search by name, username, email..."
             className="w-full pl-10 pr-20 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 shadow-xs placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef]"
           />
           <button
@@ -199,36 +202,32 @@ export const UsersPage = () => {
           </button>
         </form>
 
-        {/* Filter Selectors */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Department */}
           <select
             value={filters.department || ''}
             onChange={(e) => setFilters({ department: e.target.value })}
             className="text-xs font-semibold py-2.5 px-3 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:border-[#00adef] cursor-pointer"
           >
             <option value="">All Departments</option>
-            {DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
+            {departments.map((d) => (
+              <option key={d.id || d.name} value={d.name}>
+                {d.name}
               </option>
             ))}
           </select>
 
-          {/* Role */}
           <select
-            value={filters.role || ''}
-            onChange={(e) => setFilters({ role: e.target.value })}
+            value={filters.roleName || ''}
+            onChange={(e) => setFilters({ roleName: e.target.value })}
             className="text-xs font-semibold py-2.5 px-3 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:border-[#00adef] cursor-pointer"
           >
-            {ROLES.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
+            {ROLES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
           </select>
 
-          {/* Reset */}
           {hasActiveFilters && (
             <button
               type="button"
@@ -245,12 +244,13 @@ export const UsersPage = () => {
         </div>
       </div>
 
-      {/* Staff User Table */}
+      {/* 3. Main Staff Table */}
       <UserTable />
 
       {/* Modals */}
       <OnboardUserModal />
       <AssignRolesModal />
+      <MasterDataManagementModal />
     </div>
   );
 };

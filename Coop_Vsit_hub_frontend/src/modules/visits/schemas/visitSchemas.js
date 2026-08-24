@@ -28,10 +28,8 @@ export const createVisitSchema = z
     individualGuestTitle: z.string().optional(),
     individualGuestIdNumber: z.string().optional(),
 
-    locationRoom: z
-      .string()
-      .trim()
-      .min(1, 'Location meeting room is required'),
+    // Meeting Room is NOT required (optional)
+    locationRoom: z.string().optional().default(''),
     visitorCount: z
       .number({ invalid_type_error: 'Visitor count must be a number' })
       .min(1, 'Must have at least 1 visitor')
@@ -58,32 +56,28 @@ export const createVisitSchema = z
   })
   .refine(
     (data) => {
-      if (data.scheduledStartTime && data.scheduledEndTime) {
-        return new Date(data.scheduledEndTime) > new Date(data.scheduledStartTime);
-      }
-      return true;
+      if (!data.scheduledStartTime || !data.scheduledEndTime) return true;
+      const start = new Date(data.scheduledStartTime);
+      const end = new Date(data.scheduledEndTime);
+      return end > start;
     },
     {
-      message: 'End time must be later than start time',
+      message: 'Scheduled end time must be after start time',
       path: ['scheduledEndTime'],
     }
   );
 
 export const statusTransitionSchema = z.object({
-  targetStatus: z.enum(['APPROVED', 'REJECTED', 'UNDER_REVIEW', 'CANCELLED']),
-  approverComments: z
-    .string()
-    .trim()
-    .min(3, 'Approver decision notes or feedback are mandatory'),
+  targetStatus: z.enum([
+    'APPROVED',
+    'REJECTED',
+    'UNDER_REVIEW',
+    'CANCELLED',
+    'IN_PROGRESS',
+    'COMPLETED',
+  ]),
+  decisionNotes: z.string().trim().min(3, 'Feedback decision notes are required'),
+  assignedRoom: z.string().optional(),
 });
 
-export const checkInSchema = z.object({
-  customBadgeNumber: z.string().optional(),
-  verifiedIdNumber: z.string().optional(),
-  visitorCount: z.number().min(1).optional(),
-  notes: z.string().optional(),
-});
-
-export const checkOutSchema = z.object({
-  departureNotes: z.string().optional(),
-});
+export const visitStatusTransitionSchema = statusTransitionSchema;

@@ -1,52 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Calendar,
   Building2,
-  Users,
-  MapPin,
+  User,
+  Users2,
   Clock,
-  Sparkles,
-  ArrowRight,
-  ArrowLeft,
+  MapPin,
+  FileText,
   DollarSign,
   AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
+import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import { createVisitSchema } from '../schemas/visitSchemas';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
-
-const MEETING_ROOMS = [
-  'DxValley Executive Boardroom (4th Floor)',
-  'DxValley FinTech Innovation Room A',
-  'DxValley Strategic Peering Room B',
-  'CoopBank HQ VIP Lounge (Ground Floor)',
-  'Digital Transformation Studio',
-];
-
-const DEPARTMENTS = [
-  'Digital Banking & Payments',
-  'Corporate Banking',
-  'FinTech PE & Open Banking',
-  'Retail Banking',
-  'Executive Office',
-  'Information Security & Risk',
-];
 
 export const CreateVisitModal = () => {
   const {
     isCreateModalOpen,
     closeCreateModal,
     createVisit,
-    organizations = [],
-    individualGuests = [],
+    organizations,
+    individualGuests,
+    fetchFormLookups,
   } = useVisitStore();
 
-  const [step, setStep] = useState(1); // 1 | 2 | 3
+  const { departments, meetingRooms, fetchAllMasterData } = useMasterDataStore();
+
+  const [step, setStep] = useState(1);
   const [serverError, setServerError] = useState(null);
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      fetchFormLookups();
+      fetchAllMasterData();
+    }
+  }, [isCreateModalOpen, fetchFormLookups, fetchAllMasterData]);
 
   const {
     register,
@@ -65,7 +62,7 @@ export const CreateVisitModal = () => {
       guestCategory: 'ORGANIZATION',
       guestOrganizationId: '',
       individualGuestId: '',
-      locationRoom: MEETING_ROOMS[0],
+      locationRoom: '',
       visitorCount: 3,
       scheduledStartTime: '',
       scheduledEndTime: '',
@@ -89,7 +86,7 @@ export const CreateVisitModal = () => {
 
   const onSubmit = async (data) => {
     setServerError(null);
-    // Clean up empty UUIDs to null
+    // Clean up empty UUIDs and unassigned rooms to null
     const payload = {
       ...data,
       guestOrganizationId:
@@ -100,6 +97,7 @@ export const CreateVisitModal = () => {
         data.guestCategory === 'INDIVIDUAL' && data.individualGuestId
           ? data.individualGuestId
           : null,
+      locationRoom: data.locationRoom || null,
       opportunityValue: data.opportunityValue ? Number(data.opportunityValue) : 0,
       visitorCount: Number(data.visitorCount) || 1,
     };
@@ -119,7 +117,7 @@ export const CreateVisitModal = () => {
         step === 1
           ? 'Delegation & Partner Details'
           : step === 2
-          ? 'Room Location & Smart Scheduling'
+          ? 'Scheduling & Meeting Facility'
           : 'Strategic Objectives & Commercials'
       }`}
       maxWidth="max-w-2xl"
@@ -138,7 +136,9 @@ export const CreateVisitModal = () => {
             type="button"
             onClick={() => setStep(1)}
             className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
-              step === 1 ? 'bg-white text-[#000000] shadow-xs' : 'text-slate-500'
+              step === 1
+                ? 'bg-white text-[#000000] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             1. Delegation
@@ -147,7 +147,9 @@ export const CreateVisitModal = () => {
             type="button"
             onClick={() => setStep(2)}
             className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
-              step === 2 ? 'bg-white text-[#000000] shadow-xs' : 'text-slate-500'
+              step === 2
+                ? 'bg-white text-[#000000] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             2. Schedule & Room
@@ -156,26 +158,29 @@ export const CreateVisitModal = () => {
             type="button"
             onClick={() => setStep(3)}
             className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
-              step === 3 ? 'bg-white text-[#000000] shadow-xs' : 'text-slate-500'
+              step === 3
+                ? 'bg-white text-[#000000] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             3. Objectives
           </button>
         </div>
 
-        {/* STEP 1: Delegation Basics */}
+        {/* STEP 1: Delegation Details */}
         {step === 1 && (
           <div className="space-y-4 animate-fadeIn">
+            {/* Title */}
             <Input
-              label="Visit Title / Meeting Purpose"
-              placeholder="e.g. Strategic API Peering Review with Ethio Telecom"
+              label="Visit Delegation Title / Purpose"
+              placeholder="e.g. Visa Inc. Core Peering Partnership Presentation"
               error={errors.title?.message}
               required
               {...register('title')}
             />
 
+            {/* Requesting Department & Priority */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Department */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
                   Requesting Department <span className="text-rose-500">*</span>
@@ -184,87 +189,93 @@ export const CreateVisitModal = () => {
                   className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
                   {...register('requestingDepartment')}
                 >
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
+                  {departments.length > 0 ? (
+                    departments.map((dept) => (
+                      <option key={dept.id || dept.name} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="Digital Banking & Payments">Digital Banking & Payments</option>
+                  )}
                 </select>
+                {errors.requestingDepartment && (
+                  <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                    {errors.requestingDepartment.message}
+                  </p>
+                )}
               </div>
 
-              {/* Priority */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
-                  Priority Level <span className="text-rose-500">*</span>
+                  Priority Urgency
                 </label>
                 <select
                   className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
                   {...register('priorityLevel')}
                 >
-                  <option value="CRITICAL">🔴 Critical (Executive VIP)</option>
-                  <option value="HIGH">🟠 High Priority</option>
-                  <option value="MEDIUM">🟡 Medium Priority</option>
-                  <option value="LOW">⚪ Standard / Low</option>
+                  <option value="HIGH">🔥 High Priority</option>
+                  <option value="CRITICAL">⚡ Critical / Executive Priority</option>
+                  <option value="MEDIUM">Standard Priority</option>
+                  <option value="LOW">Low Priority</option>
                 </select>
               </div>
             </div>
 
-            {/* Guest Category Selector */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+            {/* Category Toggle: Organization vs Individual */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-                Guest Delegation Category
+                Visiting Guest Classification <span className="text-rose-500">*</span>
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                <button
+                  type="button"
+                  onClick={() => setValue('guestCategory', 'ORGANIZATION')}
+                  className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
                     guestCategory === 'ORGANIZATION'
-                      ? 'bg-white border-[#00adef] text-[#000000] shadow-xs'
-                      : 'bg-white/60 border-slate-200 text-slate-600'
+                      ? 'bg-white border-[#00adef] text-[#00adef] shadow-xs font-bold ring-2 ring-[#00adef]/20'
+                      : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-white'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    value="ORGANIZATION"
-                    className="text-[#00adef]"
-                    {...register('guestCategory')}
-                  />
-                  <Building2 className="w-4 h-4 text-[#00adef]" />
-                  <span className="text-xs font-bold">Partner Organization</span>
-                </label>
+                  <Building2 className="w-5 h-5" />
+                  <div>
+                    <p className="text-xs font-bold text-[#000000]">Partner Organization</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Corporate delegation / Enterprise</p>
+                  </div>
+                </button>
 
-                <label
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                <button
+                  type="button"
+                  onClick={() => setValue('guestCategory', 'INDIVIDUAL')}
+                  className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
                     guestCategory === 'INDIVIDUAL'
-                      ? 'bg-white border-[#e38524] text-[#000000] shadow-xs'
-                      : 'bg-white/60 border-slate-200 text-slate-600'
+                      ? 'bg-white border-[#e38524] text-[#e38524] shadow-xs font-bold ring-2 ring-[#e38524]/20'
+                      : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-white'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    value="INDIVIDUAL"
-                    className="text-[#e38524]"
-                    {...register('guestCategory')}
-                  />
-                  <Users className="w-4 h-4 text-[#e38524]" />
-                  <span className="text-xs font-bold">VIP Individual Delegate</span>
-                </label>
+                  <User className="w-5 h-5" />
+                  <div>
+                    <p className="text-xs font-bold text-[#000000]">VIP Individual Guest</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Executive consultant / Dignitary</p>
+                  </div>
+                </button>
               </div>
 
-              {/* Dynamic Selector based on category */}
+              {/* Dynamic Select Lookup based on Category */}
               {guestCategory === 'ORGANIZATION' ? (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Select Registered Corporate Partner
+                    Select Registered Partner Organization
                   </label>
                   <select
                     className="w-full text-xs font-semibold py-2 px-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
                     {...register('guestOrganizationId')}
                   >
-                    <option value="">-- Choose Corporate Organization --</option>
+                    <option value="">-- Choose Partner Organization --</option>
                     {organizations.map((org) => (
                       <option key={org.id} value={org.id}>
-                        {org.name} ({org.industrySector || 'Enterprise'})
+                        {org.name} ({org.category || 'Partner'})
                       </option>
                     ))}
                   </select>
@@ -307,27 +318,34 @@ export const CreateVisitModal = () => {
         {step === 2 && (
           <div className="space-y-4 animate-fadeIn">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Meeting Room */}
+              {/* Meeting Room (OPTIONAL) */}
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
-                  Meeting Location Room <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    Meeting Location Room / Space
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Optional</span>
+                </div>
                 <select
                   className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
                   {...register('locationRoom')}
                 >
-                  {MEETING_ROOMS.map((room) => (
-                    <option key={room} value={room}>
-                      {room}
+                  <option value="">-- No Room Assigned / To Be Decided --</option>
+                  {meetingRooms.map((room) => (
+                    <option key={room.id || room.name} value={room.name}>
+                      {room.name} {room.capacity ? `(${room.capacity} seats)` : ''}
                     </option>
                   ))}
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  You can leave this unassigned or select from available DxValley meeting spaces.
+                </p>
               </div>
 
-              {/* Visitor Count */}
-              <div>
+              {/* Visitor Headcount */}
+              <div className="sm:col-span-2">
                 <Input
-                  label="Delegation Visitor Count"
+                  label="Expected Visitor Headcount"
                   type="number"
                   placeholder="3"
                   min="1"
@@ -337,42 +355,22 @@ export const CreateVisitModal = () => {
                 />
               </div>
 
-              {/* Visit Type */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
-                  Visit Classification <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
-                  {...register('visitType')}
-                >
-                  <option value="EXTERNAL">External Client Delegation</option>
-                  <option value="VIP_DELEGATION">VIP / Executive Delegation</option>
-                  <option value="INTERNAL">Internal Bank Review</option>
-                </select>
-              </div>
+              {/* Scheduled Start & End */}
+              <Input
+                label="Scheduled Start Date & Time"
+                type="datetime-local"
+                error={errors.scheduledStartTime?.message}
+                required
+                {...register('scheduledStartTime')}
+              />
 
-              {/* Start Date & Time */}
-              <div>
-                <Input
-                  label="Scheduled Start Date & Time"
-                  type="datetime-local"
-                  error={errors.scheduledStartTime?.message}
-                  required
-                  {...register('scheduledStartTime')}
-                />
-              </div>
-
-              {/* End Date & Time */}
-              <div>
-                <Input
-                  label="Scheduled End Date & Time"
-                  type="datetime-local"
-                  error={errors.scheduledEndTime?.message}
-                  required
-                  {...register('scheduledEndTime')}
-                />
-              </div>
+              <Input
+                label="Scheduled End Date & Time"
+                type="datetime-local"
+                error={errors.scheduledEndTime?.message}
+                required
+                {...register('scheduledEndTime')}
+              />
             </div>
 
             <div className="flex justify-between pt-2">
@@ -384,6 +382,7 @@ export const CreateVisitModal = () => {
               >
                 Back
               </Button>
+
               <Button
                 type="button"
                 variant="orange"
@@ -397,69 +396,42 @@ export const CreateVisitModal = () => {
           </div>
         )}
 
-        {/* STEP 3: Strategic Outcomes & Commercials */}
+        {/* STEP 3: Objectives & Commercials */}
         {step === 3 && (
           <div className="space-y-4 animate-fadeIn">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
-                Strategic Visit Objective <span className="text-rose-500">*</span>
+                Primary Visit Objective & Agenda <span className="text-rose-500">*</span>
               </label>
               <textarea
                 rows="3"
-                placeholder="e.g. Strategic evaluation of Open Banking API endpoints, revenue share model, and regulatory compliance peering..."
+                placeholder="Describe executive discussion points, MoU alignment, or product demo..."
                 className="w-full text-xs rounded-xl border border-slate-300 p-3 text-slate-900 focus:outline-none focus:border-[#00adef]"
                 {...register('visitObjective')}
               />
               {errors.visitObjective && (
-                <p className="text-xs text-rose-500 mt-1">{errors.visitObjective.message}</p>
+                <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                  {errors.visitObjective.message}
+                </p>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Expected Outcome"
-                placeholder="e.g. Signed MoU / API Access Agreement"
-                error={errors.expectedOutcome?.message}
-                {...register('expectedOutcome')}
+                label="Presentation Theme / Key Topic"
+                placeholder="e.g. Visa Direct & Cross-Border Rails"
+                {...register('presentationTheme')}
               />
 
               <Input
-                label="Presentation Theme"
-                placeholder="e.g. Omnichannel Merchant Settlement Rails"
-                error={errors.presentationTheme?.message}
-                {...register('presentationTheme')}
+                label="Estimated Pipeline Opportunity Value ($ USD)"
+                type="number"
+                placeholder="e.g. 500000"
+                {...register('opportunityValue', { valueAsNumber: true })}
               />
             </div>
 
-            {/* Optional Opportunity Value */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-800">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-                <span>Commercial Opportunity Value (Optional)</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <Input
-                    placeholder="e.g. 2500000"
-                    type="number"
-                    error={errors.opportunityValue?.message}
-                    {...register('opportunityValue', { valueAsNumber: true })}
-                  />
-                </div>
-                <div>
-                  <select
-                    className="w-full text-xs font-bold py-2.5 px-3 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
-                    {...register('currency')}
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="ETB">ETB (Br)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between pt-2">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
               <Button
                 type="button"
                 variant="ghost"
@@ -470,19 +442,23 @@ export const CreateVisitModal = () => {
                 Back
               </Button>
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 <Button
-                  type="submit"
-                  variant="outline-orange"
-                  onClick={() => setValue('isDraft', true)}
-                  isLoading={isSubmitting}
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setValue('isDraft', true);
+                    handleSubmit(onSubmit)();
+                  }}
+                  disabled={isSubmitting}
                 >
                   Save as Draft
                 </Button>
+
                 <Button
                   type="submit"
                   variant="orange"
-                  onClick={() => setValue('isDraft', false)}
+                  icon={Sparkles}
                   isLoading={isSubmitting}
                 >
                   Submit for Approval

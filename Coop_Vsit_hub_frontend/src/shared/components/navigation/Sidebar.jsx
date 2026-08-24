@@ -11,7 +11,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Database,
 } from 'lucide-react';
 import CoopLogo from '@/core/assets/CoopLogo';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -21,13 +21,13 @@ const NAV_ITEMS = [
     name: 'Executive Analytics',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['ROLE_ADMIN', 'ROLE_EXECUTIVE', 'ROLE_RELATIONSHIP_MANAGER'],
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER'],
   },
   {
     name: 'Visits Management',
     path: '/visits',
     icon: Calendar,
-    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_EMPLOYEE'],
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER'],
   },
   {
     name: 'Booking Calendar',
@@ -45,16 +45,16 @@ const NAV_ITEMS = [
     name: 'Partner Organizations',
     path: '/organizations',
     icon: Building2,
-    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE'],
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER'],
   },
   {
     name: 'VIP Individual Guests',
     path: '/guests',
     icon: Users2,
-    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE'],
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER'],
   },
   {
-    name: 'Staff User Management',
+    name: 'Staff & Access Control',
     path: '/users',
     icon: UserCog,
     roles: ['ROLE_ADMIN'],

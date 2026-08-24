@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UserPlus, Shield, User, Mail, Phone, Lock, Building2 } from 'lucide-react';
 import useUserStore from '../store/userStore';
+import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
@@ -35,27 +36,38 @@ const onboardSchema = z
     path: ['confirmPassword'],
   });
 
-const DEPARTMENTS = [
-  'Digital Banking & Payments',
-  'Corporate Banking',
-  'FinTech PE & Open Banking',
-  'Retail Banking',
-  'Executive Office',
-  'Information Security & Risk',
-  'Operations & Security Desk',
-];
-
 const AVAILABLE_ROLES = [
-  { id: 'ROLE_EMPLOYEE', label: 'Employee', desc: 'Standard staff member' },
-  { id: 'ROLE_RELATIONSHIP_MANAGER', label: 'Relationship Manager', desc: 'Can create and host delegations' },
-  { id: 'ROLE_APPROVER', label: 'Executive Approver', desc: 'Can approve or reject visit requests' },
-  { id: 'ROLE_SECURITY_DESK', label: 'Security Desk', desc: 'Front desk check-in, badges, check-out' },
-  { id: 'ROLE_EXECUTIVE', label: 'Bank Executive', desc: 'Full analytics and partner intelligence' },
-  { id: 'ROLE_ADMIN', label: 'Administrator', desc: 'Full system & staff control' },
+  {
+    id: 'ROLE_ADMIN',
+    label: 'System Administrator',
+    desc: 'Full system control, master data, staff onboarding & analytics',
+  },
+  {
+    id: 'ROLE_RELATIONSHIP_MANAGER',
+    label: 'Relationship Manager',
+    desc: 'Creates & hosts delegation visits, manages corporate partners & VIPs',
+  },
+  {
+    id: 'ROLE_APPROVER',
+    label: 'Executive Approver',
+    desc: 'Authorizes, approves, or rejects visit requests',
+  },
+  {
+    id: 'ROLE_SECURITY_DESK',
+    label: 'Front Desk Reception',
+    desc: 'Visitor check-in, ID verification, badge issuance (COOPV), check-out',
+  },
 ];
 
 export const OnboardUserModal = () => {
   const { isOnboardModalOpen, closeOnboardModal, onboardUser } = useUserStore();
+  const { departments, fetchAllMasterData } = useMasterDataStore();
+
+  useEffect(() => {
+    if (isOnboardModalOpen) {
+      fetchAllMasterData();
+    }
+  }, [isOnboardModalOpen, fetchAllMasterData]);
 
   const {
     register,
@@ -72,24 +84,22 @@ export const OnboardUserModal = () => {
       firstName: '',
       lastName: '',
       phone: '',
-      department: DEPARTMENTS[0],
-      jobTitle: 'Bank Officer',
+      department: 'Digital Banking & Payments',
+      jobTitle: '',
       password: '',
       confirmPassword: '',
-      roleNames: ['ROLE_EMPLOYEE'],
+      roleNames: ['ROLE_RELATIONSHIP_MANAGER'],
     },
   });
 
-  const selectedRoles = watch('roleNames', ['ROLE_EMPLOYEE']);
+  const selectedRoles = watch('roleNames', []);
 
   const handleRoleToggle = (roleId) => {
     if (selectedRoles.includes(roleId)) {
-      if (selectedRoles.length > 1) {
-        setValue(
-          'roleNames',
-          selectedRoles.filter((r) => r !== roleId)
-        );
-      }
+      setValue(
+        'roleNames',
+        selectedRoles.filter((r) => r !== roleId)
+      );
     } else {
       setValue('roleNames', [...selectedRoles, roleId]);
     }
@@ -101,30 +111,33 @@ export const OnboardUserModal = () => {
   };
 
   const onSubmit = async (data) => {
-    await onboardUser(data);
+    const success = await onboardUser(data);
+    if (success) {
+      handleClose();
+    }
   };
 
   return (
     <Modal
       isOpen={isOnboardModalOpen}
       onClose={handleClose}
-      title="Onboard New Bank Staff Member"
-      subtitle="Register user credentials, department assignment, and RBAC authorization roles."
+      title="Onboard New Staff Member"
+      subtitle="Register a CoopBank staff member with role-based system access."
       maxWidth="max-w-2xl"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-left">
-        {/* Name Row */}
+        {/* Name Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="First Name"
-            placeholder="Chala"
+            placeholder="Dawit"
             error={errors.firstName?.message}
             required
             {...register('firstName')}
           />
           <Input
             label="Last Name"
-            placeholder="Tadesse"
+            placeholder="Alemu"
             error={errors.lastName?.message}
             required
             {...register('lastName')}
@@ -134,17 +147,16 @@ export const OnboardUserModal = () => {
         {/* Username & Email */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Staff Username (Login ID)"
-            placeholder="chala_tadesse"
-            sanitize="identifier"
+            label="System Username"
+            placeholder="dalemu"
             error={errors.username?.message}
             required
             {...register('username')}
           />
           <Input
-            label="Official Bank Email"
+            label="Corporate Email Address"
             type="email"
-            placeholder="chala.tadesse@coopbankoromia.com.et"
+            placeholder="dalemu@coopbank.com.et"
             error={errors.email?.message}
             required
             {...register('email')}
@@ -161,81 +173,92 @@ export const OnboardUserModal = () => {
               className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
               {...register('department')}
             >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
+              {departments.length > 0 ? (
+                departments.map((d) => (
+                  <option key={d.id || d.name} value={d.name}>
+                    {d.name}
+                  </option>
+                ))
+              ) : (
+                <option value="Digital Banking & Payments">Digital Banking & Payments</option>
+              )}
             </select>
           </div>
 
           <Input
-            label="Job Title"
-            placeholder="Senior Relationship Manager"
-            error={errors.jobTitle?.message}
+            label="Job Title / Position"
+            placeholder="Senior Digital Peering Manager"
             {...register('jobTitle')}
           />
         </div>
 
-        {/* Password & Confirm */}
+        {/* Password Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Initial Account Password"
+            label="Initial Temporary Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="••••••••••••"
             error={errors.password?.message}
             required
             {...register('password')}
           />
           <Input
-            label="Confirm Password"
+            label="Confirm Temporary Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="••••••••••••"
             error={errors.confirmPassword?.message}
             required
             {...register('confirmPassword')}
           />
         </div>
 
-        {/* Authorization Roles Selector */}
-        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-            Assigned Authorization Roles <span className="text-rose-500">*</span>
-          </label>
+        {/* Role Assignment Checkboxes */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              System Authorization Roles <span className="text-rose-500">*</span>
+            </span>
+            {errors.roleNames && (
+              <span className="text-[11px] font-bold text-rose-500">
+                {errors.roleNames.message}
+              </span>
+            )}
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {AVAILABLE_ROLES.map((role) => {
-              const isChecked = selectedRoles.includes(role.id);
+              const isSelected = selectedRoles.includes(role.id);
               return (
-                <label
+                <div
                   key={role.id}
                   onClick={() => handleRoleToggle(role.id)}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                    isChecked
-                      ? 'bg-white border-[#00adef] text-[#000000] shadow-xs'
-                      : 'bg-white/60 border-slate-200 text-slate-600'
+                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-white border-[#00adef] shadow-xs ring-2 ring-[#00adef]/20'
+                      : 'bg-white/80 border-slate-200 hover:bg-white'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {}}
-                    className="mt-0.5 rounded text-[#00adef]"
-                  />
-                  <div>
-                    <p className="text-xs font-bold">{role.label}</p>
-                    <p className="text-[10px] text-slate-400">{role.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <p className={`text-xs font-bold ${isSelected ? 'text-[#00adef]' : 'text-slate-800'}`}>
+                      {role.label}
+                    </p>
+                    <div
+                      className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] font-bold ${
+                        isSelected
+                          ? 'bg-[#00adef] border-[#00adef] text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {isSelected ? '✓' : ''}
+                    </div>
                   </div>
-                </label>
+                  <p className="text-[10px] text-slate-400 mt-1">{role.desc}</p>
+                </div>
               );
             })}
           </div>
-          {errors.roleNames && (
-            <p className="text-xs text-rose-500 mt-1">{errors.roleNames.message}</p>
-          )}
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-2">
           <Button
             type="button"
@@ -252,7 +275,7 @@ export const OnboardUserModal = () => {
             icon={UserPlus}
             isLoading={isSubmitting}
           >
-            Onboard Staff Member
+            Complete Onboarding
           </Button>
         </div>
       </form>

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Building2, Globe, User, Mail, Phone, Award } from 'lucide-react';
 import useOrganizationStore from '../store/organizationStore';
+import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
@@ -20,14 +21,6 @@ const orgSchema = z.object({
   overviewNotes: z.string().optional(),
 });
 
-const CATEGORIES = [
-  'Strategic Partner',
-  'FinTech Peer',
-  'Regulator / Government Body',
-  'Commercial Enterprise',
-  'NGO / Development Agency',
-];
-
 const SECTORS = [
   'Telecommunications & Digital Payments',
   'Banking & Financial Services',
@@ -40,6 +33,14 @@ export const CreateOrganizationModal = () => {
   const { isCreateModalOpen, closeCreateModal, createOrganization } =
     useOrganizationStore();
 
+  const { categories, fetchAllMasterData } = useMasterDataStore();
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      fetchAllMasterData();
+    }
+  }, [isCreateModalOpen, fetchAllMasterData]);
+
   const {
     register,
     handleSubmit,
@@ -49,7 +50,7 @@ export const CreateOrganizationModal = () => {
     resolver: zodResolver(orgSchema),
     defaultValues: {
       name: '',
-      category: CATEGORIES[0],
+      category: 'Strategic Partner',
       industrySector: SECTORS[0],
       marketCountry: 'Ethiopia',
       primaryContactPerson: '',
@@ -98,11 +99,15 @@ export const CreateOrganizationModal = () => {
               className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
               {...register('category')}
             >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+              {categories.length > 0 ? (
+                categories.map((c) => (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))
+              ) : (
+                <option value="Strategic Partner">Strategic Partner</option>
+              )}
             </select>
           </div>
 

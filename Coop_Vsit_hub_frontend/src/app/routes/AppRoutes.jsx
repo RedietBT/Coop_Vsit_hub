@@ -28,7 +28,7 @@ export const AppRoutes = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_EXECUTIVE', 'ROLE_RELATIONSHIP_MANAGER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <ExecutiveDashboardPage />
               </DashboardLayout>
@@ -41,7 +41,7 @@ export const AppRoutes = () => {
         path="/visits"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_EMPLOYEE']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitsListPage />
               </DashboardLayout>
@@ -80,7 +80,7 @@ export const AppRoutes = () => {
         path="/organizations"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']}>
               <DashboardLayout>
                 <OrganizationsPage />
               </DashboardLayout>
@@ -93,7 +93,7 @@ export const AppRoutes = () => {
         path="/guests"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']}>
               <DashboardLayout>
                 <GuestsPage />
               </DashboardLayout>
