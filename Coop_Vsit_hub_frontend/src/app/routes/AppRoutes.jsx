@@ -9,8 +9,10 @@ import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
 import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboardPage';
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
+import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
+import UsersPage from '@/modules/users/pages/UsersPage';
 
-// Placeholder for upcoming modules
+// Placeholder for upcoming partner intelligence modules
 const WorkspacePlaceholder = ({ title, subtitle }) => (
   <div className="p-8 bg-white rounded-3xl border border-slate-200/90 shadow-xs text-left">
     <h2 className="font-heading font-black text-2xl text-[#000000]">{title}</h2>
@@ -73,10 +75,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_SECURITY_DESK', 'ROLE_ADMIN']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="Front Desk Security Cockpit"
-                  subtitle="Phase 6 Security Desk check-in badging and departure tracking will mount here."
-                />
+                <SecurityDeskPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -121,10 +120,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="Staff User & Access Control"
-                  subtitle="Phase 9 Admin user onboarding, permissions, and role assignment."
-                />
+                <UsersPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
