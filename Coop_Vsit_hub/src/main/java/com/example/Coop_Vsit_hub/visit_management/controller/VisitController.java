@@ -101,7 +101,7 @@ public class VisitController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_RELATIONSHIP_MANAGER', 'ROLE_ADMIN')")
     @Operation(summary = "Create New Visit Request / Draft", description = "Submits a new executive visit request or saves a draft. Auto-generates human-readable VIS code.")
     public ResponseEntity<VisitDetailResponse> createVisit(
             @Valid @RequestBody CreateVisitRequest request,
@@ -113,7 +113,7 @@ public class VisitController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_RELATIONSHIP_MANAGER', 'ROLE_ADMIN')")
     @Operation(summary = "Update Visit Details", description = "Modifies visit details. Allowed only while visit is in DRAFT or SUBMITTED state.")
     public ResponseEntity<VisitDetailResponse> updateVisit(
             @PathVariable UUID id,
@@ -125,7 +125,7 @@ public class VisitController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).APPROVER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).BUSINESS_SPONSOR, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_APPROVER', 'ROLE_BUSINESS_SPONSOR', 'ROLE_ADMIN')")
     @Operation(summary = "Transition Visit Status", description = "Approve, reject, or schedule visit with approver feedback and decision notes.")
     public ResponseEntity<VisitDetailResponse> transitionVisitStatus(
             @PathVariable UUID id,
@@ -137,7 +137,7 @@ public class VisitController {
     }
 
     @PostMapping("/{id}/check-in")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).SECURITY_DESK, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SECURITY_DESK', 'ROLE_ADMIN')")
     @Operation(summary = "Security Desk Visitor Check-In", description = "Records visitor arrival timestamp, verifies ID, auto-generates badge (COOPVYYYYMM0000), and transitions state to IN_PROGRESS.")
     public ResponseEntity<VisitDetailResponse> checkInVisitor(
             @PathVariable UUID id,
@@ -150,7 +150,7 @@ public class VisitController {
     }
 
     @PostMapping("/{id}/check-out")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).SECURITY_DESK, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SECURITY_DESK', 'ROLE_ADMIN')")
     @Operation(summary = "Security Desk Visitor Check-Out", description = "Records visitor departure timestamp and marks visit as COMPLETED.")
     public ResponseEntity<VisitDetailResponse> checkOutVisitor(
             @PathVariable UUID id,
@@ -172,7 +172,7 @@ public class VisitController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @PreAuthorize("hasAnyAuthority('ROLE_RELATIONSHIP_MANAGER', 'ROLE_ADMIN')")
     @Operation(summary = "Delete / Cancel Visit", description = "Removes an unapproved visit request from the register.")
     public ResponseEntity<Map<String, String>> deleteVisit(
             @PathVariable UUID id,
