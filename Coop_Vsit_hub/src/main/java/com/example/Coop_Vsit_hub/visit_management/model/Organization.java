@@ -1,0 +1,51 @@
+package com.example.coop_vsit_hub.visit_management.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Guest & Corporate Partner Organizations visiting CoopBank DxValley.
+ */
+@Entity
+@Table(name = "organizations")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Organization {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(length = 150, nullable = false, unique = true)
+    private String name;
+
+    @Column(length = 100, nullable = false)
+    private String category;
+
+    @Builder.Default
+    @Column(name = "market_country", length = 100, nullable = false)
+    private String marketCountry = "Ethiopia";
+
+    @Builder.Default
+    @Column(name = "relationship_score", nullable = false)
+    private int relationshipScore = 50;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+}

@@ -33,8 +33,17 @@ CREATE TABLE IF NOT EXISTS visits (
     priority_level VARCHAR(20) DEFAULT 'MEDIUM' NOT NULL, -- CRITICAL, HIGH, MEDIUM, LOW
     status VARCHAR(30) DEFAULT 'SUBMITTED' NOT NULL, -- DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, SCHEDULED, IN_PROGRESS, COMPLETED, REJECTED, CANCELLED
     opportunity_value NUMERIC(15, 2) DEFAULT 0.00,
+    currency VARCHAR(10) DEFAULT 'USD' NOT NULL,
     presentation_theme VARCHAR(150),
     sensitive_topics TEXT,
+    
+    -- Facility & Conflict Management
+    location_room VARCHAR(100), -- e.g. DxValley Executive Boardroom, Main Conference Hall
+    visitor_count INT DEFAULT 1 NOT NULL, -- Total delegation size
+    visitor_badge_number VARCHAR(50), -- Assigned during front desk security check-in
+
+    -- Approver / Reviewer Feedback
+    decision_notes TEXT, -- Notes or justification provided upon Approval or Rejection
     
     -- Guest Classification (Organization vs Individual Person)
     guest_category VARCHAR(30) DEFAULT 'ORGANIZATION' NOT NULL, -- ORGANIZATION or INDIVIDUAL
@@ -94,4 +103,5 @@ CREATE INDEX IF NOT EXISTS idx_visits_status ON visits(status);
 CREATE INDEX IF NOT EXISTS idx_visits_priority ON visits(priority_level);
 CREATE INDEX IF NOT EXISTS idx_visits_requester ON visits(requester_id);
 CREATE INDEX IF NOT EXISTS idx_visits_guest_org ON visits(guest_organization_id);
+CREATE INDEX IF NOT EXISTS idx_visits_start_time ON visits(scheduled_start_time);
 CREATE INDEX IF NOT EXISTS idx_visit_feedbacks_token ON visit_feedbacks(survey_token);
