@@ -5,7 +5,7 @@ import soundPlayer from '@/core/utils/soundPlayer';
 export const Button = ({
   children,
   type = 'button',
-  variant = 'gold', // 'gold' | 'navy' | 'outline-gold' | 'outline-navy' | 'ghost' | 'danger'
+  variant = 'orange', // 'orange' | 'cyan' | 'black' | 'outline-cyan' | 'outline-orange' | 'ghost' | 'danger'
   size = 'md', // 'sm' | 'md' | 'lg'
   isLoading = false,
   disabled = false,
@@ -26,14 +26,24 @@ export const Button = ({
   };
 
   const variantStyles = {
-    gold: 'bg-coop-gold hover:bg-coop-gold-light text-coop-navy shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 focus:ring-coop-gold font-bold',
-    navy: 'bg-coop-navy hover:bg-coop-navy-light text-white shadow-md shadow-blue-900/20 hover:shadow-lg hover:shadow-blue-900/30 focus:ring-coop-navy',
+    orange:
+      'bg-[#e38524] hover:bg-[#c9721b] text-white shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/35 focus:ring-[#e38524] font-bold',
+    gold: // backward compatibility mapping to orange
+      'bg-[#e38524] hover:bg-[#c9721b] text-white shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/35 focus:ring-[#e38524] font-bold',
+    cyan:
+      'bg-[#00adef] hover:bg-[#0098d3] text-white shadow-md shadow-sky-500/25 hover:shadow-lg hover:shadow-sky-500/35 focus:ring-[#00adef] font-bold',
+    navy: // backward compatibility mapping to black / dark cyan
+      'bg-[#000000] hover:bg-slate-800 text-white shadow-md shadow-slate-900/20 hover:shadow-lg focus:ring-black',
+    black:
+      'bg-[#000000] hover:bg-slate-800 text-white shadow-md shadow-slate-900/20 hover:shadow-lg focus:ring-black',
+    'outline-cyan':
+      'border-2 border-[#00adef] text-[#00adef] hover:bg-[#00adef]/10 focus:ring-[#00adef] bg-transparent font-semibold',
+    'outline-orange':
+      'border-2 border-[#e38524] text-[#e38524] hover:bg-[#e38524]/10 focus:ring-[#e38524] bg-transparent font-semibold',
     'outline-gold':
-      'border-2 border-coop-gold text-coop-gold hover:bg-coop-gold/10 focus:ring-coop-gold bg-transparent',
-    'outline-navy':
-      'border-2 border-coop-navy text-coop-navy hover:bg-coop-navy/10 focus:ring-coop-navy bg-transparent',
+      'border-2 border-[#e38524] text-[#e38524] hover:bg-[#e38524]/10 focus:ring-[#e38524] bg-transparent font-semibold',
     ghost:
-      'text-slate-600 hover:text-coop-navy hover:bg-slate-100 focus:ring-slate-400 bg-transparent',
+      'text-slate-700 hover:text-[#000000] hover:bg-slate-100 focus:ring-slate-400 bg-transparent',
     danger:
       'bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 focus:ring-rose-500',
   };
@@ -54,16 +64,13 @@ export const Button = ({
       disabled={disabled || isLoading}
       onClick={handleClick}
       className={`${baseStyles} ${sizeStyles[size] || sizeStyles.md} ${
-        variantStyles[variant] || variantStyles.gold
+        variantStyles[variant] || variantStyles.orange
       } ${className}`}
       {...props}
     >
       {isLoading ? (
         <>
-          <Spinner
-            size="sm"
-            color={variant === 'gold' ? 'navy' : variant === 'outline-gold' ? 'gold' : 'white'}
-          />
+          <Spinner size="sm" color="white" />
           <span>Processing...</span>
         </>
       ) : (

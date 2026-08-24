@@ -67,12 +67,12 @@ export const ResetPasswordPage = () => {
     >
       {isSuccess ? (
         <div className="text-center py-6 space-y-4 animate-fadeIn">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
             <CheckCircle2 className="w-9 h-9" />
           </div>
 
           <div>
-            <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white">
+            <h3 className="font-heading font-black text-xl text-[#000000]">
               Password Changed!
             </h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -81,7 +81,7 @@ export const ResetPasswordPage = () => {
           </div>
 
           <Link to="/login">
-            <Button variant="gold" size="lg" className="w-full mt-4" icon={ArrowRight} iconPosition="right">
+            <Button variant="orange" size="lg" className="w-full mt-4" icon={ArrowRight} iconPosition="right">
               Sign In Now
             </Button>
           </Link>
@@ -119,13 +119,13 @@ export const ResetPasswordPage = () => {
           />
 
           {/* Password Security Rules Checklist */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-2 text-left">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-              <ShieldCheck className="w-4 h-4 text-coop-gold" />
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-left">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <ShieldCheck className="w-4 h-4 text-[#00adef]" />
               <span>Password Security Standards:</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+            <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600">
               <span className={hasMinLength ? 'text-emerald-600 font-semibold' : ''}>
                 {hasMinLength ? '✓' : '•'} At least 8 chars
               </span>
@@ -146,7 +146,7 @@ export const ResetPasswordPage = () => {
 
           <Button
             type="submit"
-            variant="gold"
+            variant="orange"
             size="lg"
             className="w-full"
             isLoading={isSubmitting}

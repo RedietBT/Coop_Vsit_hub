@@ -4,70 +4,72 @@ import CoopLogo from '@/core/assets/CoopLogo';
 
 export const AuthLayout = ({ children, title, subtitle }) => {
   return (
-    <div className="min-h-screen w-full flex bg-slate-50 dark:bg-slate-950">
-      {/* Left Showcase Banner (Hidden on small screens) */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-coop-navy overflow-hidden flex-col justify-between p-12 text-white">
-        {/* Background Gradients & Glows */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-coop-gold/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+    <div className="min-h-screen w-full flex bg-slate-50">
+      {/* Left Showcase Banner in CoopBank Cyan & Orange Accent */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-[#00adef] overflow-hidden flex-col justify-between p-12 text-white">
+        {/* Background Decorative Circles & Lighting */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-[#e38524]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
 
         {/* Top Header */}
-        <div className="relative z-10">
-          <CoopLogo variant="white" size="lg" />
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="p-2 bg-white rounded-2xl shadow-md">
+            <CoopLogo size="md" />
+          </div>
         </div>
 
         {/* Center Pitch & Highlights */}
         <div className="relative z-10 my-auto py-8 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-coop-gold/15 border border-coop-gold/30 text-coop-gold text-xs font-bold uppercase tracking-wider mb-6">
-            <ShieldCheck className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 border border-white/30 text-white text-xs font-black uppercase tracking-wider mb-6 shadow-xs">
+            <ShieldCheck className="w-4 h-4 text-[#e38524]" />
             <span>DxValley Enterprise Portal</span>
           </div>
 
-          <h1 className="font-heading font-black text-4xl leading-tight text-white mb-4">
-            Transforming Executive Banking Delegations & VIP Engagements.
+          <h1 className="font-heading font-black text-4xl leading-tight text-white mb-4 drop-shadow-xs">
+            Transforming Executive Delegations & VIP Engagements.
           </h1>
 
-          <p className="text-slate-300 text-sm leading-relaxed mb-8">
-            Next-generation visitor lifecycle management, relationship intelligence, financial pipeline tracking, and front-desk security check-ins for Cooperative Bank of Oromia.
+          <p className="text-white/90 text-sm leading-relaxed mb-8">
+            Next-generation visitor lifecycle management, relationship intelligence, financial pipeline tracking, and security front-desk badging for Cooperative Bank of Oromia.
           </p>
 
           {/* Feature Badges */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="p-2.5 rounded-xl bg-coop-gold/20 text-coop-gold">
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/15 border border-white/25 backdrop-blur-md">
+              <div className="p-2.5 rounded-xl bg-white text-[#00adef] shadow-xs">
                 <Building2 className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Guest Intelligence</p>
-                <p className="text-[11px] text-slate-400">Corporate partners & VIPs</p>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">Guest Intelligence</p>
+                <p className="text-[11px] text-white/80">Corporate partners & VIPs</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-              <div className="p-2.5 rounded-xl bg-coop-gold/20 text-coop-gold">
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/15 border border-white/25 backdrop-blur-md">
+              <div className="p-2.5 rounded-xl bg-[#e38524] text-white shadow-xs">
                 <Calendar className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Smart Scheduling</p>
-                <p className="text-[11px] text-slate-400">Room conflict prevention</p>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">Smart Scheduling</p>
+                <p className="text-[11px] text-white/80">Conflict prevention</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Footer */}
-        <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-6">
+        <div className="relative z-10 flex items-center justify-between text-xs text-white/80 border-t border-white/20 pt-6">
           <span>© 2026 Cooperative Bank of Oromia.</span>
-          <div className="flex items-center gap-1 text-slate-400">
-            <Award className="w-4 h-4 text-coop-gold" />
-            <span>Enterprise Security Grade</span>
+          <div className="flex items-center gap-1.5 text-white font-medium">
+            <Award className="w-4 h-4 text-[#e38524]" />
+            <span>DxValley Security Grade</span>
           </div>
         </div>
       </div>
 
-      {/* Right Form Card Panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
+      {/* Right Form Card Panel (Clean White Light Mode) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-white">
         <div className="w-full max-w-md">
           {/* Mobile Logo View */}
           <div className="lg:hidden mb-8 flex justify-center">
@@ -78,20 +80,20 @@ export const AuthLayout = ({ children, title, subtitle }) => {
           {(title || subtitle) && (
             <div className="text-left mb-8">
               {title && (
-                <h2 className="font-heading font-black text-2xl sm:text-3xl text-coop-navy dark:text-white tracking-tight">
+                <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#000000] tracking-tight">
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   {subtitle}
                 </p>
               )}
             </div>
           )}
 
-          {/* Form Content */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800">
+          {/* Form Container Card */}
+          <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/60 border border-slate-200/90">
             {children}
           </div>
         </div>

@@ -30,7 +30,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose }) => {
       await authApi.forgotPassword(data.email);
       setIsSuccess(true);
       soundPlayer.playNotificationChime();
-      toast.success('Password reset instructions sent to your corporate email.');
+      toast.success('Password recovery instructions sent to your email.');
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -56,11 +56,11 @@ export const ForgotPasswordModal = ({ isOpen, onClose }) => {
     >
       {isSuccess ? (
         <div className="text-center py-6 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <div>
-            <h4 className="font-heading font-bold text-lg text-slate-900 dark:text-white">
+            <h4 className="font-heading font-bold text-lg text-[#000000]">
               Instructions Dispatched
             </h4>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
@@ -68,7 +68,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          <Button variant="navy" className="w-full mt-4" onClick={handleClose}>
+          <Button variant="black" className="w-full mt-4" onClick={handleClose}>
             Back to Sign In
           </Button>
         </div>
@@ -103,7 +103,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose }) => {
             </Button>
             <Button
               type="submit"
-              variant="gold"
+              variant="orange"
               className="w-1/2"
               isLoading={isSubmitting}
             >

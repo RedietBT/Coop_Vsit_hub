@@ -3,22 +3,24 @@
 
 @layer base {
   :root {
-    --coop-gold: #F39200;
-    --coop-gold-light: #FDB714;
-    --coop-gold-dark: #D47E00;
-    --coop-navy: #002D62;
-    --coop-navy-dark: #001C3D;
-    --coop-navy-light: #00408A;
-    --coop-charcoal: #0B1B3D;
-    --coop-surface: #F8FAFC;
+    --coop-cyan: #00adef;
+    --coop-cyan-dark: #0093cc;
+    --coop-cyan-light: #e6f7fd;
+    --coop-orange: #e38524;
+    --coop-orange-dark: #c9721b;
+    --coop-orange-light: #fdf3e9;
+    --coop-black: #000000;
+    --coop-charcoal: #1e293b;
+    --coop-surface: #ffffff;
+    --coop-bg: #f8fafc;
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Inter', sans-serif;
   }
 
   body {
     font-family: var(--font-body);
-    background-color: #F8FAFC;
-    color: #0F172A;
+    background-color: #ffffff;
+    color: #000000;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -26,60 +28,69 @@
 
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: var(--font-heading);
+    color: #000000;
   }
 }
 
-/* Custom CoopBank Utility Classes */
-.bg-coop-navy { background-color: #002D62; }
-.bg-coop-navy-dark { background-color: #001C3D; }
-.bg-coop-gold { background-color: #F39200; }
-.bg-coop-gold-light { background-color: #FDB714; }
-.bg-coop-charcoal { background-color: #0B1B3D; }
+/* CoopBank Official Brand Colors */
+.bg-coop-cyan { background-color: #00adef; }
+.bg-coop-cyan-dark { background-color: #0093cc; }
+.bg-coop-cyan-light { background-color: #e6f7fd; }
 
-.text-coop-navy { color: #002D62; }
-.text-coop-gold { color: #F39200; }
-.text-coop-gold-light { color: #FDB714; }
+.bg-coop-orange { background-color: #e38524; }
+.bg-coop-orange-dark { background-color: #c9721b; }
+.bg-coop-orange-light { background-color: #fdf3e9; }
 
-.border-coop-gold { border-color: #F39200; }
-.border-coop-navy { border-color: #002D62; }
+.bg-coop-black { background-color: #000000; }
 
-.shadow-gold {
-  box-shadow: 0 4px 20px -2px rgba(243, 146, 0, 0.25);
+.text-coop-cyan { color: #00adef; }
+.text-coop-orange { color: #e38524; }
+.text-coop-black { color: #000000; }
+
+.border-coop-cyan { border-color: #00adef; }
+.border-coop-orange { border-color: #e38524; }
+.border-coop-black { border-color: #000000; }
+
+.shadow-cyan {
+  box-shadow: 0 4px 20px -2px rgba(0, 173, 239, 0.25);
 }
 
-.shadow-navy {
-  box-shadow: 0 4px 20px -2px rgba(0, 45, 98, 0.2);
+.shadow-orange {
+  box-shadow: 0 4px 20px -2px rgba(227, 133, 36, 0.25);
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+/* Clean White Card System */
+.coop-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
-.glass-card-dark {
-  background: rgba(11, 27, 61, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.coop-card-hover {
+  transition: all 0.2s ease-in-out;
+}
+.coop-card-hover:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 173, 239, 0.12), 0 8px 10px -6px rgba(0, 173, 239, 0.08);
+  border-color: #bae6fd;
+  transform: translateY(-2px);
 }
 
-/* Custom Modern Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #94a3b8;
 }

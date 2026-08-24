@@ -45,8 +45,8 @@ export const VerifyEmailPage = () => {
       <div className="text-center py-6 space-y-5">
         {status === 'verifying' && (
           <div className="space-y-4 py-8">
-            <Spinner size="xl" color="gold" className="mx-auto" />
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+            <Spinner size="xl" color="navy" className="mx-auto border-[#00adef]" />
+            <p className="text-sm font-semibold text-slate-700">
               Verifying token with CoopBank security servers...
             </p>
           </div>
@@ -54,22 +54,22 @@ export const VerifyEmailPage = () => {
 
         {status === 'success' && (
           <div className="space-y-4 animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-bounce">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div>
-              <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white">
+              <h3 className="font-heading font-black text-xl text-[#000000]">
                 Verification Complete!
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
+              <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
                 {message}
               </p>
             </div>
 
             <div className="pt-4">
               <Link to="/login?verified=true">
-                <Button variant="gold" size="lg" className="w-full" icon={ArrowRight} iconPosition="right">
+                <Button variant="orange" size="lg" className="w-full" icon={ArrowRight} iconPosition="right">
                   Proceed to Sign In
                 </Button>
               </Link>
@@ -79,22 +79,22 @@ export const VerifyEmailPage = () => {
 
         {status === 'error' && (
           <div className="space-y-4 animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-9 h-9" />
             </div>
 
             <div>
-              <h3 className="font-heading font-black text-xl text-rose-700 dark:text-rose-400">
+              <h3 className="font-heading font-black text-xl text-rose-700">
                 Verification Failed
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
+              <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
                 {message}
               </p>
             </div>
 
             <div className="pt-4">
               <Link to="/login">
-                <Button variant="navy" size="md" className="w-full">
+                <Button variant="black" size="md" className="w-full">
                   Return to Sign In
                 </Button>
               </Link>
