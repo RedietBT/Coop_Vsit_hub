@@ -37,6 +37,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Malformed JSON request body: {}", ex.getMessage());
+        String detail = "Malformed request payload or invalid parameter type format (e.g. invalid UUID, date, or number format).";
+        if (ex.getCause() instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ife) {
+            String field = ife.getPath().isEmpty() ? "parameter" : ife.getPath().get(ife.getPath().size() - 1).getFieldName();
+            detail = String.format("Invalid value '%s' for field '%s'. Expected format of type '%s'.",
+                    ife.getValue(), field, ife.getTargetType().getSimpleName());
+        }
+        return ResponseEntity.badRequest().body(buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Malformed Request Body",
+                detail,
+                request.getRequestURI()
+        ));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Illegal argument error: {}", ex.getMessage());

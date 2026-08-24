@@ -117,37 +117,44 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void notifyUser(User recipient, String title, String message, NotificationType type, UUID refId, String refCode, boolean sendEmail) {
         if (recipient == null) return;
+        try {
+            Notification notification = Notification.builder()
+                    .recipient(recipient)
+                    .title(title)
+                    .message(message)
+                    .notificationType(type)
+                    .referenceId(refId)
+                    .referenceCode(refCode)
+                    .isRead(false)
+                    .build();
 
-        Notification notification = Notification.builder()
-                .recipient(recipient)
-                .title(title)
-                .message(message)
-                .notificationType(type)
-                .referenceId(refId)
-                .referenceCode(refCode)
-                .isRead(false)
-                .build();
+            notificationRepository.save(notification);
 
-        notificationRepository.save(notification);
-
-        if (sendEmail && StringUtils.hasText(recipient.getEmail())) {
-            sendEmailNotification(recipient.getEmail(), title, message, refCode);
+            if (sendEmail && StringUtils.hasText(recipient.getEmail())) {
+                sendEmailNotification(recipient.getEmail(), title, message, refCode);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to notify user '{}': {}", recipient.getUsername(), e.getMessage());
         }
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void notifyRoles(List<RoleName> roles, String title, String message, NotificationType type, UUID refId, String refCode, boolean sendEmail) {
-        Set<User> recipients = new HashSet<>();
-        for (RoleName roleName : roles) {
-            recipients.addAll(userRepository.findByRoleName(roleName.name()));
-        }
+        try {
+            Set<User> recipients = new HashSet<>();
+            for (RoleName roleName : roles) {
+                recipients.addAll(userRepository.findByRoleName(roleName));
+            }
 
-        for (User user : recipients) {
-            notifyUser(user, title, message, type, refId, refCode, sendEmail);
+            for (User user : recipients) {
+                notifyUser(user, title, message, type, refId, refCode, sendEmail);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to dispatch role notifications for '{}': {}", refCode, e.getMessage());
         }
     }
 
