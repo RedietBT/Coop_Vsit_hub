@@ -7,8 +7,10 @@ import LoginPage from '@/modules/auth/pages/LoginPage';
 import VerifyEmailPage from '@/modules/auth/pages/VerifyEmailPage';
 import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
 import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboardPage';
+import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
+import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
 
-// Placeholder for upcoming phases
+// Placeholder for upcoming modules
 const WorkspacePlaceholder = ({ title, subtitle }) => (
   <div className="p-8 bg-white rounded-3xl border border-slate-200/90 shadow-xs text-left">
     <h2 className="font-heading font-black text-2xl text-[#000000]">{title}</h2>
@@ -45,10 +47,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_EMPLOYEE']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="Visits Management Workspace"
-                  subtitle="Phase 5 Visits Lifecycle Management module will mount here."
-                />
+                <VisitsListPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -61,10 +60,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="Smart Booking Calendar"
-                  subtitle="Interactive visual scheduling with conflict detection."
-                />
+                <VisitCalendarPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -79,7 +75,7 @@ export const AppRoutes = () => {
               <DashboardLayout>
                 <WorkspacePlaceholder
                   title="Front Desk Security Cockpit"
-                  subtitle="Visitor check-in badging and check-out departure tracking."
+                  subtitle="Phase 6 Security Desk check-in badging and departure tracking will mount here."
                 />
               </DashboardLayout>
             </RoleGuard>
@@ -95,7 +91,7 @@ export const AppRoutes = () => {
               <DashboardLayout>
                 <WorkspacePlaceholder
                   title="Partner Organizations Intelligence"
-                  subtitle="Corporate directory and relationship health score analytics."
+                  subtitle="Phase 7 Corporate partner directory and health score analytics."
                 />
               </DashboardLayout>
             </RoleGuard>
@@ -111,7 +107,7 @@ export const AppRoutes = () => {
               <DashboardLayout>
                 <WorkspacePlaceholder
                   title="VIP Individual Guests Intelligence"
-                  subtitle="Tier 1 and Tier 2 VIP delegates directory."
+                  subtitle="Phase 7 Individual VIP guest catalog and stats."
                 />
               </DashboardLayout>
             </RoleGuard>
@@ -127,7 +123,7 @@ export const AppRoutes = () => {
               <DashboardLayout>
                 <WorkspacePlaceholder
                   title="Staff User & Access Control"
-                  subtitle="Admin user onboarding, permissions, and role assignment."
+                  subtitle="Phase 9 Admin user onboarding, permissions, and role assignment."
                 />
               </DashboardLayout>
             </RoleGuard>
