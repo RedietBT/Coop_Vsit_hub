@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS organizations (
     category VARCHAR(100) NOT NULL, -- e.g. Strategic Partners, Regulators, Enterprise Customers, Fintech
     market_country VARCHAR(100) DEFAULT 'Ethiopia' NOT NULL,
     relationship_score INT DEFAULT 50 NOT NULL,
+    contact_person_name VARCHAR(100),
+    contact_email VARCHAR(100),
+    contact_phone VARCHAR(30),
+    website VARCHAR(150),
+    industry_sector VARCHAR(100),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL

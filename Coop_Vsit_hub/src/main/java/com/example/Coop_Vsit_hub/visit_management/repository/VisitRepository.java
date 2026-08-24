@@ -34,6 +34,13 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
 
     long countByPriorityLevel(VisitPriority priorityLevel);
 
+    long countByGuestOrganizationId(UUID guestOrganizationId);
+
+    List<Visit> findTop10ByGuestOrganizationIdOrderByScheduledStartTimeDesc(UUID guestOrganizationId);
+
+    @Query("SELECT COALESCE(SUM(v.opportunityValue), 0) FROM Visit v WHERE v.guestOrganization.id = :orgId")
+    BigDecimal sumOpportunityValueByGuestOrganizationId(@Param("orgId") UUID orgId);
+
     /**
      * Finds overlapping visits in the same room to prevent double-booking.
      * Ignores CANCELLED, REJECTED, and DRAFT visits.

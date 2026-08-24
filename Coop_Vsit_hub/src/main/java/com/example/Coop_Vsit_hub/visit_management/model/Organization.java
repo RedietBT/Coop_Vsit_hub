@@ -38,6 +38,21 @@ public class Organization {
     @Column(name = "relationship_score", nullable = false)
     private int relationshipScore = 50;
 
+    @Column(name = "contact_person_name", length = 100)
+    private String contactPersonName;
+
+    @Column(name = "contact_email", length = 100)
+    private String contactEmail;
+
+    @Column(name = "contact_phone", length = 30)
+    private String contactPhone;
+
+    @Column(length = 150)
+    private String website;
+
+    @Column(name = "industry_sector", length = 100)
+    private String industrySector;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

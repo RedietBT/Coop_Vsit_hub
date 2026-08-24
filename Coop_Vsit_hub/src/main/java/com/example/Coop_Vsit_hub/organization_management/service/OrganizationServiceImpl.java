@@ -1,0 +1,239 @@
+package com.example.coop_vsit_hub.organization_management.service;
+
+import com.example.coop_vsit_hub.organization_management.dto.*;
+import com.example.coop_vsit_hub.user_and_auth.dto.PageResponse;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditEventType;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
+import com.example.coop_vsit_hub.user_and_auth.service.AuditLoggerService;
+import com.example.coop_vsit_hub.visit_management.dto.VisitSummaryResponse;
+import com.example.coop_vsit_hub.visit_management.model.Organization;
+import com.example.coop_vsit_hub.visit_management.model.Visit;
+import com.example.coop_vsit_hub.visit_management.repository.OrganizationRepository;
+import com.example.coop_vsit_hub.visit_management.repository.OrganizationSpecification;
+import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class OrganizationServiceImpl implements OrganizationService {
+
+    private final OrganizationRepository organizationRepository;
+    private final VisitRepository visitRepository;
+    private final AuditLoggerService auditLoggerService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrganizationSummaryResponse> getAllOrganizations(
+            String search,
+            String category,
+            String marketCountry,
+            String industrySector,
+            Integer minScore,
+            Integer maxScore,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection
+    ) {
+        log.info("Fetching organizations list with search={}, category={}, country={}, page={}, size={}",
+                search, category, marketCountry, page, size);
+
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        String sortProperty = (sortBy != null && !sortBy.isBlank()) ? sortBy : "relationshipScore";
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty));
+
+        Specification<Organization> spec = OrganizationSpecification.filterOrganizations(
+                search, category, marketCountry, industrySector, minScore, maxScore
+        );
+
+        Page<Organization> orgPage = organizationRepository.findAll(spec, pageable);
+        Page<OrganizationSummaryResponse> dtoPage = orgPage.map(OrganizationSummaryResponse::from);
+
+        return PageResponse.from(dtoPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrganizationDetailResponse getOrganizationById(UUID id) {
+        log.info("Fetching organization details for ID: {}", id);
+
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + id));
+
+        long totalVisits = visitRepository.countByGuestOrganizationId(id);
+        BigDecimal pipelineValue = visitRepository.sumOpportunityValueByGuestOrganizationId(id);
+        List<Visit> recentVisitEntities = visitRepository.findTop10ByGuestOrganizationIdOrderByScheduledStartTimeDesc(id);
+
+        List<VisitSummaryResponse> recentVisits = recentVisitEntities.stream()
+                .map(VisitSummaryResponse::from)
+                .collect(Collectors.toList());
+
+        return OrganizationDetailResponse.from(org, totalVisits, pipelineValue, recentVisits);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrganizationPortfolioStatsResponse getPortfolioStatistics() {
+        log.info("Computing organization portfolio metrics and sector breakdowns");
+
+        long total = organizationRepository.count();
+        Double avgScore = organizationRepository.getAverageRelationshipScore();
+
+        Map<String, Long> categoryMap = new LinkedHashMap<>();
+        for (Object[] row : organizationRepository.countOrganizationsByCategory()) {
+            String cat = (String) row[0];
+            Long count = (Long) row[1];
+            categoryMap.put(cat, count);
+        }
+
+        Map<String, Long> countryMap = new LinkedHashMap<>();
+        for (Object[] row : organizationRepository.countOrganizationsByCountry()) {
+            String country = (String) row[0];
+            Long count = (Long) row[1];
+            countryMap.put(country, count);
+        }
+
+        Map<String, Long> sectorMap = new LinkedHashMap<>();
+        for (Object[] row : organizationRepository.countOrganizationsByIndustrySector()) {
+            String sector = (String) row[0];
+            Long count = (Long) row[1];
+            sectorMap.put(sector, count);
+        }
+
+        return OrganizationPortfolioStatsResponse.builder()
+                .totalOrganizations(total)
+                .averageRelationshipScore(Math.round((avgScore != null ? avgScore : 0.0) * 10.0) / 10.0)
+                .organizationsByCategory(categoryMap)
+                .organizationsByCountry(countryMap)
+                .organizationsByIndustry(sectorMap)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public OrganizationDetailResponse createOrganization(CreateOrganizationRequest request, String authenticatedUsername) {
+        log.info("Registering new guest organization '{}' by user '{}'", request.getName(), authenticatedUsername);
+
+        String trimmedName = request.getName().trim();
+        if (organizationRepository.existsByName(trimmedName)) {
+            throw new IllegalArgumentException(String.format("An organization with name '%s' already exists.", trimmedName));
+        }
+
+        Organization org = Organization.builder()
+                .name(trimmedName)
+                .category(request.getCategory().trim())
+                .marketCountry(StringUtils.hasText(request.getMarketCountry()) ? request.getMarketCountry().trim() : "Ethiopia")
+                .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 50)
+                .contactPersonName(StringUtils.hasText(request.getContactPersonName()) ? request.getContactPersonName().trim() : null)
+                .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null)
+                .contactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null)
+                .website(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null)
+                .industrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null)
+                .notes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null)
+                .build();
+
+        Organization saved = organizationRepository.save(org);
+
+        auditLoggerService.logEvent(
+                null,
+                authenticatedUsername,
+                AuditEventType.ORGANIZATION_CREATED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "ORGANIZATION_MODULE",
+                String.format("Registered new partner organization '%s' (Category: %s)", saved.getName(), saved.getCategory())
+        );
+
+        return OrganizationDetailResponse.from(saved, 0, BigDecimal.ZERO, List.of());
+    }
+
+    @Override
+    @Transactional
+    public OrganizationDetailResponse updateOrganization(UUID id, UpdateOrganizationRequest request, String authenticatedUsername) {
+        log.info("Updating organization ID: {} by user: {}", id, authenticatedUsername);
+
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + id));
+
+        String trimmedName = request.getName().trim();
+        if (organizationRepository.existsByNameAndIdNot(trimmedName, id)) {
+            throw new IllegalArgumentException(String.format("Another organization with name '%s' already exists.", trimmedName));
+        }
+
+        org.setName(trimmedName);
+        org.setCategory(request.getCategory().trim());
+        org.setMarketCountry(request.getMarketCountry().trim());
+        org.setRelationshipScore(request.getRelationshipScore());
+        org.setContactPersonName(StringUtils.hasText(request.getContactPersonName()) ? request.getContactPersonName().trim() : null);
+        org.setContactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null);
+        org.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);
+        org.setWebsite(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null);
+        org.setIndustrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null);
+        org.setNotes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null);
+
+        Organization saved = organizationRepository.save(org);
+
+        auditLoggerService.logEvent(
+                null,
+                authenticatedUsername,
+                AuditEventType.ORGANIZATION_UPDATED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "ORGANIZATION_MODULE",
+                String.format("Updated partner organization '%s' (Relationship score: %d)", saved.getName(), saved.getRelationshipScore())
+        );
+
+        long totalVisits = visitRepository.countByGuestOrganizationId(id);
+        BigDecimal pipelineValue = visitRepository.sumOpportunityValueByGuestOrganizationId(id);
+        List<Visit> recentVisitEntities = visitRepository.findTop10ByGuestOrganizationIdOrderByScheduledStartTimeDesc(id);
+        List<VisitSummaryResponse> recentVisits = recentVisitEntities.stream().map(VisitSummaryResponse::from).collect(Collectors.toList());
+
+        return OrganizationDetailResponse.from(saved, totalVisits, pipelineValue, recentVisits);
+    }
+
+    @Override
+    @Transactional
+    public void deleteOrganization(UUID id, String authenticatedUsername) {
+        log.info("Deleting organization ID: {} by user: {}", id, authenticatedUsername);
+
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + id));
+
+        long visitCount = visitRepository.countByGuestOrganizationId(id);
+        if (visitCount > 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Cannot delete organization '%s' because it is linked to %d existing visit records. Consider updating its details or archiving it instead.",
+                    org.getName(), visitCount
+            ));
+        }
+
+        organizationRepository.delete(org);
+
+        auditLoggerService.logEvent(
+                null,
+                authenticatedUsername,
+                AuditEventType.ORGANIZATION_DELETED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "ORGANIZATION_MODULE",
+                String.format("Deleted partner organization '%s'", org.getName())
+        );
+    }
+}
