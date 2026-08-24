@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Badge = ({
   children,
-  variant = 'default', // 'approved' | 'in_progress' | 'completed' | 'submitted' | 'rejected' | 'gold' | 'navy' | 'vip1' | 'vip2'
+  variant = 'default',
   pulse = false,
   size = 'md', // 'sm' | 'md'
   className = '',
@@ -10,42 +10,42 @@ export const Badge = ({
   const normalizedVariant = (typeof children === 'string' ? children : variant).toLowerCase();
 
   const variantStyles = {
-    // Visit Status
-    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
-    completed: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800',
-    in_progress: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700',
-    submitted: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
-    under_review: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800',
-    draft: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-    rejected: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
-    cancelled: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+    // Visit Statuses (Crystal clear high contrast on clean light mode)
+    approved: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold shadow-xs',
+    completed: 'bg-teal-50 text-teal-800 border-teal-300 font-bold shadow-xs',
+    in_progress: 'bg-amber-50 text-amber-900 border-amber-400 font-bold shadow-xs',
+    submitted: 'bg-sky-50 text-sky-900 border-sky-300 font-bold shadow-xs',
+    under_review: 'bg-indigo-50 text-indigo-900 border-indigo-300 font-bold shadow-xs',
+    draft: 'bg-slate-100 text-slate-700 border-slate-300 font-bold',
+    rejected: 'bg-rose-50 text-rose-800 border-rose-300 font-bold shadow-xs',
+    cancelled: 'bg-rose-50 text-rose-800 border-rose-300 font-bold shadow-xs',
 
     // Priorities
-    critical: 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
-    high: 'bg-orange-100 text-orange-800 border-orange-300 font-bold',
-    medium: 'bg-amber-100 text-amber-800 border-amber-300',
-    low: 'bg-slate-100 text-slate-700 border-slate-300',
+    critical: 'bg-rose-50 text-rose-800 border-rose-300 font-black tracking-wide',
+    high: 'bg-orange-50 text-orange-800 border-orange-300 font-black tracking-wide',
+    medium: 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+    low: 'bg-slate-100 text-slate-700 border-slate-300 font-medium',
 
     // VIP Tiers & Brand
-    vip_tier_1: 'bg-linear-to-r from-amber-500/20 to-coop-gold/30 text-amber-900 dark:text-amber-300 border-amber-400 font-bold shadow-xs',
-    vip_tier_2: 'bg-linear-to-r from-slate-200 to-slate-300 text-slate-800 dark:text-slate-200 border-slate-400 font-semibold',
-    gold: 'bg-coop-gold/15 text-coop-gold border-coop-gold/40 font-bold',
-    navy: 'bg-coop-navy/15 text-coop-navy border-coop-navy/40 font-bold',
-    default: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300',
+    vip_tier_1: 'bg-orange-50 text-[#e38524] border-orange-300 font-black shadow-xs',
+    vip_tier_2: 'bg-sky-50 text-[#00adef] border-sky-300 font-bold shadow-xs',
+    gold: 'bg-orange-50 text-[#e38524] border-orange-300 font-bold',
+    cyan: 'bg-sky-50 text-[#00adef] border-sky-300 font-bold',
+    default: 'bg-slate-100 text-slate-700 border-slate-200 font-medium',
   };
 
   const dotColors = {
-    approved: 'bg-emerald-500',
-    completed: 'bg-teal-500',
-    in_progress: 'bg-amber-500 animate-pulse',
-    submitted: 'bg-blue-500',
-    under_review: 'bg-indigo-500',
+    approved: 'bg-emerald-600',
+    completed: 'bg-teal-600',
+    in_progress: 'bg-[#e38524] animate-ping',
+    submitted: 'bg-[#00adef]',
+    under_review: 'bg-indigo-600',
     draft: 'bg-slate-400',
-    rejected: 'bg-rose-500',
-    cancelled: 'bg-rose-500',
-    critical: 'bg-rose-500 animate-ping',
-    high: 'bg-orange-500',
-    vip_tier_1: 'bg-coop-gold',
+    rejected: 'bg-rose-600',
+    cancelled: 'bg-rose-600',
+    critical: 'bg-rose-600',
+    high: 'bg-orange-600',
+    vip_tier_1: 'bg-[#e38524]',
     default: 'bg-slate-400',
   };
 
@@ -54,11 +54,18 @@ export const Badge = ({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border font-medium tracking-wide uppercase ${
-        size === 'sm' ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'
+      className={`inline-flex items-center gap-1.5 rounded-full border tracking-wide uppercase ${
+        size === 'sm' ? 'text-[10px] px-2.5 py-0.5' : 'text-xs px-3 py-1'
       } ${variantStyles[styleKey]} ${className}`}
     >
-      {pulse && <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />}
+      {pulse ? (
+        <span className="relative flex h-2 w-2">
+          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotColor}`} />
+          <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
+        </span>
+      ) : (
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+      )}
       <span>{children}</span>
     </span>
   );

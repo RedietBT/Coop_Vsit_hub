@@ -12,18 +12,16 @@ export const Card = ({
 }) => {
   return (
     <div
-      className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 transition-all duration-200 ${
-        glass
-          ? 'glass-card'
-          : 'bg-white dark:bg-slate-900/80 shadow-xs'
-      } ${hoverLift ? 'hover:shadow-md hover:-translate-y-0.5' : ''} ${className}`}
+      className={`rounded-3xl border border-slate-200/90 transition-all duration-200 bg-white shadow-xs ${
+        hoverLift ? 'hover:shadow-md hover:-translate-y-0.5 hover:border-[#00adef]/50' : ''
+      } ${className}`}
       {...props}
     >
       {(title || subtitle || action) && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
           <div>
             {title && (
-              <h3 className="font-heading font-bold text-base text-coop-navy dark:text-slate-100">
+              <h3 className="font-heading font-black text-base text-[#000000]">
                 {title}
               </h3>
             )}

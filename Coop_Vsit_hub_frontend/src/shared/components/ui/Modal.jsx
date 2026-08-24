@@ -45,21 +45,21 @@ export const Modal = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity"
           />
 
-          {/* Modal Dialog Card */}
+          {/* Modal Dialog Card (Pure White Light Mode) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className={`relative w-full ${maxWidth} bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 z-10 overflow-hidden my-8`}
+            className={`relative w-full ${maxWidth} bg-white rounded-3xl shadow-2xl border border-slate-200 z-10 overflow-hidden my-8`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white">
               <div>
-                <h3 className="font-heading font-bold text-lg text-coop-navy dark:text-slate-100">
+                <h3 className="font-heading font-black text-lg text-[#000000]">
                   {title}
                 </h3>
                 {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
@@ -68,7 +68,7 @@ export const Modal = ({
               {showClose && (
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -76,7 +76,7 @@ export const Modal = ({
             </div>
 
             {/* Content Body */}
-            <div className="p-6 max-h-[75vh] overflow-y-auto">{children}</div>
+            <div className="p-6 max-h-[75vh] overflow-y-auto bg-white text-slate-900">{children}</div>
           </motion.div>
         </div>
       )}

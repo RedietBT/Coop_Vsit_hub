@@ -12,12 +12,12 @@ export const RoleGuard = ({ allowedRoles = [], children }) => {
   if (!isAuthorized) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6 text-center">
-        <div className="max-w-md p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center mx-auto">
+        <div className="max-w-md p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-9 h-9" />
           </div>
 
-          <h3 className="font-heading font-black text-2xl text-slate-900 dark:text-white">
+          <h3 className="font-heading font-black text-2xl text-[#000000]">
             Access Restricted
           </h3>
 
@@ -27,7 +27,7 @@ export const RoleGuard = ({ allowedRoles = [], children }) => {
 
           <div className="pt-2">
             <Link to="/dashboard">
-              <Button variant="gold" icon={ArrowLeft}>
+              <Button variant="orange" icon={ArrowLeft}>
                 Return to Dashboard
               </Button>
             </Link>
