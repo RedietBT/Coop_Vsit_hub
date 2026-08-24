@@ -10,15 +10,9 @@ import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboard
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
 import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
+import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
+import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
-
-// Placeholder for upcoming partner intelligence modules
-const WorkspacePlaceholder = ({ title, subtitle }) => (
-  <div className="p-8 bg-white rounded-3xl border border-slate-200/90 shadow-xs text-left">
-    <h2 className="font-heading font-black text-2xl text-[#000000]">{title}</h2>
-    <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-  </div>
-);
 
 export const AppRoutes = () => {
   return (
@@ -88,10 +82,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="Partner Organizations Intelligence"
-                  subtitle="Phase 7 Corporate partner directory and health score analytics."
-                />
+                <OrganizationsPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -104,10 +95,7 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EXECUTIVE']}>
               <DashboardLayout>
-                <WorkspacePlaceholder
-                  title="VIP Individual Guests Intelligence"
-                  subtitle="Phase 7 Individual VIP guest catalog and stats."
-                />
+                <GuestsPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
