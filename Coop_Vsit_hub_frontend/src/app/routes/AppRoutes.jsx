@@ -11,10 +11,12 @@ import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboard
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
 import BookVisitPage from '@/modules/visits/pages/BookVisitPage';
+import PublicBookingPage from '@/modules/visits/pages/PublicBookingPage';
 import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
 import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
 import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
+import AuditLogsPage from '@/modules/audit/pages/AuditLogsPage';
 import PublicSurveyPage from '@/modules/feedback/pages/PublicSurveyPage';
 
 export const AppRoutes = () => {
@@ -26,6 +28,11 @@ export const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+
+      {/* Public Customer / Partner Delegation Booking Request Portal */}
+      <Route path="/book-visit" element={<PublicBookingPage />} />
+      <Route path="/request-visit" element={<PublicBookingPage />} />
+      <Route path="/portal/book" element={<PublicBookingPage />} />
 
       {/* Public Post-Visit Customer Satisfaction (CSAT) Survey */}
       <Route path="/feedback/:token" element={<PublicSurveyPage />} />
@@ -40,19 +47,6 @@ export const AppRoutes = () => {
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <ExecutiveDashboardPage />
-              </DashboardLayout>
-            </RoleGuard>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/visits"
-        element={
-          <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
-              <DashboardLayout>
-                <VisitsListPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -79,6 +73,19 @@ export const AppRoutes = () => {
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitCalendarPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/visits"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
+              <DashboardLayout>
+                <VisitsListPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>
@@ -131,6 +138,19 @@ export const AppRoutes = () => {
             <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <UsersPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/audit-logs"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
+              <DashboardLayout>
+                <AuditLogsPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>

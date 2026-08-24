@@ -152,6 +152,18 @@ export const LoginPage = () => {
         >
           Sign In to Portal
         </Button>
+        {/* Public Visit Booking Portal Link for External Partners */}
+        <div className="pt-3 border-t border-slate-100 text-center">
+          <p className="text-[11px] text-slate-500">
+            External corporate partner or dignitary?
+          </p>
+          <Link
+            to="/book-visit"
+            className="inline-flex items-center gap-1 text-xs font-bold text-[#e38524] hover:text-[#00adef] mt-1 transition-colors"
+          >
+            <span>Request an Executive Delegation Visit →</span>
+          </Link>
+        </div>
       </form>
 
       {/* Mandatory First-Time Password Change Modal */}

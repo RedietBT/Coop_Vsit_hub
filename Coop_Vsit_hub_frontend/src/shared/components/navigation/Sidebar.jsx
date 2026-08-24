@@ -59,6 +59,12 @@ const NAV_ITEMS = [
     icon: UserCog,
     roles: ['ROLE_ADMIN'],
   },
+  {
+    name: 'System Audit Logs',
+    path: '/audit-logs',
+    icon: Database,
+    roles: ['ROLE_ADMIN'],
+  },
 ];
 
 export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
