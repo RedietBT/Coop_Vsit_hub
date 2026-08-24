@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MoreVertical,
+  ChevronDown,
   Eye,
   CheckCircle2,
   XCircle,
@@ -36,11 +37,23 @@ export const VisitTable = () => {
   } = useVisitStore();
 
   const { hasRole, hasAnyRole } = useAuthStore();
-  const [activeMenuId, setActiveMenuId] = React.useState(null);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  const dropdownRef = useRef(null);
 
   const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
   const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_ADMIN']);
   const isAdmin = hasRole('ROLE_ADMIN');
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatSchedule = (isoString) => {
     if (!isoString) return 'TBD';
@@ -53,10 +66,15 @@ export const VisitTable = () => {
     });
   };
 
+  const toggleDropdown = (id, e) => {
+    e.stopPropagation();
+    setOpenDropdownId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden text-left">
       {/* Table Content */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[300px]">
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-400 font-bold uppercase text-[10px]">
@@ -155,57 +173,120 @@ export const VisitTable = () => {
                     </div>
                   </td>
 
-                  {/* Actions Dropdown */}
-                  <td className="py-4 pr-6 text-right relative" onClick={(e) => e.stopPropagation()}>
-                    <div className="inline-flex items-center gap-1.5">
-                      {/* Quick View Button */}
+                  {/* Actions Dropdown Button */}
+                  <td
+                    className="py-4 pr-6 text-right relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative inline-block text-left" ref={openDropdownId === visit.id ? dropdownRef : null}>
                       <button
-                        onClick={() => openDetailDrawer(visit)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"
-                        title="View Full Details"
+                        type="button"
+                        onClick={(e) => toggleDropdown(visit.id, e)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          openDropdownId === visit.id
+                            ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs'
+                        }`}
                       >
-                        <Eye className="w-4 h-4" />
+                        <span>Actions</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          openDropdownId === visit.id ? 'rotate-180 text-white' : 'text-slate-400'
+                        }`} />
                       </button>
 
-                      {/* Approver Quick Actions */}
-                      {isApprover && visit.status === 'SUBMITTED' && (
-                        <div className="flex items-center gap-1">
+                      {/* Dropdown Menu Popover */}
+                      {openDropdownId === visit.id && (
+                        <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-fadeIn text-left">
+                          {/* 1. View Details */}
                           <button
-                            onClick={() => openStatusModal(visit, 'APPROVED')}
-                            className="p-1.5 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                            title="Approve Visit"
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdownId(null);
+                              openDetailDrawer(visit);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
                           >
-                            <CheckCircle2 className="w-4 h-4" />
+                            <Eye className="w-4 h-4 text-slate-400" />
+                            <span>View Full Details</span>
                           </button>
-                          <button
-                            onClick={() => openStatusModal(visit, 'REJECTED')}
-                            className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Reject Visit"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
+
+                          {/* 2. Approver: Approve Visit */}
+                          {isApprover && visit.status === 'SUBMITTED' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openStatusModal(visit, 'APPROVED');
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Approve Visit</span>
+                            </button>
+                          )}
+
+                          {/* 3. Approver: Reject Visit */}
+                          {isApprover && visit.status === 'SUBMITTED' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openStatusModal(visit, 'REJECTED');
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4 text-rose-600" />
+                              <span>Reject Visit</span>
+                            </button>
+                          )}
+
+                          {/* 4. Security Desk: Check-In */}
+                          {isSecurity && visit.status === 'APPROVED' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                checkIn(visit.id);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-[#00adef] hover:bg-sky-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <LogIn className="w-4 h-4 text-[#00adef]" />
+                              <span>Check-In Guest & Badge</span>
+                            </button>
+                          )}
+
+                          {/* 5. Security Desk: Check-Out */}
+                          {isSecurity && visit.status === 'IN_PROGRESS' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                checkOut(visit.id);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <LogOut className="w-4 h-4 text-[#e38524]" />
+                              <span>Check-Out Guest & Survey</span>
+                            </button>
+                          )}
+
+                          {/* 6. Admin Delete Request */}
+                          {(visit.status === 'DRAFT' || visit.status === 'SUBMITTED') && isAdmin && (
+                            <div className="pt-1 mt-1 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenDropdownId(null);
+                                  deleteVisit(visit.id);
+                                }}
+                                className="w-full px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4 text-rose-500" />
+                                <span>Delete Visit Request</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {/* Front Desk Quick Check-In / Check-Out */}
-                      {isSecurity && visit.status === 'APPROVED' && (
-                        <button
-                          onClick={() => checkIn(visit.id)}
-                          className="px-2.5 py-1 rounded-xl bg-sky-50 text-[#00adef] hover:bg-[#00adef] hover:text-white font-bold text-[10px] transition-colors cursor-pointer"
-                          title="Check-In Guest & Issue Badge"
-                        >
-                          Check In
-                        </button>
-                      )}
-
-                      {isSecurity && visit.status === 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => checkOut(visit.id)}
-                          className="px-2.5 py-1 rounded-xl bg-orange-50 text-[#e38524] hover:bg-[#e38524] hover:text-white font-bold text-[10px] transition-colors cursor-pointer"
-                          title="Check-Out Guest & Send Survey"
-                        >
-                          Check Out
-                        </button>
                       )}
                     </div>
                   </td>
