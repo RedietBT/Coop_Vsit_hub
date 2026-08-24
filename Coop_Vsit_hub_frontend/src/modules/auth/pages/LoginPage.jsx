@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { User, Lock, ArrowRight, AlertCircle, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthLayout from '@/core/layouts/AuthLayout';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
 import LockoutCountdown from '../components/LockoutCountdown';
-import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import FirstTimeChangePasswordModal from '../components/FirstTimeChangePasswordModal';
 import { loginSchema } from '../schemas/authSchemas';
 import useAuthStore from '../store/authStore';
 import soundPlayer from '@/core/utils/soundPlayer';
@@ -16,9 +16,11 @@ import soundPlayer from '@/core/utils/soundPlayer';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const { login, isLoading, error, lockoutUntil, clearError } = useAuthStore();
+
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
 
   const {
     register,
@@ -45,21 +47,34 @@ export const LoginPage = () => {
 
   const onSubmit = async (data) => {
     clearError();
+    setEnteredPassword(data.password);
     const result = await login(data.identifier, data.password);
 
     if (result.success) {
+      // Check if user must change password on first login
+      if (result.user?.mustChangePassword) {
+        setShowFirstTimeModal(true);
+        return;
+      }
+
       soundPlayer.playNotificationChime();
-      toast.success(`Welcome back, ${result.user?.fullName || 'User'}!`);
+      toast.success(`Welcome back, ${result.user?.firstName || result.user?.username || 'User'}!`);
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } else {
       soundPlayer.playNotificationChime();
-      if (result.status === 429) {
-        toast.error('Account temporarily locked due to 3 failed attempts.');
+      if (result.status === 429 || (result.error && result.error.toLowerCase().includes('locked'))) {
+        toast.error('Account temporarily locked due to 3 failed attempts (15 minutes).');
       } else {
-        toast.error(result.error || 'Invalid credentials.');
+        toast.error(result.error || 'Invalid username or password.');
       }
     }
+  };
+
+  const handleFirstTimeSuccess = () => {
+    setShowFirstTimeModal(false);
+    const from = location.state?.from?.pathname || '/dashboard';
+    navigate(from, { replace: true });
   };
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();
@@ -115,13 +130,12 @@ export const LoginPage = () => {
           />
 
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => setShowForgotModal(true)}
-              className="text-xs font-bold text-[#00adef] hover:text-[#0093cc] hover:underline transition-all cursor-pointer"
+            <Link
+              to="/forgot-password"
+              className="text-xs font-bold text-[#00adef] hover:text-[#e38524] hover:underline transition-all cursor-pointer"
             >
               Forgot Password?
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -140,10 +154,11 @@ export const LoginPage = () => {
         </Button>
       </form>
 
-      {/* Forgot Password Modal */}
-      <ForgotPasswordModal
-        isOpen={showForgotModal}
-        onClose={() => setShowForgotModal(false)}
+      {/* Mandatory First-Time Password Change Modal */}
+      <FirstTimeChangePasswordModal
+        isOpen={showFirstTimeModal}
+        tempPassword={enteredPassword}
+        onSuccess={handleFirstTimeSuccess}
       />
     </AuthLayout>
   );

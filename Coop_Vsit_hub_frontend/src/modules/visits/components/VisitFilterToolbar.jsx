@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Plus, Filter, RotateCcw, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Filter, RotateCcw, X, CalendarPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useVisitStore from '../store/visitStore';
+import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import useAuthStore from '@/modules/auth/store/authStore';
 import Button from '@/shared/components/ui/Button';
 
@@ -13,21 +15,18 @@ const STATUS_PILLS = [
   { label: 'Rejected', value: 'REJECTED' },
 ];
 
-const DEPARTMENTS = [
-  'Digital Banking & Payments',
-  'Corporate Banking',
-  'FinTech PE & Open Banking',
-  'Retail Banking',
-  'Executive Office',
-  'Information Security & Risk',
-];
-
 export const VisitFilterToolbar = () => {
-  const { filters, setFilters, resetFilters, openCreateModal, visits, totalElements } = useVisitStore();
+  const navigate = useNavigate();
+  const { filters, setFilters, resetFilters, openCreateModal, totalElements } = useVisitStore();
+  const { departments, fetchAllMasterData } = useMasterDataStore();
   const { hasAnyRole } = useAuthStore();
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
-  const canCreate = hasAnyRole(['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_EMPLOYEE']);
+  const canCreate = hasAnyRole(['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']);
+
+  useEffect(() => {
+    fetchAllMasterData();
+  }, [fetchAllMasterData]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -58,7 +57,7 @@ export const VisitFilterToolbar = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by code (VIS-2026), guest, org, room..."
-            className="w-full pl-10 pr-20 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 shadow-xs placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef] focus:ring-2 focus:ring-[#00adef]/20 transition-all"
+            className="w-full pl-10 pr-20 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 shadow-xs placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef]"
           />
           <button
             type="submit"
@@ -68,18 +67,18 @@ export const VisitFilterToolbar = () => {
           </button>
         </form>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          {/* Department Select */}
+        {/* Filter Dropdowns & Create CTA */}
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {/* Department Filter */}
           <select
             value={filters.department || ''}
             onChange={(e) => setFilters({ department: e.target.value })}
             className="text-xs font-semibold py-2.5 px-3 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:border-[#00adef] cursor-pointer"
           >
             <option value="">All Departments</option>
-            {DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
+            {departments.map((dept) => (
+              <option key={dept.id || dept.name} value={dept.name}>
+                {dept.name}
               </option>
             ))}
           </select>
@@ -99,7 +98,19 @@ export const VisitFilterToolbar = () => {
             </button>
           )}
 
-          {/* Create Visit CTA */}
+          {/* Dedicated Book Visit Page Button */}
+          {canCreate && (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/visits/book')}
+              icon={CalendarPlus}
+            >
+              Full Booking Studio
+            </Button>
+          )}
+
+          {/* Quick Create Visit Modal CTA */}
           {canCreate && (
             <Button
               variant="orange"
@@ -107,7 +118,7 @@ export const VisitFilterToolbar = () => {
               onClick={openCreateModal}
               icon={Plus}
             >
-              Book New Visit
+              Quick Book
             </Button>
           )}
         </div>
