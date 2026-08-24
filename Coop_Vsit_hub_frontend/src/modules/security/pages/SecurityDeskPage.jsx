@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ShieldCheck, RotateCcw, Sparkles, LogIn, Users } from 'lucide-react';
+import { UserCheck, RotateCcw, Sparkles, LogIn, Users } from 'lucide-react';
 import useSecurityStore from '../store/securityStore';
 import SecurityKpiBanner from '../components/SecurityKpiBanner';
 import SecurityArrivalsTable from '../components/SecurityArrivalsTable';
@@ -21,7 +21,6 @@ export const SecurityDeskPage = () => {
 
   useEffect(() => {
     fetchSecurityFeed();
-    // Auto-refresh security feed every 20 seconds
     const interval = setInterval(() => {
       fetchSecurityFeed(false);
     }, 20000);
@@ -34,12 +33,12 @@ export const SecurityDeskPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-[#e38524] border border-amber-200 text-xs font-bold uppercase tracking-wider mb-2">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Front Desk Security Operations</span>
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Front Desk Reception</span>
           </div>
 
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#000000] tracking-tight">
-            Security Desk Cockpit
+            Front Desk Cockpit
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Real-time visitor check-in, auto badge issuance (COOPV), ID verification, and on-premises escort tracking.
@@ -94,7 +93,7 @@ export const SecurityDeskPage = () => {
         </button>
       </div>
 
-      {/* 3. Main Data Table based on Active Tab */}
+      {/* 3. Main Data Table */}
       {activeTab === 'arrivals' ? (
         <SecurityArrivalsTable />
       ) : (
