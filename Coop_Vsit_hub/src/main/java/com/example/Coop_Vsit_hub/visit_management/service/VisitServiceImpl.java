@@ -51,6 +51,10 @@ public class VisitServiceImpl implements VisitService {
     @org.springframework.beans.factory.annotation.Autowired
     private FeedbackService feedbackService;
 
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.coop_vsit_hub.notification_management.service.NotificationService notificationService;
+
     @Override
     @Transactional(readOnly = true)
     public PageResponse<VisitSummaryResponse> getAllVisits(
@@ -243,6 +247,14 @@ public class VisitServiceImpl implements VisitService {
 
         Visit saved = visitRepository.save(visit);
 
+        if (notificationService != null && saved.getStatus() == VisitStatus.SUBMITTED) {
+            try {
+                notificationService.notifyVisitRequested(saved);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch visit request notification for '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
+
         auditLoggerService.logEvent(
                 requester,
                 requester.getUsername(),
@@ -374,6 +386,14 @@ public class VisitServiceImpl implements VisitService {
 
         Visit saved = visitRepository.save(visit);
 
+        if (notificationService != null) {
+            try {
+                notificationService.notifyVisitStatusTransition(saved, current, target, request.getDecisionNotes());
+            } catch (Exception e) {
+                log.warn("Failed to dispatch status transition notification for '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
+
         auditLoggerService.logEvent(
                 approver,
                 approverUsername,
@@ -415,6 +435,14 @@ public class VisitServiceImpl implements VisitService {
         }
 
         Visit saved = visitRepository.save(visit);
+
+        if (notificationService != null) {
+            try {
+                notificationService.notifyVisitorCheckedIn(saved);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch visitor check-in notification for '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
 
         auditLoggerService.logEvent(
                 null,
@@ -552,6 +580,14 @@ public class VisitServiceImpl implements VisitService {
                 .build();
 
         Visit saved = visitRepository.save(visit);
+
+        if (notificationService != null) {
+            try {
+                notificationService.notifyVisitRequested(saved);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch public visit booking notification for '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
 
         auditLoggerService.logEvent(
                 systemRequester,

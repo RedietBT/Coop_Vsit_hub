@@ -74,6 +74,15 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
            "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.DRAFT)")
     BigDecimal sumActivePipelineValue();
 
+    @Query("SELECT COALESCE(SUM(v.opportunityValue), 0) FROM Visit v")
+    BigDecimal sumTotalPipelineValue();
+
+    @Query("SELECT COALESCE(SUM(v.opportunityValue), 0) FROM Visit v WHERE v.status = com.example.coop_vsit_hub.visit_management.enums.VisitStatus.COMPLETED")
+    BigDecimal sumRealizedCompletedValue();
+
+    @Query("SELECT COALESCE(SUM(v.opportunityValue), 0) FROM Visit v WHERE v.status IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SUBMITTED, com.example.coop_vsit_hub.visit_management.enums.VisitStatus.UNDER_REVIEW)")
+    BigDecimal sumPendingReviewValue();
+
     @Query("SELECT v.status, COUNT(v) FROM Visit v GROUP BY v.status")
     List<Object[]> countVisitsByStatusGroup();
 

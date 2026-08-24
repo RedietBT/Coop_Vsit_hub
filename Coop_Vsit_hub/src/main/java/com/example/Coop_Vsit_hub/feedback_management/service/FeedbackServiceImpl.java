@@ -39,6 +39,10 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final AuditLoggerService auditLoggerService;
     private final JavaMailSender mailSender;
 
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.coop_vsit_hub.notification_management.service.NotificationService notificationService;
+
     @Value("${app.frontend.url:http://localhost:8080}")
     private String frontendUrl;
 
@@ -129,6 +133,15 @@ public class FeedbackServiceImpl implements FeedbackService {
         feedback.setSubmittedAt(Instant.now());
 
         VisitFeedback saved = feedbackRepository.save(feedback);
+
+        if (notificationService != null) {
+            try {
+                double avgRating = (saved.getHospitalityRating() + saved.getFacilityRating() + saved.getObjectiveRating()) / 3.0;
+                notificationService.notifyFeedbackSubmitted(saved.getVisit(), saved.getNpsScore(), avgRating);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch feedback notification for '{}': {}", saved.getVisit().getVisitCode(), e.getMessage());
+            }
+        }
 
         auditLoggerService.logEvent(
                 null,

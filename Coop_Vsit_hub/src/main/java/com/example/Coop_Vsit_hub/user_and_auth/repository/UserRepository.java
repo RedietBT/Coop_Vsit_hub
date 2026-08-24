@@ -40,6 +40,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     @Query("SELECT r.name, COUNT(u) FROM User u JOIN u.roles r GROUP BY r.name")
     List<Object[]> countUsersByRole();
 
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
+    List<User> findByRoleName(@Param("roleName") String roleName);
+
     @Query("SELECT COALESCE(u.department, 'Unassigned'), COUNT(u) FROM User u GROUP BY u.department")
     List<Object[]> countUsersByDepartment();
 }

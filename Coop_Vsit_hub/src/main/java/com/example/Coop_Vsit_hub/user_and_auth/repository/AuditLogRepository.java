@@ -15,4 +15,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     Page<AuditLog> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
 
     Page<AuditLog> findByEventType(AuditEventType eventType, Pageable pageable);
+
+    java.util.List<AuditLog> findTop10ByOrderByCreatedAtDesc();
 }
