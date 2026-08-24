@@ -1,5 +1,6 @@
 package com.example.coop_vsit_hub.visit_management.dto;
 
+import com.example.coop_vsit_hub.individual_guest_management.dto.IndividualGuestSummaryResponse;
 import com.example.coop_vsit_hub.user_and_auth.dto.UserDetailResponse;
 import com.example.coop_vsit_hub.visit_management.enums.GuestCategory;
 import com.example.coop_vsit_hub.visit_management.enums.VisitPriority;
@@ -47,6 +48,7 @@ public class VisitDetailResponse {
     private GuestCategory guestCategory;
     private String guestDisplayName;
     private Organization guestOrganization;
+    private IndividualGuestSummaryResponse masterIndividualGuest;
     private String individualGuestFirstName;
     private String individualGuestMiddleName;
     private String individualGuestLastName;
@@ -90,6 +92,8 @@ public class VisitDetailResponse {
                 .guestCategory(visit.getGuestCategory())
                 .guestDisplayName(visit.getGuestDisplayName())
                 .guestOrganization(visit.getGuestOrganization())
+                .masterIndividualGuest(visit.getMasterIndividualGuest() != null ?
+                        com.example.coop_vsit_hub.individual_guest_management.dto.IndividualGuestSummaryResponse.from(visit.getMasterIndividualGuest()) : null)
                 .individualGuestFirstName(visit.getIndividualGuestFirstName())
                 .individualGuestMiddleName(visit.getIndividualGuestMiddleName())
                 .individualGuestLastName(visit.getIndividualGuestLastName())

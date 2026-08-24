@@ -98,6 +98,10 @@ public class Visit {
     @JoinColumn(name = "guest_organization_id")
     private Organization guestOrganization;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "individual_guest_id")
+    private com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest masterIndividualGuest;
+
     // Individual Guest Details (When guestCategory = INDIVIDUAL or primary guest contact)
     @Column(name = "individual_guest_first_name", length = 50)
     private String individualGuestFirstName;

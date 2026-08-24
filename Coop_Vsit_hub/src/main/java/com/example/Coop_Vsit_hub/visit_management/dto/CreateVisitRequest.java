@@ -75,6 +75,9 @@ public class CreateVisitRequest {
     @Schema(description = "Required if guestCategory is ORGANIZATION", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
     private UUID guestOrganizationId;
 
+    @Schema(description = "Optional UUID of registered Individual VIP Guest", example = "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22")
+    private UUID individualGuestId;
+
     // Individual Guest Details
     @Pattern(
         regexp = "^[a-zA-Z\\s\\-']*$",

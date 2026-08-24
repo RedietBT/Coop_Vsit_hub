@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration V3: Core Visit Hub Tables (Organizations, Visits & Customer Feedback)
+-- Migration V3: Core Visit Hub Tables (Organizations, Guests, Visits & Customer Feedback)
 -- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
 -- =============================================================================
 
@@ -25,7 +25,31 @@ CREATE TABLE IF NOT EXISTS organizations (
 COMMENT ON TABLE organizations IS 'Guest organizations visiting CoopBank DxValley';
 
 -- -----------------------------------------------------------------------------
--- 2. VISITS TABLE (Executive Visit Requests & Lifecycle Management)
+-- 2. INDIVIDUAL_GUESTS TABLE (VIP & Independent Guest Intelligence)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS individual_guests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name VARCHAR(50) NOT NULL,
+    middle_name VARCHAR(50),
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone_number VARCHAR(30),
+    id_number VARCHAR(50),
+    id_type VARCHAR(30) DEFAULT 'NATIONAL_ID' NOT NULL, -- NATIONAL_ID, PASSPORT, DRIVER_LICENSE, DIPLOMATIC_ID
+    guest_title VARCHAR(100),
+    organization_affiliation VARCHAR(150),
+    country_of_residence VARCHAR(100) DEFAULT 'Ethiopia' NOT NULL,
+    vip_tier VARCHAR(30) DEFAULT 'STANDARD' NOT NULL, -- VIP_TIER_1, VIP_TIER_2, STANDARD, DIPLOMAT
+    relationship_score INT DEFAULT 50 NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+COMMENT ON TABLE individual_guests IS 'Master register of VIP and individual guests';
+
+-- -----------------------------------------------------------------------------
+-- 3. VISITS TABLE (Executive Visit Requests & Lifecycle Management)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS visits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,6 +77,7 @@ CREATE TABLE IF NOT EXISTS visits (
     -- Guest Classification (Organization vs Individual Person)
     guest_category VARCHAR(30) DEFAULT 'ORGANIZATION' NOT NULL, -- ORGANIZATION or INDIVIDUAL
     guest_organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL, -- Nullable if individual guest
+    individual_guest_id UUID REFERENCES individual_guests(id) ON DELETE SET NULL, -- Master individual guest profile
     
     -- Individual Guest Details (When guest_category = 'INDIVIDUAL' or primary guest contact)
     individual_guest_first_name VARCHAR(50),
@@ -79,7 +104,7 @@ CREATE TABLE IF NOT EXISTS visits (
 COMMENT ON TABLE visits IS 'Master executive visit requests and lifecycle tracking';
 
 -- -----------------------------------------------------------------------------
--- 3. VISIT_FEEDBACKS TABLE (Customer & Visitor Post-Visit Surveys)
+-- 4. VISIT_FEEDBACKS TABLE (Customer & Visitor Post-Visit Surveys)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS visit_feedbacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -108,5 +133,6 @@ CREATE INDEX IF NOT EXISTS idx_visits_status ON visits(status);
 CREATE INDEX IF NOT EXISTS idx_visits_priority ON visits(priority_level);
 CREATE INDEX IF NOT EXISTS idx_visits_requester ON visits(requester_id);
 CREATE INDEX IF NOT EXISTS idx_visits_guest_org ON visits(guest_organization_id);
+CREATE INDEX IF NOT EXISTS idx_visits_individual_guest ON visits(individual_guest_id);
 CREATE INDEX IF NOT EXISTS idx_visits_start_time ON visits(scheduled_start_time);
 CREATE INDEX IF NOT EXISTS idx_visit_feedbacks_token ON visit_feedbacks(survey_token);

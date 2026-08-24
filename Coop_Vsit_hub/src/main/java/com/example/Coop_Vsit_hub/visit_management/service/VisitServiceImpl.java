@@ -16,6 +16,9 @@ import com.example.coop_vsit_hub.visit_management.model.Visit;
 import com.example.coop_vsit_hub.visit_management.repository.OrganizationRepository;
 import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
 import com.example.coop_vsit_hub.visit_management.repository.VisitSpecification;
+import com.example.coop_vsit_hub.feedback_management.service.FeedbackService;
+import com.example.coop_vsit_hub.feedback_management.service.FeedbackServiceImpl;
+import com.example.coop_vsit_hub.individual_guest_management.repository.IndividualGuestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,12 +43,13 @@ public class VisitServiceImpl implements VisitService {
 
     private final VisitRepository visitRepository;
     private final OrganizationRepository organizationRepository;
+    private final IndividualGuestRepository individualGuestRepository;
     private final UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
 
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
-    private com.example.coop_vsit_hub.feedback_management.service.FeedbackService feedbackService;
+    private FeedbackService feedbackService;
 
     @Override
     @Transactional(readOnly = true)
@@ -173,6 +177,12 @@ public class VisitServiceImpl implements VisitService {
                     .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + request.getGuestOrganizationId()));
         }
 
+        com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest indGuest = null;
+        if (request.getIndividualGuestId() != null) {
+            indGuest = individualGuestRepository.findById(request.getIndividualGuestId())
+                    .orElseThrow(() -> new IllegalArgumentException("Individual guest not found with ID: " + request.getIndividualGuestId()));
+        }
+
         User sponsor = null;
         if (request.getSponsorId() != null) {
             sponsor = userRepository.findById(request.getSponsorId())
@@ -181,6 +191,24 @@ public class VisitServiceImpl implements VisitService {
 
         String visitCode = generateVisitCode();
         VisitStatus initialStatus = Boolean.TRUE.equals(request.getIsDraft()) ? VisitStatus.DRAFT : VisitStatus.SUBMITTED;
+
+        String fName = request.getIndividualGuestFirstName();
+        String mName = request.getIndividualGuestMiddleName();
+        String lName = request.getIndividualGuestLastName();
+        String email = request.getIndividualGuestEmail();
+        String phone = request.getIndividualGuestPhone();
+        String title = request.getIndividualGuestTitle();
+        String idNum = request.getIndividualGuestIdNumber();
+
+        if (indGuest != null) {
+            if (!StringUtils.hasText(fName)) fName = indGuest.getFirstName();
+            if (!StringUtils.hasText(mName)) mName = indGuest.getMiddleName();
+            if (!StringUtils.hasText(lName)) lName = indGuest.getLastName();
+            if (!StringUtils.hasText(email)) email = indGuest.getEmail();
+            if (!StringUtils.hasText(phone)) phone = indGuest.getPhoneNumber();
+            if (!StringUtils.hasText(title)) title = indGuest.getGuestTitle();
+            if (!StringUtils.hasText(idNum)) idNum = indGuest.getIdNumber();
+        }
 
         Visit visit = Visit.builder()
                 .visitCode(visitCode)
@@ -199,13 +227,14 @@ public class VisitServiceImpl implements VisitService {
                 .visitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1)
                 .guestCategory(request.getGuestCategory())
                 .guestOrganization(guestOrg)
-                .individualGuestFirstName(request.getIndividualGuestFirstName() != null ? request.getIndividualGuestFirstName().trim() : null)
-                .individualGuestMiddleName(request.getIndividualGuestMiddleName() != null ? request.getIndividualGuestMiddleName().trim() : null)
-                .individualGuestLastName(request.getIndividualGuestLastName() != null ? request.getIndividualGuestLastName().trim() : null)
-                .individualGuestEmail(request.getIndividualGuestEmail() != null ? request.getIndividualGuestEmail().trim().toLowerCase() : null)
-                .individualGuestPhone(request.getIndividualGuestPhone() != null ? request.getIndividualGuestPhone().trim() : null)
-                .individualGuestTitle(request.getIndividualGuestTitle() != null ? request.getIndividualGuestTitle().trim() : null)
-                .individualGuestIdNumber(request.getIndividualGuestIdNumber() != null ? request.getIndividualGuestIdNumber().trim() : null)
+                .masterIndividualGuest(indGuest)
+                .individualGuestFirstName(fName != null ? fName.trim() : null)
+                .individualGuestMiddleName(mName != null ? mName.trim() : null)
+                .individualGuestLastName(lName != null ? lName.trim() : null)
+                .individualGuestEmail(email != null ? email.trim().toLowerCase() : null)
+                .individualGuestPhone(phone != null ? phone.trim() : null)
+                .individualGuestTitle(title != null ? title.trim() : null)
+                .individualGuestIdNumber(idNum != null ? idNum.trim() : null)
                 .requester(requester)
                 .sponsor(sponsor)
                 .scheduledStartTime(request.getScheduledStartTime())
@@ -254,6 +283,12 @@ public class VisitServiceImpl implements VisitService {
                     .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + request.getGuestOrganizationId()));
         }
 
+        com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest indGuest = null;
+        if (request.getIndividualGuestId() != null) {
+            indGuest = individualGuestRepository.findById(request.getIndividualGuestId())
+                    .orElseThrow(() -> new IllegalArgumentException("Individual guest not found with ID: " + request.getIndividualGuestId()));
+        }
+
         User sponsor = null;
         if (request.getSponsorId() != null) {
             sponsor = userRepository.findById(request.getSponsorId())
@@ -274,6 +309,7 @@ public class VisitServiceImpl implements VisitService {
         visit.setVisitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1);
         visit.setGuestCategory(request.getGuestCategory());
         visit.setGuestOrganization(guestOrg);
+        visit.setMasterIndividualGuest(indGuest);
         visit.setIndividualGuestFirstName(request.getIndividualGuestFirstName() != null ? request.getIndividualGuestFirstName().trim() : null);
         visit.setIndividualGuestMiddleName(request.getIndividualGuestMiddleName() != null ? request.getIndividualGuestMiddleName().trim() : null);
         visit.setIndividualGuestLastName(request.getIndividualGuestLastName() != null ? request.getIndividualGuestLastName().trim() : null);
