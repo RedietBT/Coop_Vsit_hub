@@ -162,6 +162,15 @@ public class VisitController {
         return ResponseEntity.ok(visitService.checkOutVisitor(id, req, securityUsername));
     }
 
+    @PostMapping("/public-booking")
+    @Operation(summary = "Public Customer Visit Request", description = "Allows external clients or visitors to submit a visit booking request without logging in. Moves to SUBMITTED state for bank staff review.")
+    public ResponseEntity<VisitDetailResponse> bookPublicVisit(
+            @Valid @RequestBody PublicBookingRequest request
+    ) {
+        VisitDetailResponse response = visitService.bookPublicVisit(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
     @Operation(summary = "Delete / Cancel Visit", description = "Removes an unapproved visit request from the register.")

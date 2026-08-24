@@ -59,10 +59,11 @@ public class SecurityConfig {
                     "/api/v1/auth/reset-password",
                     "/api/v1/auth/verify-email/**"
                 ).permitAll()
-                // Public Feedback Endpoints
+                // Public Feedback & Visit Booking Endpoints
                 .requestMatchers(
                     "/api/v1/feedback/verify/**",
-                    "/api/v1/feedback/submit"
+                    "/api/v1/feedback/submit",
+                    "/api/v1/visits/public-booking"
                 ).permitAll()
                 // Static assets
                 .requestMatchers("/error", "/favicon.ico").permitAll()

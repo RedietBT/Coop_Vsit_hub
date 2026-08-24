@@ -81,4 +81,9 @@ public interface VisitService {
      * Delete or cancel unapproved visit.
      */
     void deleteVisit(UUID id, String authenticatedUsername);
+
+    /**
+     * Public booking submitted by external guest without authentication.
+     */
+    VisitDetailResponse bookPublicVisit(PublicBookingRequest request);
 }

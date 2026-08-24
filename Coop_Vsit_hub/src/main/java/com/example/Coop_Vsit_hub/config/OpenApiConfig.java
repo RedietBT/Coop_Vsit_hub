@@ -51,7 +51,7 @@ public class OpenApiConfig {
                 .tags(List.of(
                         new Tag().name("1. Authentication & User Management").description("Bank staff authentication, registration, JWT refresh, and security profiles"),
                         new Tag().name("2. Visits Lifecycle Management").description("Executive visit requests, approvals, conflict checks, and state transitions"),
-                        new Tag().name("3. Guest Organizations").description("Corporate partner profiles, relationship scores, and historic engagement metrics"),
+                        new Tag().name("3. Organizations Intelligence").description("Guest corporate partner profiling, relationship health scoring, and portfolio analytics"),
                         new Tag().name("4. Customer Feedback").description("Post-visit guest surveys, CSAT scores, and Net Promoter Score (NPS) reviews"),
                         new Tag().name("5. Executive Analytics").description("Pipeline financial valuation ($M), conversion ratios, and executive reporting")
                 ));

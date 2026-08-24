@@ -43,6 +43,10 @@ public class VisitServiceImpl implements VisitService {
     private final UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
 
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.coop_vsit_hub.feedback_management.service.FeedbackService feedbackService;
+
     @Override
     @Transactional(readOnly = true)
     public PageResponse<VisitSummaryResponse> getAllVisits(
@@ -407,6 +411,14 @@ public class VisitServiceImpl implements VisitService {
 
         Visit saved = visitRepository.save(visit);
 
+        if (feedbackService != null) {
+            try {
+                feedbackService.createAndSendFeedbackInvitation(saved);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch survey email for completed visit '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
+
         auditLoggerService.logEvent(
                 null,
                 securityUsername,
@@ -444,6 +456,78 @@ public class VisitServiceImpl implements VisitService {
                 "VISIT_MODULE",
                 String.format("Visit '%s' was deleted by '%s'", visit.getVisitCode(), authenticatedUsername)
         );
+    }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse bookPublicVisit(PublicBookingRequest request) {
+        log.info("Processing public customer visit booking: '{}' by guest '{}'", request.getTitle(), request.getContactEmail());
+
+        validateSchedule(request.getPreferredStartTime(), request.getPreferredEndTime());
+
+        // Resolve default bank system requester
+        User systemRequester = userRepository.findByUsername("admin")
+                .orElseGet(() -> userRepository.findAll().stream().findFirst()
+                        .orElseThrow(() -> new IllegalStateException("No staff users available to handle incoming public visit requests.")));
+
+        Organization guestOrg = null;
+        if (request.getGuestCategory() == GuestCategory.ORGANIZATION && StringUtils.hasText(request.getOrganizationName())) {
+            String orgName = request.getOrganizationName().trim();
+            guestOrg = organizationRepository.findByName(orgName).orElseGet(() -> {
+                Organization newOrg = Organization.builder()
+                        .name(orgName)
+                        .category("Enterprise Customers")
+                        .marketCountry("Ethiopia")
+                        .contactPersonName(request.getContactPersonFirstName() + " " + request.getContactPersonLastName())
+                        .contactEmail(request.getContactEmail().trim().toLowerCase())
+                        .contactPhone(request.getContactPhone().trim())
+                        .notes("Auto-registered via Public Customer Visit Booking portal.")
+                        .build();
+                return organizationRepository.save(newOrg);
+            });
+        }
+
+        String visitCode = generateVisitCode();
+        String dept = StringUtils.hasText(request.getRequestedDepartment()) ? request.getRequestedDepartment().trim() : "General Management & Public Relations";
+
+        Visit visit = Visit.builder()
+                .visitCode(visitCode)
+                .title(request.getTitle().trim())
+                .requestingDepartment(dept)
+                .visitType(VisitType.EXTERNAL)
+                .visitObjective(request.getVisitObjective().trim())
+                .expectedOutcome(StringUtils.hasText(request.getAdditionalNotes()) ? request.getAdditionalNotes().trim() : null)
+                .priorityLevel(VisitPriority.MEDIUM)
+                .status(VisitStatus.SUBMITTED)
+                .opportunityValue(BigDecimal.ZERO)
+                .currency("USD")
+                .visitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1)
+                .guestCategory(request.getGuestCategory())
+                .guestOrganization(guestOrg)
+                .individualGuestFirstName(request.getContactPersonFirstName().trim())
+                .individualGuestMiddleName(StringUtils.hasText(request.getContactPersonMiddleName()) ? request.getContactPersonMiddleName().trim() : null)
+                .individualGuestLastName(request.getContactPersonLastName().trim())
+                .individualGuestEmail(request.getContactEmail().trim().toLowerCase())
+                .individualGuestPhone(request.getContactPhone().trim())
+                .individualGuestTitle(StringUtils.hasText(request.getGuestTitle()) ? request.getGuestTitle().trim() : null)
+                .requester(systemRequester)
+                .scheduledStartTime(request.getPreferredStartTime())
+                .scheduledEndTime(request.getPreferredEndTime())
+                .build();
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                systemRequester,
+                "PUBLIC_GUEST (" + request.getContactEmail() + ")",
+                AuditEventType.VISIT_CREATED,
+                AuditStatus.SUCCESS,
+                "PUBLIC_PORTAL",
+                "VISIT_MODULE",
+                String.format("Public customer visit booking submitted with code '%s' for '%s'", saved.getVisitCode(), saved.getGuestDisplayName())
+        );
+
+        return VisitDetailResponse.from(saved);
     }
 
     private void validateSchedule(Instant start, Instant end) {
