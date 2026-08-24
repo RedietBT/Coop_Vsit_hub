@@ -16,13 +16,28 @@ export const authApi = {
     return response.data;
   },
 
-  verifyEmail: async (token) => {
-    const response = await apiClient.get(`/api/v1/auth/verify-email/${token}`);
+  getProfile: async () => {
+    const response = await apiClient.get('/api/v1/auth/me');
     return response.data;
   },
 
-  forgotPassword: async (email) => {
-    const response = await apiClient.post('/api/v1/auth/forgot-password', { email });
+  changePassword: async (payload) => {
+    // payload: { currentPassword, newPassword, confirmNewPassword }
+    const response = await apiClient.post('/api/v1/auth/change-password', payload);
+    return response.data;
+  },
+
+  verifyEmail: async (token) => {
+    const response = await apiClient.get('/api/v1/auth/verify-email', {
+      params: { token },
+    });
+    return response.data;
+  },
+
+  forgotPassword: async (identifier) => {
+    const response = await apiClient.post('/api/v1/auth/forgot-password', {
+      identifier: identifier.trim(),
+    });
     return response.data;
   },
 
