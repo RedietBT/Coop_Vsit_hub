@@ -74,6 +74,8 @@ public class SecurityConfig {
                     "/api/v1/feedback/submit",
                     "/api/v1/visits/public-booking"
                 ).permitAll()
+                // MailHog Web Dashboard
+                .requestMatchers("/mailhog", "/mailhog/**").permitAll()
                 // Static assets
                 .requestMatchers("/error", "/favicon.ico").permitAll()
                 // All other endpoints require JWT

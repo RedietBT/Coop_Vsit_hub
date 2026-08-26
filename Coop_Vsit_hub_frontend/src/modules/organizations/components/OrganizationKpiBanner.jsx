@@ -10,11 +10,11 @@ export const OrganizationKpiBanner = () => {
     (organizations.length > 0
       ? (
           organizations.reduce(
-            (acc, curr) => acc + (curr.relationshipScore || 85),
+            (acc, curr) => acc + (curr.relationshipScore || 0),
             0
           ) / organizations.length
         ).toFixed(1)
-      : '88.0');
+      : '0.0');
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
@@ -41,7 +41,7 @@ export const OrganizationKpiBanner = () => {
             Relationship Health Index
           </span>
           <p className="font-heading font-black text-3xl text-[#000000] mt-1">
-            {avgScore} <span className="text-xs font-semibold text-slate-500">/ 100</span>
+            {organizations.length > 0 ? avgScore : '0.0'} <span className="text-xs font-semibold text-slate-500">/ 100</span>
           </p>
           <p className="text-[10px] text-slate-400 mt-0.5">Average across partner portfolio</p>
         </div>
@@ -57,7 +57,7 @@ export const OrganizationKpiBanner = () => {
             Market Sectors
           </span>
           <p className="font-heading font-black text-3xl text-[#000000] mt-1">
-            {portfolioStats?.totalSectorsCount || 6} <span className="text-xs font-semibold text-slate-500">Industries</span>
+            {portfolioStats?.totalSectorsCount || 0} <span className="text-xs font-semibold text-slate-500">Industries</span>
           </p>
           <p className="text-[10px] text-slate-400 mt-0.5">Telecom, FinTech, Government</p>
         </div>
@@ -73,7 +73,7 @@ export const OrganizationKpiBanner = () => {
             Active Delegations
           </span>
           <p className="font-heading font-black text-3xl text-emerald-800 mt-1">
-            100% <span className="text-xs font-semibold text-slate-500">Verified</span>
+            {organizations.length > 0 ? '100%' : '0'} <span className="text-xs font-semibold text-slate-500">{organizations.length > 0 ? 'Verified' : 'Active'}</span>
           </p>
           <p className="text-[10px] text-slate-400 mt-0.5">High-affinity corporate partners</p>
         </div>

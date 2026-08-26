@@ -49,12 +49,12 @@ export const OperationalKpiGrid = ({ data }) => {
     },
     {
       label: 'Guest Satisfaction (CSAT)',
-      value: `${csatScorePercentage > 0 ? csatScorePercentage.toFixed(1) : '98.5'}%`,
-      subtext: `${approvalRatePercentage.toFixed(0)}% executive approval rate`,
+      value: csatScorePercentage > 0 ? `${csatScorePercentage.toFixed(1)}%` : 'N/A',
+      subtext: totalVisitsCount > 0 ? `${approvalRatePercentage.toFixed(0)}% approval rate` : 'No reviews recorded yet',
       icon: CheckCircle2,
       iconColor: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-      badge: '5-Star CSAT',
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      badge: csatScorePercentage > 0 ? '5-Star CSAT' : 'Awaiting Data',
+      badgeColor: csatScorePercentage > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200',
     },
   ];
 
