@@ -57,9 +57,7 @@ export const useVisitStore = create((set, get) => ({
     get().fetchVisits();
   },
 
-  openCreateModal: async () => {
-    set({ isCreateModalOpen: true });
-    // Pre-fetch organizations and guests for dropdowns
+  fetchFormLookups: async () => {
     try {
       const [orgs, guests] = await Promise.all([
         visitApi.getOrganizations(),
@@ -69,6 +67,11 @@ export const useVisitStore = create((set, get) => ({
     } catch (e) {
       console.warn('Failed to load org/guest selectors:', e);
     }
+  },
+
+  openCreateModal: async () => {
+    set({ isCreateModalOpen: true });
+    get().fetchFormLookups();
   },
 
   closeCreateModal: () => set({ isCreateModalOpen: false }),

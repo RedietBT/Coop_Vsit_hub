@@ -61,7 +61,7 @@ export const visitApi = {
   },
 
   getIndividualGuests: async () => {
-    const response = await apiClient.get('/api/v1/individual-guests', { params: { size: 100 } });
+    const response = await apiClient.get('/api/v1/guests', { params: { size: 100 } });
     return response.data?.content || response.data || [];
   },
 };

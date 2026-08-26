@@ -78,6 +78,8 @@ public class SecurityConfig {
                 ).permitAll()
                 // MailHog Web Dashboard
                 .requestMatchers("/mailhog", "/mailhog/**").permitAll()
+                // Health Check / Keep-Alive Pings
+                .requestMatchers("/health", "/api/v1/health", "/ping").permitAll()
                 // Static assets
                 .requestMatchers("/error", "/favicon.ico").permitAll()
                 // All other endpoints require JWT

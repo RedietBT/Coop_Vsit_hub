@@ -19,8 +19,8 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.from:no-reply@coopbank.com.et}")
     private String fromEmail;
 
-    @Value("${coopbank.app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    @Value("${coopbank.app.frontend-url:https://coop-vsit-hub.vercel.app}")
+    private String frontendUrl;
 
     @Override
     public void sendPasswordResetEmail(String recipientEmail, String recipientName, String resetToken) {
@@ -32,7 +32,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(recipientEmail);
             helper.setSubject("🔒 CoopBank Visit Hub - Password Reset Request");
 
-            String resetLink = baseUrl + "/api/v1/auth/reset-password?token=" + resetToken;
+            String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
                     + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"
@@ -70,7 +70,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(recipientEmail);
             helper.setSubject("🏦 Welcome to CoopBank DxValley Visit Hub - Account Onboarding & Verification");
 
-            String verifyLink = baseUrl + "/api/v1/auth/verify-email?token=" + verificationToken;
+            String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
                     + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"

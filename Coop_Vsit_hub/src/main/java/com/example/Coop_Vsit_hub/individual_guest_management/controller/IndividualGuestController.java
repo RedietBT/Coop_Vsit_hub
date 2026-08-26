@@ -24,7 +24,7 @@ import java.util.UUID;
  * REST API Controller for VIP & Individual Guest Intelligence.
  */
 @RestController
-@RequestMapping("/api/v1/guests")
+@RequestMapping({"/api/v1/guests", "/api/v1/individual-guests"})
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "3.1 Individual Guests Intelligence", description = "VIP visitor profiles, government ID/passport verification, and relationship scoring")
