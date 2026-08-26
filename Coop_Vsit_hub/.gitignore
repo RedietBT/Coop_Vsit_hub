@@ -7,6 +7,7 @@ target/
 ### Security & Secret Property Files (NEVER TRACK CREDENTIALS IN GIT) ###
 application.properties
 application.yml
+application-*.properties
 *.env
 .env
 .env.*

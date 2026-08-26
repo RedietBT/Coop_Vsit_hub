@@ -1,17 +1,30 @@
 # =============================================================================
-# Dockerfile for CoopBank Visit Hub Backend (Spring Boot 3.3 / Java 21)
+# Multi-Stage Dockerfile for CoopBank Visit Hub Backend (Spring Boot 3.3 / Java 21)
 # Cooperative Bank of Oromia (CoopBank DxValley)
-# Fast, lightweight production container image
 # =============================================================================
 
+# --- Stage 1: Build JAR from source ---
+FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+WORKDIR /build
+
+# Cache dependencies first
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copy source code and ensure application.properties exists
+COPY src ./src
+RUN if [ ! -f src/main/resources/application.properties ]; then cp src/main/resources/application.properties.example src/main/resources/application.properties; fi
+RUN mvn clean package -DskipTests
+
+# --- Stage 2: Fast, lightweight production container image ---
 FROM eclipse-temurin:21-jre-alpine AS runner
 WORKDIR /app
 
 # Create non-root system group and user for security compliance
 RUN addgroup -S coopgroup && adduser -S coopuser -G coopgroup
 
-# Copy built artifact directly from target directory
-COPY target/*.jar app.jar
+# Copy built artifact from builder stage
+COPY --from=builder /build/target/*.jar app.jar
 
 # Set ownership
 RUN chown -R coopuser:coopgroup /app
@@ -26,3 +39,4 @@ EXPOSE 8080
 ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
