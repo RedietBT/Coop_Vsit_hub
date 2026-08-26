@@ -12,13 +12,6 @@ spring.datasource.username=${SPRING_DATASOURCE_USERNAME:coop_user}
 spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:coop_secure_pass}
 spring.datasource.driver-class-name=org.postgresql.Driver
 
-# Redis Cache & Token Store
-spring.data.redis.host=${SPRING_DATA_REDIS_HOST:localhost}
-spring.data.redis.port=${SPRING_DATA_REDIS_PORT:6379}
-spring.data.redis.password=${SPRING_DATA_REDIS_PASSWORD:}
-spring.data.redis.ssl.enabled=${SPRING_DATA_REDIS_SSL:false}
-spring.data.redis.timeout=2000ms
-
 # JPA & Migration Settings
 spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 spring.jpa.hibernate.ddl-auto=validate

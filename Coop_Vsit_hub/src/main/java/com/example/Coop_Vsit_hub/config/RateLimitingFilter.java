@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -18,24 +17,33 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Global Redis-Backed Rate Limiting Filter (Security NFR #2: Brute Force & Rate Limit Protection).
- * Limits API requests per client IP address globally.
+ * Self-contained In-Memory Rate Limiting Filter.
+ * Limits API requests per client IP address per minute without requiring external Redis.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class RateLimitingFilter extends OncePerRequestFilter {
 
-    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${coopbank.security.rate-limit.requests-per-minute}")
+    @Value("${coopbank.security.rate-limit.requests-per-minute:60}")
     private int maxRequestsPerMinute;
 
-    private static final String RATE_LIMIT_PREFIX = "rate_limit:";
+    private static class RequestWindow {
+        final AtomicInteger count = new AtomicInteger(0);
+        final long windowStartEpochMinute;
+
+        RequestWindow(long windowStartEpochMinute) {
+            this.windowStartEpochMinute = windowStartEpochMinute;
+        }
+    }
+
+    private final Map<String, RequestWindow> clientRateLimits = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -50,14 +58,21 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         String clientIp = getClientIp(request);
-        String redisKey = RATE_LIMIT_PREFIX + clientIp;
+        long currentEpochMinute = Instant.now().getEpochSecond() / 60;
 
-        Long currentCount = redisTemplate.opsForValue().increment(redisKey);
-        if (currentCount != null && currentCount == 1) {
-            redisTemplate.expire(redisKey, 1, TimeUnit.MINUTES);
-        }
+        RequestWindow window = clientRateLimits.compute(clientIp, (key, existing) -> {
+            if (existing == null || existing.windowStartEpochMinute != currentEpochMinute) {
+                RequestWindow newWindow = new RequestWindow(currentEpochMinute);
+                newWindow.count.incrementAndGet();
+                return newWindow;
+            }
+            existing.count.incrementAndGet();
+            return existing;
+        });
 
-        if (currentCount != null && currentCount > maxRequestsPerMinute) {
+        int currentCount = window.count.get();
+
+        if (currentCount > maxRequestsPerMinute) {
             log.warn("RATE LIMIT EXCEEDED: Client IP [{}] exceeded {} requests/min threshold on path [{}]", clientIp, maxRequestsPerMinute, path);
             
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
