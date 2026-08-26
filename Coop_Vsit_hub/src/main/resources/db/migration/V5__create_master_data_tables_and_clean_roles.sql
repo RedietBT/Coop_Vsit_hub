@@ -54,8 +54,8 @@ COMMENT ON TABLE meeting_rooms IS 'DxValley and CoopBank meeting rooms and execu
 -- Reassign any users with ROLE_BUSINESS_SPONSOR to ROLE_APPROVER
 DO $$
 DECLARE
-    sponsor_role_id UUID;
-    approver_role_id UUID;
+    sponsor_role_id BIGINT;
+    approver_role_id BIGINT;
 BEGIN
     SELECT id INTO sponsor_role_id FROM roles WHERE name = 'ROLE_BUSINESS_SPONSOR';
     SELECT id INTO approver_role_id FROM roles WHERE name = 'ROLE_APPROVER';
