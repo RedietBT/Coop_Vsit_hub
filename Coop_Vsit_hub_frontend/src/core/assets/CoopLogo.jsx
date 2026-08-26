@@ -1,82 +1,40 @@
-import React, { useState } from 'react';
+import React from 'react';
+import coopLogo from '@/assets/coop.png';
 
 /**
- * Cooperative Bank of Oromia (CoopBank) Official Brand Logo Component.
- * Supports image file located at `src/assets/coop-logo.png` with a clean vector SVG fallback.
+ * High-definition CoopBank Official Logo Component.
+ * Prominent, large brand logo with a clean, subtle `DxValley • VisitHub` subtitle.
  */
 export const CoopLogo = ({
   size = 'md', // 'sm' | 'md' | 'lg' | 'xl'
   variant = 'full', // 'full' | 'icon'
+  hideText = false,
   className = '',
 }) => {
-  const [imageError, setImageError] = useState(false);
-
   const sizeMap = {
-    sm: { img: 'h-8', icon: 'w-7 h-7', text: 'text-lg', sub: 'text-[9px]' },
-    md: { img: 'h-11', icon: 'w-10 h-10', text: 'text-xl', sub: 'text-[10px]' },
-    lg: { img: 'h-14', icon: 'w-12 h-12', text: 'text-2xl', sub: 'text-xs' },
-    xl: { img: 'h-20', icon: 'w-16 h-16', text: 'text-3xl', sub: 'text-sm' },
+    sm: { img: 'h-9', text: 'text-[9px]' },
+    md: { img: 'h-14 md:h-16', text: 'text-[11px]' },
+    lg: { img: 'h-20 md:h-22', text: 'text-xs' },
+    xl: { img: 'h-28', text: 'text-sm' },
   };
 
   const currentSize = sizeMap[size] || sizeMap.md;
 
-  // If user placed coop-logo.png in assets directory, render it directly
-  if (!imageError) {
-    return (
-      <div className={`flex items-center gap-2.5 select-none ${className}`}>
-        <img
-          src="/coop-logo.png"
-          alt="Cooperative Bank of Oromia"
-          className={`${currentSize.img} object-contain transition-all`}
-          onError={() => setImageError(true)}
-        />
-      </div>
-    );
-  }
-
-  // Graceful High-DPI Vector SVG fallback with official #00adef, #e38524, #000000
   return (
-    <div className={`flex items-center gap-3 select-none ${className}`}>
-      {/* Hexagonal Emblem */}
-      <div className={`relative flex items-center justify-center shrink-0 ${currentSize.icon}`}>
-        <svg
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-sm"
-        >
-          {/* Hexagon Frame in #00adef Cyan */}
-          <polygon
-            points="50,4 92,26 92,74 50,96 8,74 8,26"
-            fill="#00adef"
-          />
-          {/* Inner Accent in #e38524 Orange */}
-          <polygon
-            points="50,18 80,35 80,65 50,82 20,65 20,35"
-            fill="#ffffff"
-          />
-          {/* Center Brand Diamond in #e38524 */}
-          <polygon
-            points="50,30 68,50 50,70 32,50"
-            fill="#e38524"
-          />
-        </svg>
-      </div>
+    <div className={`flex flex-col items-center justify-center text-center select-none ${className}`}>
+      {/* Large, Bold CoopBank Official Logo */}
+      <img
+        src={coopLogo}
+        alt="Cooperative Bank of Oromia"
+        className={`${currentSize.img} w-auto object-contain drop-shadow-xs`}
+      />
 
-      {/* Typography Brand Name */}
-      {variant !== 'icon' && (
-        <div className="flex flex-col leading-tight text-left">
-          <div className="flex items-center gap-1.5">
-            <span className={`font-heading font-black tracking-tight text-[#000000] ${currentSize.text}`}>
-              COOP
-            </span>
-            <span className={`font-heading font-bold text-[#00adef] tracking-tight ${currentSize.text}`}>
-              BANK
-            </span>
-          </div>
-          <span className={`font-sans tracking-wider uppercase font-semibold text-slate-500 ${currentSize.sub}`}>
-            DxValley • Visit Hub
-          </span>
+      {/* Subtle, Balanced Brand Subtitle */}
+      {!hideText && variant !== 'icon' && (
+        <div className={`mt-2 font-sans font-bold tracking-widest uppercase text-slate-500 flex items-center justify-center gap-1 ${currentSize.text}`}>
+          <span className="text-slate-800 font-black">DxValley</span>
+          <span className="text-slate-400">•</span>
+          <span className="text-[#00adef] font-black">VisitHub</span>
         </div>
       )}
     </div>

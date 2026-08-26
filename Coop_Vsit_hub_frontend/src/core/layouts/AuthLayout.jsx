@@ -14,8 +14,8 @@ export const AuthLayout = ({ children, title, subtitle }) => {
 
         {/* Top Header */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="p-2 bg-white rounded-2xl shadow-md">
-            <CoopLogo size="md" />
+          <div className="px-6 py-4 bg-white rounded-2xl shadow-lg border border-white/50 inline-flex items-center justify-center">
+            <CoopLogo size="lg" />
           </div>
         </div>
 

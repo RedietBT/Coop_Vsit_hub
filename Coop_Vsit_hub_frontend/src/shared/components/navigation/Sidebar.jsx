@@ -89,12 +89,11 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     >
       {/* Brand Header */}
       <div>
-        <div className="h-18 flex items-center justify-between px-4 border-b border-slate-100">
+        <div className="py-4 px-4 flex items-center justify-between border-b border-slate-100 min-h-[82px]">
           <div className="flex items-center gap-3 overflow-hidden">
             <CoopLogo
-              className="w-9 h-9 shrink-0"
+              size={isCollapsed ? 'sm' : 'md'}
               hideText={isCollapsed}
-              subtext="VISIT HUB"
             />
           </div>
 
