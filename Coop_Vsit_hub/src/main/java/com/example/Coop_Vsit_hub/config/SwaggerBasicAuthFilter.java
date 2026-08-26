@@ -38,7 +38,11 @@ public class SwaggerBasicAuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Check if request is targeting Swagger UI or OpenAPI documentation endpoints
+        // Always bypass CORS preflight OPTIONS requests
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         if (isSwaggerPath(path)) {
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 

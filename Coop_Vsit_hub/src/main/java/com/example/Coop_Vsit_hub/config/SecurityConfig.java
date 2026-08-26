@@ -4,7 +4,9 @@ import com.example.coop_vsit_hub.user_and_auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,12 +18,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.util.List;
 
 /**
  * Global Spring Security & Access Control Configuration.
- * Swagger UI is fully public. All /api/v1/** endpoints are protected by stateless JWT.
+ * Fully allows CORS preflight (OPTIONS), Swagger UI, MailHog, and public auth endpoints.
  */
 @Configuration
 @EnableWebSecurity
@@ -43,15 +46,14 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .headers(headers -> headers
-                .frameOptions(frame -> frame.deny())
-                .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
-                .xssProtection(org.springframework.security.config.Customizer.withDefaults())
-                .httpStrictTransportSecurity(hsts -> hsts
-                    .includeSubDomains(true)
-                    .maxAgeInSeconds(31536000))
+                .frameOptions(frame -> frame.disable()) // Allow Swagger UI embedded frames
+                .contentTypeOptions(Customizer.withDefaults())
+                .xssProtection(Customizer.withDefaults())
             )
             .authorizeHttpRequests(auth -> auth
-                // Swagger UI & OpenAPI - protected by SwaggerBasicAuthFilter
+                // Allow all CORS OPTIONS preflight requests globally
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Swagger UI & OpenAPI Documentation
                 .requestMatchers(
                     "/swagger-ui.html",
                     "/swagger-ui/**",
@@ -81,6 +83,7 @@ public class SecurityConfig {
                 // All other endpoints require JWT
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(new CorsFilter(corsConfigurationSource()), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(swaggerBasicAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -97,10 +100,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-CSRF-Token"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -24,8 +24,8 @@ WORKDIR /app
 RUN addgroup -S coopgroup && adduser -S coopuser -G coopgroup
 
 # Install MailHog standalone binary for in-container email testing
-ADD https://github.com/mailhog/MailHog/releases/download/v1.0.1/MailHog_linux_amd64 /usr/local/bin/mailhog
-RUN chmod +x /usr/local/bin/mailhog
+RUN apk add --no-cache wget ca-certificates && \
+    (wget -q https://github.com/mailhog/MailHog/releases/download/v1.0.1/MailHog_linux_amd64 -O /usr/local/bin/mailhog && chmod +x /usr/local/bin/mailhog || true)
 
 # Copy built artifact from builder stage
 COPY --from=builder /build/target/*.jar app.jar
@@ -42,6 +42,6 @@ EXPOSE 8080
 # Configure JVM memory options for containerized bank environment
 ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 
-# Launch MailHog with -ui-web-path=mailhog in background, then start Spring Boot
-ENTRYPOINT ["sh", "-c", "mailhog -ui-web-path=mailhog > /dev/null 2>&1 & java $JAVA_OPTS -jar app.jar"]
+# Launch MailHog in background if available, then start Spring Boot
+ENTRYPOINT ["sh", "-c", "(/usr/local/bin/mailhog -ui-web-path=mailhog > /dev/null 2>&1 &) ; exec java $JAVA_OPTS -jar app.jar"]
 

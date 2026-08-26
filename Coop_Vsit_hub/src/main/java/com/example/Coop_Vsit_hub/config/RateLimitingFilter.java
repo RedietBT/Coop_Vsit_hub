@@ -51,8 +51,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
+        // Always bypass CORS preflight OPTIONS requests
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Bypass static assets, Swagger UI, and OpenAPI docs from rate limiting
-        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/swagger-resources") || path.equals("/favicon.ico")) {
+        if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/swagger-resources") || path.equals("/favicon.ico") || path.startsWith("/mailhog")) {
             filterChain.doFilter(request, response);
             return;
         }
