@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration V1: Authentication, User Management & Security Audit Schema
--- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
+-- Cooperative Bank of Oromia - Visit Hub
 -- =============================================================================
 
 -- Ensure pgcrypto extension is available for UUID generation

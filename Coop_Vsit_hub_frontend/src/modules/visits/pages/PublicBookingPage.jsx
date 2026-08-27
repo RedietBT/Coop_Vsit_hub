@@ -140,7 +140,7 @@ export const PublicBookingPage = () => {
                   Cooperative Bank of Oromia
                 </h1>
                 <p className="text-xs text-sky-100 font-semibold">
-                  DxValley Innovation & Executive Hub • Public Delegation Portal
+                  Executive & Innovation Hub • Delegation Portal
                 </p>
               </div>
             </div>
@@ -169,7 +169,7 @@ export const PublicBookingPage = () => {
                 Thank You for Your Request!
               </h2>
               <p className="text-xs text-slate-600 max-w-md mx-auto mt-2 leading-relaxed">
-                Your delegation booking request has been securely registered with CoopBank DxValley executive reception.
+                Your delegation booking request has been securely registered with CoopBank executive reception.
               </p>
             </div>
 
@@ -422,7 +422,7 @@ export const PublicBookingPage = () => {
       </div>
 
       <div className="text-center mt-6 text-slate-400 text-xs space-y-1">
-        <p>© 2026 Cooperative Bank of Oromia • DxValley Executive Hub</p>
+        <p>© 2026 Cooperative Bank of Oromia • Executive Hub</p>
         <p>FinTech Innovation & Corporate Delegation Center</p>
       </div>
     </div>

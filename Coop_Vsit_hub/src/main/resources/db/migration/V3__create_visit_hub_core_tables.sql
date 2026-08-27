@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration V3: Core Visit Hub Tables (Organizations, Guests, Visits & Customer Feedback)
--- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
+-- Cooperative Bank of Oromia - Visit Hub
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-COMMENT ON TABLE organizations IS 'Guest organizations visiting CoopBank DxValley';
+COMMENT ON TABLE organizations IS 'Guest organizations visiting CoopBank';
 
 -- -----------------------------------------------------------------------------
 -- 2. INDIVIDUAL_GUESTS TABLE (VIP & Independent Guest Intelligence)
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS visits (
     sensitive_topics TEXT,
     
     -- Facility & Conflict Management
-    location_room VARCHAR(100), -- e.g. DxValley Executive Boardroom, Main Conference Hall
+    location_room VARCHAR(100), -- e.g. Executive Boardroom, Main Conference Hall
     visitor_count INT DEFAULT 1 NOT NULL, -- Total delegation size
     visitor_badge_number VARCHAR(50), -- Assigned during front desk security check-in
 

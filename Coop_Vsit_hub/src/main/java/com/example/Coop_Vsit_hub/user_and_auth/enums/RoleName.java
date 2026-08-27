@@ -1,7 +1,7 @@
 package com.example.coop_vsit_hub.user_and_auth.enums;
 
 /**
- * Roles for CoopBank DxValley Staff & Administrators.
+ * Roles for CoopBank Staff & Administrators.
  * Includes constant values for @PreAuthorize annotations.
  */
 public enum RoleName {

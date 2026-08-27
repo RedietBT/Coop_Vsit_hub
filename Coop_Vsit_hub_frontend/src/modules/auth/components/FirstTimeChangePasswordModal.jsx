@@ -64,7 +64,7 @@ export const FirstTimeChangePasswordModal = ({ isOpen, onSuccess, tempPassword =
       });
 
       soundPlayer.playNotificationChime();
-      toast.success('Password updated successfully! Welcome to CoopBank DxValley.');
+      toast.success('Password updated successfully! Welcome to CoopBank Visit Hub.');
       if (onSuccess) {
         onSuccess();
       }

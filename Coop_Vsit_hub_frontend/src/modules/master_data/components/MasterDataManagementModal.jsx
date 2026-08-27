@@ -440,7 +440,7 @@ export const MasterDataManagementModal = () => {
                 <div className="sm:col-span-2">
                   <Input
                     label="Room Name & Floor"
-                    placeholder="e.g. DxValley Peering Boardroom - 4th Floor"
+                    placeholder="e.g. Executive Boardroom - 4th Floor"
                     value={roomForm.name}
                     onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
                     required

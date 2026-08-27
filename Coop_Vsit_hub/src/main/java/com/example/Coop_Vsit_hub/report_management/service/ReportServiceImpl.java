@@ -156,7 +156,7 @@ public class ReportServiceImpl implements ReportService {
             document.add(title);
 
             Font subFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.GRAY);
-            Paragraph sub = new Paragraph("DxValley Innovation & Executive Hub | Exported on " + DATE_TIME_FORMATTER.format(Instant.now()), subFont);
+            Paragraph sub = new Paragraph("Executive & Innovation Hub | Exported on " + DATE_TIME_FORMATTER.format(Instant.now()), subFont);
             sub.setSpacingAfter(15);
             document.add(sub);
 

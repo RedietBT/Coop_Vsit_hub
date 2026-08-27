@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration V5: Master Data Tables (Departments, Categories, Meeting Rooms) & Role Cleanup
--- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
+-- Cooperative Bank of Oromia - Visit Hub
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS meeting_rooms (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-COMMENT ON TABLE meeting_rooms IS 'DxValley and CoopBank meeting rooms and executive spaces';
+COMMENT ON TABLE meeting_rooms IS 'CoopBank meeting rooms and executive spaces';
 
 -- -----------------------------------------------------------------------------
 -- 4. CLEAN UP UNUSED ROLES (REMOVE ROLE_BUSINESS_SPONSOR)
@@ -94,8 +94,8 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Seed Meeting Rooms
 INSERT INTO meeting_rooms (name, floor_location, capacity, description) VALUES
-    ('DxValley Executive Boardroom (4th Floor)', '4th Floor, DxValley Innovation Hub', 25, 'Flagship executive presentation boardroom with dual video conferencing and digital smart board'),
-    ('DxValley FinTech Innovation Room A', '3rd Floor, FinTech Sandbox Wing', 12, 'Agile collaborative workshop room with high-speed API peering display terminals'),
-    ('DxValley Strategic Peering Room B', '3rd Floor, FinTech Sandbox Wing', 10, 'Dedicated conference room for bilateral commercial negotiations'),
+    ('Executive Boardroom (4th Floor)', '4th Floor, Executive Wing', 25, 'Flagship executive presentation boardroom with dual video conferencing and digital smart board'),
+    ('FinTech Innovation Room A', '3rd Floor, FinTech Wing', 12, 'Agile collaborative workshop room with high-speed API peering display terminals'),
+    ('Strategic Peering Room B', '3rd Floor, FinTech Wing', 10, 'Dedicated conference room for bilateral commercial negotiations'),
     ('CoopBank HQ VIP Lounge (Ground Floor)', 'Ground Floor, Main Reception', 15, 'Executive hospitality reception lounge for VIP dignitaries and keynote delegations')
 ON CONFLICT (name) DO NOTHING;

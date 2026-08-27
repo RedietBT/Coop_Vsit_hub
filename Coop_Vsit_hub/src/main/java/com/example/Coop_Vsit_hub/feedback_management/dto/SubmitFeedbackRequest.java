@@ -29,7 +29,7 @@ public class SubmitFeedbackRequest {
     @NotNull(message = "Facility rating is required (1-5 stars).")
     @Min(value = 1, message = "Facility rating must be between 1 and 5.")
     @Max(value = 5, message = "Facility rating must be between 1 and 5.")
-    @Schema(description = "DxValley facility & infrastructure quality (1-5)", example = "5")
+    @Schema(description = "Meeting facility & infrastructure quality (1-5)", example = "5")
     private Integer facilityRating;
 
     @NotNull(message = "Objective rating is required (1-5 stars).")
@@ -41,7 +41,7 @@ public class SubmitFeedbackRequest {
     @NotNull(message = "Net Promoter Score (NPS) is required (0-10).")
     @Min(value = 0, message = "NPS score must be between 0 and 10.")
     @Max(value = 10, message = "NPS score must be between 0 and 10.")
-    @Schema(description = "Likelihood of recommending CoopBank DxValley partnership (0-10)", example = "10")
+    @Schema(description = "Likelihood of recommending CoopBank partnership (0-10)", example = "10")
     private Integer npsScore;
 
     @Schema(description = "Qualitative guest feedback and suggestions", example = "Exceptional hospitality from the digital banking team. Looking forward to our integration launch!")

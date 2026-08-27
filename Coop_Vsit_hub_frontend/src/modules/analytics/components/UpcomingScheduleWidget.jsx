@@ -70,7 +70,7 @@ export const UpcomingScheduleWidget = ({ visits = [] }) => {
 
                   <div className="flex items-center gap-1 text-slate-600 font-medium truncate max-w-[140px]">
                     <MapPin className="w-3 h-3 text-[#e38524] shrink-0" />
-                    <span className="truncate">{visit.locationRoom || 'DxValley Room'}</span>
+                    <span className="truncate">{visit.locationRoom || 'Executive Room'}</span>
                   </div>
                 </div>
               </div>

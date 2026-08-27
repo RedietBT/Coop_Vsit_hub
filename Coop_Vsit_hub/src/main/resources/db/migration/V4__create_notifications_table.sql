@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration V4: Staff In-App & Email Notifications Table
--- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
+-- Cooperative Bank of Oromia - Visit Hub
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS notifications (

@@ -1,6 +1,6 @@
 # 🎨 CoopBank Visit Hub – Frontend Clean Code Architecture & Implementation Roadmap
 
-Comprehensive architectural blueprint, design system, API integration sequence, state management strategy, and Clean Code Modular Architecture for **Cooperative Bank of Oromia (CoopBank DxValley)**.
+Comprehensive architectural blueprint, design system, API integration sequence, state management strategy, and Clean Code Modular Architecture for **Cooperative Bank of Oromia**.
 
 ---
 

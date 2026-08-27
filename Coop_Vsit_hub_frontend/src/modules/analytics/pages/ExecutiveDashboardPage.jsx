@@ -46,7 +46,7 @@ export const ExecutiveDashboardPage = () => {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[#e38524]" />
-            <span>CoopBank DxValley Intelligence</span>
+            <span>CoopBank Intelligence Cockpit</span>
           </div>
 
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#000000] tracking-tight">

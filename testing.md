@@ -1,6 +1,6 @@
 # 🏦 CoopBank Visit Hub – End-to-End API Testing & QA Guide
 
-Complete step-by-step testing manual and request payload library for **Cooperative Bank of Oromia (CoopBank DxValley)**.
+Complete step-by-step testing manual and request payload library for **Cooperative Bank of Oromia**.
 
 ---
 
@@ -67,7 +67,7 @@ Authenticate to receive the JWT Bearer Access Token.
     "id": "00000000-0000-0000-0000-000000000001",
     "username": "admin",
     "email": "admin@coopbank.com.et",
-    "fullName": "System DxValley Admin",
+    "fullName": "System CoopBank Admin",
     "roles": ["ROLE_ADMIN"]
   }
 }
@@ -176,7 +176,7 @@ Attempt to login with wrong credentials 3 times:
   "currency": "USD",
   "presentationTheme": "CoopBank Open Banking 2.0 Architecture",
   "sensitiveTopics": "Core banking middleware credentials and SLA penalties",
-  "locationRoom": "DxValley Executive Room B",
+  "locationRoom": "Executive Room B",
   "visitorCount": 3,
   "guestCategory": "ORGANIZATION",
   "guestOrganizationId": "19ddf220-4a81-4da2-b58d-caeaf8cc23d2",
@@ -208,7 +208,7 @@ Attempt to login with wrong credentials 3 times:
   "priorityLevel": "CRITICAL",
   "opportunityValue": 1800000.00,
   "currency": "USD",
-  "locationRoom": "DxValley Boardroom A",
+  "locationRoom": "Executive Boardroom A",
   "visitorCount": 2,
   "guestCategory": "INDIVIDUAL",
   "individualGuestId": "789f3eb2-1708-4463-8800-48bbef5648e8",
@@ -226,14 +226,15 @@ Attempt to login with wrong credentials 3 times:
 
 ---
 
-### 2.2 Room Double-Booking Conflict Prevention Check
-Submit another visit booking for the exact same room (`DxValley Executive Room B`) overlapping `2026-10-15T09:00:00Z` to `2026-10-15T11:30:00Z`.
-* **Expected Response (`400 Bad Request`)**:
+### 2.8 Room Conflict Prevention Test (Double Booking Validation)
+Submit another visit booking for the exact same room (`Executive Room B`) overlapping `2026-10-15T09:00:00Z` to `2026-10-15T11:30:00Z`.
+
+*Expected Response Status:* `400 BAD REQUEST`
 ```json
 {
-  "path": "/api/v1/visits",
-  "error": "Bad Request",
-  "message": "Room Conflict: 'DxValley Executive Room B' is already booked for visit 'VIS-2026-0005' between 2026-10-15T09:00:00Z and 2026-10-15T11:30:00Z.",
+  "status": 400,
+  "error": "BAD_REQUEST",
+  "message": "Room Conflict: 'Executive Room B' is already booked for visit 'VIS-2026-0005' between 2026-10-15T09:00:00Z and 2026-10-15T11:30:00Z.",
   "status": 400
 }
 ```
@@ -402,7 +403,7 @@ Submit another visit booking for the exact same room (`DxValley Executive Room B
   "guestDisplayName": "Safaricom Telecommunications Ethiopia",
   "alreadySubmitted": false,
   "expired": false,
-  "message": "Token verified successfully. Welcome to CoopBank DxValley Guest Feedback!"
+  "message": "Token verified successfully. Welcome to CoopBank Guest Feedback!"
 }
 ```
 
@@ -418,7 +419,7 @@ Submit another visit booking for the exact same room (`DxValley Executive Room B
   "facilityRating": 5,
   "objectiveRating": 5,
   "npsScore": 10,
-  "comments": "Outstanding executive reception and state-of-the-art boardroom at DxValley."
+  "comments": "Outstanding executive reception and state-of-the-art boardroom at CoopBank."
 }
 ```
 

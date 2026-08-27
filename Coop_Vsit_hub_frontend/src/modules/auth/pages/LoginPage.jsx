@@ -83,7 +83,7 @@ export const LoginPage = () => {
   return (
     <AuthLayout
       title="Staff Portal Sign In"
-      subtitle="Sign in to access CoopBank DxValley Visit Hub and Facilities."
+      subtitle="Sign in to access CoopBank Visit Hub and Facilities."
     >
       {/* Login Mode Toggle Tabs */}
       <div className="flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 mb-5">

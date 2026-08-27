@@ -190,7 +190,7 @@ export const PublicSurveyPage = () => {
                 <h1 className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight">
                   Cooperative Bank of Oromia
                 </h1>
-                <p className="text-xs text-sky-100 font-semibold">DxValley Innovation & Executive Hub</p>
+                <p className="text-xs text-sky-100 font-semibold">Executive & Innovation Hub</p>
               </div>
             </div>
           </div>
@@ -217,7 +217,7 @@ export const PublicSurveyPage = () => {
               Thank You for Your Feedback!
             </h2>
             <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-              Your valuable ratings and insights have been recorded. Cooperative Bank of Oromia DxValley is dedicated to continuous partnership excellence.
+              Your valuable ratings and insights have been recorded. Cooperative Bank of Oromia is dedicated to continuous partnership excellence.
             </p>
 
             <div className="pt-4">
@@ -249,7 +249,7 @@ export const PublicSurveyPage = () => {
               <StarRating
                 value={facilityRating}
                 onChange={setFacilityRating}
-                label="2. DxValley Facility & Environment"
+                label="2. Facility & Meeting Environment"
                 subtitle="Presentation room technology, climate comfort, and audio/video equipment."
               />
 
@@ -268,7 +268,7 @@ export const PublicSurveyPage = () => {
                       4. Net Promoter Score (NPS)
                     </h4>
                     <p className="text-xs text-slate-500">
-                      How likely are you to recommend partnering with CoopBank DxValley?
+                      How likely are you to recommend partnering with CoopBank?
                     </p>
                   </div>
                   <span className="font-heading font-black text-lg text-[#00adef]">
@@ -279,70 +279,65 @@ export const PublicSurveyPage = () => {
                 <div className="grid grid-cols-11 gap-1 pt-1">
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
                     const isSelected = npsScore === score;
-                    let colorClasses = 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200';
-                    if (isSelected) {
-                      if (score >= 9) {
-                        colorClasses = 'bg-emerald-500 border-emerald-600 text-white font-black shadow-md';
-                      } else if (score >= 7) {
-                        colorClasses = 'bg-[#00adef] border-[#00adef] text-white font-black shadow-md';
-                      } else {
-                        colorClasses = 'bg-[#e38524] border-[#e38524] text-white font-black shadow-md';
-                      }
-                    }
-
                     return (
                       <button
                         key={score}
                         type="button"
                         onClick={() => setNpsScore(score)}
-                        className={`h-10 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${colorClasses}`}
+                        className={`h-11 rounded-xl font-heading font-bold text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#00adef] text-white shadow-md scale-105'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
                       >
                         {score}
                       </button>
                     );
                   })}
                 </div>
-
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold pt-1">
+                <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-1">
                   <span>0 - Not Likely</span>
                   <span>5 - Neutral</span>
                   <span>10 - Extremely Likely</span>
                 </div>
               </div>
 
-              {/* Written Comments */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-                <label className="block font-heading font-bold text-sm text-[#000000]">
-                  5. Additional Comments & Partnership Suggestions
+              {/* Qualitative Comments */}
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2 text-left">
+                <label className="font-heading font-bold text-sm text-[#000000] block">
+                  5. Additional Remarks & Observations (Optional)
                 </label>
+                <p className="text-xs text-slate-500">
+                  Please share any specific suggestions, accolades, or follow-up opportunities.
+                </p>
                 <textarea
-                  rows="3"
+                  rows={3}
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
-                  placeholder="Share highlights from your delegation visit, compliments, or areas where we can improve..."
-                  className="w-full text-xs rounded-xl border border-slate-300 p-3 text-slate-900 focus:outline-none focus:border-[#00adef]"
+                  placeholder="Your valuable feedback helps us refine future executive delegations..."
+                  className="w-full mt-2 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#00adef] transition-all resize-none"
                 />
               </div>
             </div>
 
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="orange"
-                size="lg"
-                className="w-full"
-                icon={Send}
-                isLoading={isSubmitting}
-              >
-                Submit Satisfaction Survey
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              variant="orange"
+              size="lg"
+              className="w-full"
+              isLoading={isSubmitting}
+              icon={Send}
+              iconPosition="right"
+            >
+              Submit Official Feedback
+            </Button>
           </form>
         )}
       </div>
 
-      <div className="text-center mt-6 text-slate-400 text-xs">
-        <p>© 2026 Cooperative Bank of Oromia • DxValley Executive Hub</p>
+      {/* Footer */}
+      <div className="mt-8 text-center text-xs text-slate-400">
+        <p>© 2026 Cooperative Bank of Oromia • Executive Hub</p>
       </div>
     </div>
   );

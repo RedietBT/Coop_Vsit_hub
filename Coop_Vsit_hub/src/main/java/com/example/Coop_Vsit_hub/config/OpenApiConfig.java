@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * OpenAPI 3.0 / Swagger UI Configuration with Global JWT Bearer Lock Icon & Grouping.
- * Cooperative Bank of Oromia (CoopBank DxValley)
+ * Cooperative Bank of Oromia
  */
 @Configuration
 public class OpenApiConfig {
@@ -28,11 +28,11 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("🏦 CoopBank Visit Hub API")
                         .description("Executive Visit Lifecycle Management, Guest Organization Intelligence, & Visitor Feedback Platform.\n" +
-                                "Built for Cooperative Bank of Oromia (DxValley). Handles high-concurrency bank operations and strict security compliance.")
+                                "Built for Cooperative Bank of Oromia. Handles high-concurrency bank operations and strict security compliance.")
                         .version("v1.0.0")
                         .contact(new Contact()
-                                .name("CoopBank DxValley Security Team")
-                                .email("dxvalley@coopbank.com.et")
+                                .name("CoopBank Security Team")
+                                .email("security@coopbankoromia.com.et")
                                 .url("https://coopbankoromia.com.et"))
                         .license(new License()
                                 .name("Proprietary - Cooperative Bank of Oromia")

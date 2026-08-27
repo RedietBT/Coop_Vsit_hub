@@ -338,7 +338,7 @@ export const CreateVisitModal = () => {
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  You can leave this unassigned or select from available DxValley meeting spaces.
+                  You can leave this unassigned or select from available CoopBank meeting spaces.
                 </p>
               </div>
 

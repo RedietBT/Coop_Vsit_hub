@@ -104,7 +104,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .visitDate(feedback.getVisit().getScheduledStartTime())
                 .alreadySubmitted(false)
                 .expired(false)
-                .message("Token verified successfully. Welcome to CoopBank DxValley Guest Feedback!")
+                .message("Token verified successfully. Welcome to CoopBank Guest Feedback!")
                 .build();
     }
 
@@ -268,17 +268,17 @@ public class FeedbackServiceImpl implements FeedbackService {
 
             helper.setFrom(senderEmail);
             helper.setTo(recipientEmail);
-            helper.setSubject("CoopBank DxValley - How was your executive visit? (" + visit.getVisitCode() + ")");
+            helper.setSubject("CoopBank - How was your executive visit? (" + visit.getVisitCode() + ")");
 
             String html = String.format("""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
                     <div style="background-color: #0072bc; padding: 15px; border-radius: 6px; text-align: center; color: white;">
                         <h2>🏦 Cooperative Bank of Oromia</h2>
-                        <p style="margin: 0;">DxValley Innovation & Executive Hub</p>
+                        <p style="margin: 0;">Executive & Innovation Hub</p>
                     </div>
                     <div style="padding: 20px 0;">
                         <p>Dear <strong>%s</strong>,</p>
-                        <p>Thank you for visiting Cooperative Bank of Oromia (DxValley) for <strong>"%s"</strong> (Ref: <code>%s</code>).</p>
+                        <p>Thank you for visiting Cooperative Bank of Oromia for <strong>"%s"</strong> (Ref: <code>%s</code>).</p>
                         <p>We are dedicated to providing world-class partnership hospitality and executive facilities. Please take 1 minute to share your feedback with us:</p>
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="%s" style="background-color: #f7941d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Complete 1-Minute Survey</a>
@@ -286,7 +286,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                         <p style="color: #666; font-size: 12px;">This survey link is secure and valid for 14 days. If the button above does not work, copy and paste this link into your browser:<br/><a href="%s">%s</a></p>
                     </div>
                     <hr style="border: 0; border-top: 1px solid #eee;"/>
-                    <p style="font-size: 11px; color: #999; text-align: center;">Cooperative Bank of Oromia | DxValley IT Security & Executive Visit Hub</p>
+                    <p style="font-size: 11px; color: #999; text-align: center;">Cooperative Bank of Oromia | Executive Visit Hub</p>
                 </div>
                 """,
                 visit.getGuestDisplayName(),

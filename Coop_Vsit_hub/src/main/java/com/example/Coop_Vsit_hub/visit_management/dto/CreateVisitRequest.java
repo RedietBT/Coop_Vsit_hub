@@ -61,7 +61,7 @@ public class CreateVisitRequest {
     private String sensitiveTopics;
 
     @Size(max = 100, message = "Location room cannot exceed 100 characters.")
-    @Schema(example = "DxValley Executive Boardroom (4th Floor)")
+    @Schema(example = "Executive Boardroom (4th Floor)")
     private String locationRoom;
 
     @Min(value = 1, message = "Visitor count must be at least 1 person.")

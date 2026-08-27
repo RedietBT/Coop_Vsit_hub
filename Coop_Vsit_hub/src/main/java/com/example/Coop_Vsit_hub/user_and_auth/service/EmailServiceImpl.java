@@ -37,11 +37,11 @@ public class EmailServiceImpl implements EmailService {
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
                     + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"
                     + "<h2 style='color: #ffffff; margin: 0;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub (DxValley)</p>"
+                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub</p>"
                     + "</div>"
                     + "<div style='padding: 20px; color: #333333;'>"
                     + "<h3>Dear " + recipientName + ",</h3>"
-                    + "<p>A password reset request was initiated for your CoopBank DxValley account.</p>"
+                    + "<p>A password reset request was initiated for your CoopBank account.</p>"
                     + "<p>Please click the button below to set a new password. This link is valid for <strong>15 minutes</strong>:</p>"
                     + "<div style='text-align: center; margin: 30px 0;'>"
                     + "<a href='" + resetLink + "' style='background-color: #0088cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Reset My Password</a>"
@@ -68,18 +68,18 @@ public class EmailServiceImpl implements EmailService {
 
             helper.setFrom(fromEmail);
             helper.setTo(recipientEmail);
-            helper.setSubject("🏦 Welcome to CoopBank DxValley Visit Hub - Account Onboarding & Verification");
+            helper.setSubject("🏦 Welcome to CoopBank Visit Hub - Account Onboarding & Verification");
 
             String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
                     + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"
                     + "<h2 style='color: #ffffff; margin: 0;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub (DxValley)</p>"
+                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub</p>"
                     + "</div>"
                     + "<div style='padding: 20px; color: #333333;'>"
                     + "<h3>Dear " + recipientName + ",</h3>"
-                    + "<p>An official CoopBank DxValley staff account has been created for you by the System Administrator.</p>"
+                    + "<p>An official CoopBank staff account has been created for you by the System Administrator.</p>"
                     + "<div style='background-color: #f8fafc; padding: 15px; border-left: 4px solid #0088cc; margin: 20px 0;'>"
                     + "<p style='margin: 5px 0;'><strong>Username:</strong> " + username + "</p>"
                     + "<p style='margin: 5px 0;'><strong>Temporary Password:</strong> <span style='font-family: monospace; font-size: 16px; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;'>" + tempPassword + "</span></p>"

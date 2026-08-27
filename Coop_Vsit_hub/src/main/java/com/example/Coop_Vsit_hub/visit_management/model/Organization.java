@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Guest & Corporate Partner Organizations visiting CoopBank DxValley.
+ * Guest & Corporate Partner Organizations visiting CoopBank.
  */
 @Entity
 @Table(name = "organizations")

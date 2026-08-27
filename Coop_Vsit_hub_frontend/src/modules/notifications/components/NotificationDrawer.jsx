@@ -320,7 +320,7 @@ export const NotificationDrawer = () => {
 
               {/* Footer */}
               <div className="p-3.5 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between text-xs text-slate-500 px-5">
-                <span className="font-semibold">CoopBank DxValley Live Feed</span>
+                <span className="font-semibold">CoopBank Live Feed</span>
                 <button
                   onClick={closeDrawer}
                   className="font-bold text-slate-700 hover:text-[#000000] cursor-pointer"

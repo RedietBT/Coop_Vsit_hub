@@ -1,6 +1,6 @@
 # =============================================================================
 # Docker Compose Suite - CoopBank Visit Hub
-# Cooperative Bank of Oromia (CoopBank DxValley)
+# Cooperative Bank of Oromia
 # =============================================================================
 
 version: '3.8'

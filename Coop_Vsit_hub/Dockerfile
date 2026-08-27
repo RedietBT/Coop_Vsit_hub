@@ -1,6 +1,6 @@
 # =============================================================================
 # Multi-Stage Dockerfile for CoopBank Visit Hub Backend (Spring Boot 3.3 / Java 21)
-# Cooperative Bank of Oromia (CoopBank DxValley)
+# Cooperative Bank of Oromia
 # =============================================================================
 
 # --- Stage 1: Build JAR from source ---

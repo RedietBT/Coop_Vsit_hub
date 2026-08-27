@@ -30,7 +30,7 @@ public class SwaggerBasicAuthFilter extends OncePerRequestFilter {
     @Value("${coopbank.security.swagger.password}")
     private String swaggerPassword;
 
-    private static final String REALM = "CoopBank DxValley API Documentation";
+    private static final String REALM = "CoopBank API Documentation";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -73,7 +73,7 @@ public class SwaggerBasicAuthFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"" + REALM + "\"");
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Authentication required to access CoopBank DxValley API documentation.\"}");
+            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Authentication required to access CoopBank API documentation.\"}");
             return;
         }
 

@@ -23,7 +23,7 @@ export const AuthLayout = ({ children, title, subtitle }) => {
         <div className="relative z-10 my-auto py-8 max-w-lg">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 border border-white/30 text-white text-xs font-black uppercase tracking-wider mb-6 shadow-xs">
             <ShieldCheck className="w-4 h-4 text-[#e38524]" />
-            <span>DxValley Enterprise Portal</span>
+            <span>CoopBank Enterprise Portal</span>
           </div>
 
           <h1 className="font-heading font-black text-4xl leading-tight text-white mb-4 drop-shadow-xs">
@@ -63,7 +63,7 @@ export const AuthLayout = ({ children, title, subtitle }) => {
           <span>© 2026 Cooperative Bank of Oromia.</span>
           <div className="flex items-center gap-1.5 text-white font-medium">
             <Award className="w-4 h-4 text-[#e38524]" />
-            <span>DxValley Security Grade</span>
+            <span>CoopBank Security Grade</span>
           </div>
         </div>
       </div>

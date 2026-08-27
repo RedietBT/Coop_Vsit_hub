@@ -56,19 +56,19 @@ export const VisitCalendarPage = () => {
   const defaultRooms = [
     {
       id: 'default-1',
-      name: 'DxValley Executive Boardroom - 4th Floor',
+      name: 'Executive Boardroom - 4th Floor',
       capacity: 18,
       imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'default-2',
-      name: 'DxValley FinTech Innovation Room A - 4th Floor',
+      name: 'FinTech Innovation Room A - 4th Floor',
       capacity: 12,
       imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 'default-3',
-      name: 'DxValley Strategic Peering Room B - 4th Floor',
+      name: 'Strategic Peering Room B - 4th Floor',
       capacity: 10,
       imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
     },

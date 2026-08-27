@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration V2: Seed Default Roles & System Administrator
--- Cooperative Bank of Oromia (CoopBank DxValley) - Visit Hub
+-- Cooperative Bank of Oromia - Visit Hub
 -- =============================================================================
 
 -- 1. Insert Standard CoopBank System Roles
@@ -37,9 +37,9 @@ INSERT INTO users (
     'admin@coopbank.com.et',
     '$2a$12$uvh5MjmixYPbWrWP7MmldubCrxvjbP9F/Ano0xTZjMX6l4hrG.OzW', -- BCrypt hash of ChangeMe@CoopBank2026!
     'System',
-    'DxValley',
+    'CoopBank',
     'Administrator',
-    'DxValley IT Security',
+    'IT Security & Operations',
     '+251911000000',
     TRUE,
     TRUE,

@@ -209,7 +209,7 @@ public class NotificationServiceImpl implements NotificationService {
         String message = String.format("Visitor '%s' has arrived for '%s' and checked in at the Front Desk Security. Badge: %s, Room: %s.",
                 visit.getGuestDisplayName(), visit.getTitle(),
                 visit.getVisitorBadgeNumber() != null ? visit.getVisitorBadgeNumber() : "Assigned",
-                visit.getLocationRoom() != null ? visit.getLocationRoom() : "DxValley Main Reception");
+                visit.getLocationRoom() != null ? visit.getLocationRoom() : "Main Reception");
 
         if (visit.getRequester() != null) {
             notifyUser(visit.getRequester(), title, message, NotificationType.VISITOR_CHECKED_IN, visit.getId(), visit.getVisitCode(), true);
@@ -252,7 +252,7 @@ public class NotificationServiceImpl implements NotificationService {
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
                     <div style="background-color: #0072bc; padding: 12px; border-radius: 6px; text-align: center; color: white;">
                         <h3 style="margin: 0;">🏦 Cooperative Bank of Oromia</h3>
-                        <p style="margin: 3px 0 0; font-size: 13px;">DxValley Executive Visit Hub Notification</p>
+                        <p style="margin: 3px 0 0; font-size: 13px;">Executive Visit Hub Notification</p>
                     </div>
                     <div style="padding: 20px 0;">
                         <h4 style="color: #333; margin-top: 0;">%s</h4>

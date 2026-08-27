@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Executive Visit Request & Master Lifecycle Tracking Entity.
- * Cooperative Bank of Oromia (CoopBank DxValley).
+ * Cooperative Bank of Oromia.
  */
 @Entity
 @Table(name = "visits")
