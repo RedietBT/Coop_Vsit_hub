@@ -18,6 +18,7 @@ public class MeetingRoomDto {
     private String name;
     private String floorLocation;
     private Integer capacity;
+    private String imageUrl;
     private String description;
     private Boolean isActive;
     private Instant createdAt;
@@ -29,6 +30,7 @@ public class MeetingRoomDto {
                 .name(entity.getName())
                 .floorLocation(entity.getFloorLocation())
                 .capacity(entity.getCapacity())
+                .imageUrl(entity.getImageUrl())
                 .description(entity.getDescription())
                 .isActive(entity.getIsActive())
                 .createdAt(entity.getCreatedAt())

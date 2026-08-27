@@ -24,6 +24,8 @@ public class UpdateMeetingRoomRequest {
     @Min(value = 1, message = "Room capacity must be at least 1 person.")
     private Integer capacity;
 
+    private String imageUrl;
+
     private String description;
 
     private Boolean isActive;

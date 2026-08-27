@@ -12,6 +12,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -124,6 +125,57 @@ public class Visit {
     @Column(name = "individual_guest_id_number", length = 50)
     private String individualGuestIdNumber;
 
+    // Front Desk Visitor Demographics (From Visitor Registration Modal)
+    @Column(name = "visitor_first_name", length = 100)
+    private String visitorFirstName;
+
+    @Column(name = "visitor_middle_name", length = 100)
+    private String visitorMiddleName;
+
+    @Column(name = "visitor_surname", length = 100)
+    private String visitorSurname;
+
+    @Column(name = "visitor_id_number", length = 100)
+    private String visitorIdNumber;
+
+    @Column(name = "visitor_phone", length = 50)
+    private String visitorPhone;
+
+    @Column(name = "visitor_email", length = 100)
+    private String visitorEmail;
+
+    @Column(name = "visitor_date_of_birth")
+    private LocalDate visitorDateOfBirth;
+
+    @Column(name = "visitor_issued_date")
+    private LocalDate visitorIssuedDate;
+
+    @Column(name = "visitor_expired_date")
+    private LocalDate visitorExpiredDate;
+
+    @Column(name = "visitor_gender", length = 20)
+    private String visitorGender;
+
+    @Column(name = "visitor_citizenship", length = 100)
+    @Builder.Default
+    private String visitorCitizenship = "Ethiopian";
+
+    @Column(name = "visitor_region", length = 100)
+    private String visitorRegion;
+
+    @Column(name = "visitor_zone", length = 100)
+    private String visitorZone;
+
+    @Column(name = "visitor_woreda", length = 100)
+    private String visitorWoreda;
+
+    @Column(name = "visitor_id_type", length = 50)
+    @Builder.Default
+    private String visitorIdType = "National ID";
+
+    @Column(name = "visitor_id_photo_url", columnDefinition = "TEXT")
+    private String visitorIdPhotoUrl;
+
     // Staff Associations
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id", nullable = false)
@@ -162,6 +214,16 @@ public class Visit {
      * Resolves the display name of the visiting party.
      */
     public String getGuestDisplayName() {
+        if (visitorFirstName != null && !visitorFirstName.isBlank()) {
+            StringBuilder sb = new StringBuilder(visitorFirstName);
+            if (visitorMiddleName != null && !visitorMiddleName.isBlank()) {
+                sb.append(" ").append(visitorMiddleName);
+            }
+            if (visitorSurname != null && !visitorSurname.isBlank()) {
+                sb.append(" ").append(visitorSurname);
+            }
+            return sb.toString();
+        }
         if (guestCategory == GuestCategory.ORGANIZATION && guestOrganization != null) {
             return guestOrganization.getName();
         }

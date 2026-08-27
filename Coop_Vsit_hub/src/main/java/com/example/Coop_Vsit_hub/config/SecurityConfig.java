@@ -70,11 +70,11 @@ public class SecurityConfig {
                     "/api/v1/auth/reset-password",
                     "/api/v1/auth/verify-email/**"
                 ).permitAll()
-                // Public Feedback & Visit Booking Endpoints
+                // Public Feedback Endpoints & Room Images
                 .requestMatchers(
                     "/api/v1/feedback/verify/**",
                     "/api/v1/feedback/submit",
-                    "/api/v1/visits/public-booking"
+                    "/api/v1/meeting-rooms/images/**"
                 ).permitAll()
                 // MailHog Web Dashboard
                 .requestMatchers("/mailhog", "/mailhog/**").permitAll()

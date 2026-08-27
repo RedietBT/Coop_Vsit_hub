@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -57,6 +58,24 @@ public class VisitDetailResponse {
     private String individualGuestTitle;
     private String individualGuestIdNumber;
 
+    // Front Desk Visitor Demographics (Optional)
+    private String visitorFirstName;
+    private String visitorMiddleName;
+    private String visitorSurname;
+    private String visitorIdNumber;
+    private String visitorPhone;
+    private String visitorEmail;
+    private LocalDate visitorDateOfBirth;
+    private LocalDate visitorIssuedDate;
+    private LocalDate visitorExpiredDate;
+    private String visitorGender;
+    private String visitorCitizenship;
+    private String visitorRegion;
+    private String visitorZone;
+    private String visitorWoreda;
+    private String visitorIdType;
+    private String visitorIdPhotoUrl;
+
     // Staff Details
     private UserDetailResponse requester;
     private UserDetailResponse sponsor;
@@ -93,7 +112,7 @@ public class VisitDetailResponse {
                 .guestDisplayName(visit.getGuestDisplayName())
                 .guestOrganization(visit.getGuestOrganization())
                 .masterIndividualGuest(visit.getMasterIndividualGuest() != null ?
-                        com.example.coop_vsit_hub.individual_guest_management.dto.IndividualGuestSummaryResponse.from(visit.getMasterIndividualGuest()) : null)
+                        IndividualGuestSummaryResponse.from(visit.getMasterIndividualGuest()) : null)
                 .individualGuestFirstName(visit.getIndividualGuestFirstName())
                 .individualGuestMiddleName(visit.getIndividualGuestMiddleName())
                 .individualGuestLastName(visit.getIndividualGuestLastName())
@@ -101,6 +120,22 @@ public class VisitDetailResponse {
                 .individualGuestPhone(visit.getIndividualGuestPhone())
                 .individualGuestTitle(visit.getIndividualGuestTitle())
                 .individualGuestIdNumber(visit.getIndividualGuestIdNumber())
+                .visitorFirstName(visit.getVisitorFirstName())
+                .visitorMiddleName(visit.getVisitorMiddleName())
+                .visitorSurname(visit.getVisitorSurname())
+                .visitorIdNumber(visit.getVisitorIdNumber())
+                .visitorPhone(visit.getVisitorPhone())
+                .visitorEmail(visit.getVisitorEmail())
+                .visitorDateOfBirth(visit.getVisitorDateOfBirth())
+                .visitorIssuedDate(visit.getVisitorIssuedDate())
+                .visitorExpiredDate(visit.getVisitorExpiredDate())
+                .visitorGender(visit.getVisitorGender())
+                .visitorCitizenship(visit.getVisitorCitizenship())
+                .visitorRegion(visit.getVisitorRegion())
+                .visitorZone(visit.getVisitorZone())
+                .visitorWoreda(visit.getVisitorWoreda())
+                .visitorIdType(visit.getVisitorIdType())
+                .visitorIdPhotoUrl(visit.getVisitorIdPhotoUrl())
                 .requester(visit.getRequester() != null ? UserDetailResponse.from(visit.getRequester()) : null)
                 .sponsor(visit.getSponsor() != null ? UserDetailResponse.from(visit.getSponsor()) : null)
                 .approver(visit.getApprover() != null ? UserDetailResponse.from(visit.getApprover()) : null)

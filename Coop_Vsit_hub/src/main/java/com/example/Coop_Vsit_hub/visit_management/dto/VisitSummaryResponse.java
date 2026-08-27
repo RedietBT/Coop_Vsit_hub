@@ -37,6 +37,8 @@ public class VisitSummaryResponse {
     private String visitorBadgeNumber;
     private GuestCategory guestCategory;
     private String guestDisplayName;
+    private String visitorPhone;
+    private String visitorIdNumber;
     private String requesterName;
     private String sponsorName;
     private Instant scheduledStartTime;
@@ -46,6 +48,15 @@ public class VisitSummaryResponse {
     private Instant createdAt;
 
     public static VisitSummaryResponse from(Visit visit) {
+        String phone = visit.getVisitorPhone();
+        if (phone == null || phone.isBlank()) {
+            phone = visit.getIndividualGuestPhone();
+        }
+        String idNum = visit.getVisitorIdNumber();
+        if (idNum == null || idNum.isBlank()) {
+            idNum = visit.getIndividualGuestIdNumber();
+        }
+
         return VisitSummaryResponse.builder()
                 .id(visit.getId())
                 .visitCode(visit.getVisitCode())
@@ -61,6 +72,8 @@ public class VisitSummaryResponse {
                 .visitorBadgeNumber(visit.getVisitorBadgeNumber())
                 .guestCategory(visit.getGuestCategory())
                 .guestDisplayName(visit.getGuestDisplayName())
+                .visitorPhone(phone)
+                .visitorIdNumber(idNum)
                 .requesterName(visit.getRequester() != null ? visit.getRequester().getFullName() : null)
                 .sponsorName(visit.getSponsor() != null ? visit.getSponsor().getFullName() : null)
                 .scheduledStartTime(visit.getScheduledStartTime())

@@ -220,6 +220,7 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .name(request.getName().trim())
                 .floorLocation(request.getFloorLocation())
                 .capacity(request.getCapacity() != null ? request.getCapacity() : 10)
+                .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
                 .isActive(true)
                 .build();
@@ -246,6 +247,9 @@ public class MasterDataServiceImpl implements MasterDataService {
         if (request.getCapacity() != null) {
             room.setCapacity(request.getCapacity());
         }
+        if (request.getImageUrl() != null) {
+            room.setImageUrl(request.getImageUrl());
+        }
         room.setDescription(request.getDescription());
         if (request.getIsActive() != null) {
             room.setIsActive(request.getIsActive());
@@ -253,6 +257,48 @@ public class MasterDataServiceImpl implements MasterDataService {
 
         MeetingRoom updated = meetingRoomRepository.save(room);
         return MeetingRoomDto.from(updated);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "meeting_rooms", allEntries = true)
+    public MeetingRoomDto uploadRoomImage(UUID id, org.springframework.web.multipart.MultipartFile file) {
+        log.info("Uploading image for meeting room ID: {}", id);
+
+        MeetingRoom room = meetingRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Uploaded image file cannot be empty.");
+        }
+
+        try {
+            // Save file in static uploads directory
+            String uploadsDir = "uploads/rooms/";
+            java.io.File directory = new java.io.File(uploadsDir);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : ".jpg";
+
+            String filename = "room_" + id + "_" + System.currentTimeMillis() + extension;
+            java.nio.file.Path targetPath = java.nio.file.Paths.get(uploadsDir + filename);
+            java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            String fileUrl = "/api/v1/meeting-rooms/images/" + filename;
+            room.setImageUrl(fileUrl);
+
+            MeetingRoom saved = meetingRoomRepository.save(room);
+            log.info("Room image saved successfully: {}", fileUrl);
+            return MeetingRoomDto.from(saved);
+        } catch (Exception e) {
+            log.error("Failed to upload room image: {}", e.getMessage(), e);
+            throw new IllegalStateException("Failed to store room image: " + e.getMessage());
+        }
     }
 
     @Override

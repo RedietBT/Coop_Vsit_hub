@@ -31,6 +31,9 @@ public class MeetingRoom {
     @Column(name = "capacity", nullable = false)
     private Integer capacity = 10;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

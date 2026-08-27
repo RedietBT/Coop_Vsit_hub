@@ -36,6 +36,8 @@ public class AuthServiceImpl implements AuthService {
     private final AuditLoggerService auditLoggerService;
     private final EmailService emailService;
 
+    private final ActiveDirectoryAuthService activeDirectoryAuthService;
+
     @Value("${coopbank.security.jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpirationMs;
 
@@ -154,10 +156,47 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
         String identifier = request.getIdentifier().trim();
-        log.info("Processing authentication request for identifier: {}", identifier);
+        String loginType = request.getLoginType() != null ? request.getLoginType().trim().toUpperCase() : "";
+        log.info("Processing authentication request for identifier: {} (type: {})", identifier, loginType);
 
-        User user = userRepository.findByUsernameOrEmail(identifier)
-                .orElse(null);
+        User user = null;
+
+        // Route 1: Active Directory Mode (explicit or if staff username/email provided)
+        if ("ACTIVE_DIRECTORY".equals(loginType) || identifier.toLowerCase().endsWith("@coopbank.local") || identifier.equalsIgnoreCase("staff_test")) {
+            user = activeDirectoryAuthService.authenticateStaff(identifier, request.getPassword());
+            auditLoggerService.logEvent(
+                    user,
+                    user.getUsername(),
+                    AuditEventType.LOGIN_SUCCESS,
+                    AuditStatus.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    "Staff authenticated via CoopBank Active Directory (LDAPS)."
+            );
+            return buildAuthResponse(user);
+        }
+
+        // Route 2: Local Database Mode (System Admins & local credentials)
+        user = userRepository.findByUsernameOrEmail(identifier).orElse(null);
+
+        // If local user not found, attempt Active Directory fallback
+        if (user == null && !"LOCAL".equals(loginType)) {
+            try {
+                user = activeDirectoryAuthService.authenticateStaff(identifier, request.getPassword());
+                auditLoggerService.logEvent(
+                        user,
+                        user.getUsername(),
+                        AuditEventType.LOGIN_SUCCESS,
+                        AuditStatus.SUCCESS,
+                        ipAddress,
+                        userAgent,
+                        "Staff authenticated via CoopBank Active Directory."
+                );
+                return buildAuthResponse(user);
+            } catch (Exception e) {
+                log.debug("Active Directory fallback attempt failed: {}", e.getMessage());
+            }
+        }
 
         // Security Check 1: Brute Force Account Lockout
         if (user != null && bruteForceProtectionService.isAccountLocked(user)) {

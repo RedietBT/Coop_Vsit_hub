@@ -162,13 +162,16 @@ public class VisitController {
         return ResponseEntity.ok(visitService.checkOutVisitor(id, req, securityUsername));
     }
 
-    @PostMapping("/public-booking")
-    @Operation(summary = "Public Customer Visit Request", description = "Allows external clients or visitors to submit a visit booking request without logging in. Moves to SUBMITTED state for bank staff review.")
-    public ResponseEntity<VisitDetailResponse> bookPublicVisit(
-            @Valid @RequestBody PublicBookingRequest request
+    @PutMapping("/{id}/visitor")
+    @PreAuthorize("hasAnyAuthority('ROLE_SECURITY_DESK', 'ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER')")
+    @Operation(summary = "Front Desk / Lobby Visitor Registration & Demographics", description = "Updates optional visitor demographic details (First/Last name, ID, phone, dates, address).")
+    public ResponseEntity<VisitDetailResponse> updateVisitorDetails(
+            @PathVariable UUID id,
+            @RequestBody UpdateVisitorDetailsRequest request,
+            Principal principal
     ) {
-        VisitDetailResponse response = visitService.bookPublicVisit(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        String securityUsername = principal != null ? principal.getName() : "SECURITY";
+        return ResponseEntity.ok(visitService.updateVisitorDetails(id, request, securityUsername));
     }
 
     @DeleteMapping("/{id}")

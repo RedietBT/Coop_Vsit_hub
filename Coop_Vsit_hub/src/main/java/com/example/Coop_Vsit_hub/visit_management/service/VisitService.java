@@ -43,7 +43,7 @@ public interface VisitService {
     VisitDetailResponse getVisitById(UUID id);
 
     /**
-     * Retrieve full visit details by human-readable Visit Code (e.g. VIS-2026-0001).
+     * Retrieve full visit details by human-readable Visit Code (e.g. VIS-202608-00001).
      */
     VisitDetailResponse getVisitByCode(String visitCode);
 
@@ -61,6 +61,11 @@ public interface VisitService {
      * Update visit details (allowed while in DRAFT or SUBMITTED state).
      */
     VisitDetailResponse updateVisit(UUID id, UpdateVisitRequest request, String requesterUsername);
+
+    /**
+     * Front desk / Lobby visitor demographic edit & registration.
+     */
+    VisitDetailResponse updateVisitorDetails(UUID id, UpdateVisitorDetailsRequest request, String securityUsername);
 
     /**
      * Transition visit lifecycle state (APPROVED, REJECTED, UNDER_REVIEW, SCHEDULED, CANCELLED).
@@ -83,7 +88,7 @@ public interface VisitService {
     void deleteVisit(UUID id, String authenticatedUsername);
 
     /**
-     * Public booking submitted by external guest without authentication.
+     * Legacy internal mapping helper if needed.
      */
     VisitDetailResponse bookPublicVisit(PublicBookingRequest request);
 }

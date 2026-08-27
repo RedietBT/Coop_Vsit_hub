@@ -602,6 +602,46 @@ public class VisitServiceImpl implements VisitService {
         return VisitDetailResponse.from(saved);
     }
 
+    @Override
+    @Transactional
+    public VisitDetailResponse updateVisitorDetails(UUID id, UpdateVisitorDetailsRequest request, String securityUsername) {
+        log.info("Updating visitor demographic details for visit ID: {} by user: {}", id, securityUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (request.getFirstName() != null) visit.setVisitorFirstName(request.getFirstName().trim());
+        if (request.getMiddleName() != null) visit.setVisitorMiddleName(request.getMiddleName().trim());
+        if (request.getSurname() != null) visit.setVisitorSurname(request.getSurname().trim());
+        if (request.getIdNumber() != null) visit.setVisitorIdNumber(request.getIdNumber().trim());
+        if (request.getPhone() != null) visit.setVisitorPhone(request.getPhone().trim());
+        if (request.getEmail() != null) visit.setVisitorEmail(request.getEmail().trim().toLowerCase());
+        if (request.getDateOfBirth() != null) visit.setVisitorDateOfBirth(request.getDateOfBirth());
+        if (request.getIssuedDate() != null) visit.setVisitorIssuedDate(request.getIssuedDate());
+        if (request.getExpiredDate() != null) visit.setVisitorExpiredDate(request.getExpiredDate());
+        if (request.getGender() != null) visit.setVisitorGender(request.getGender());
+        if (request.getCitizenship() != null) visit.setVisitorCitizenship(request.getCitizenship().trim());
+        if (request.getRegion() != null) visit.setVisitorRegion(request.getRegion().trim());
+        if (request.getZone() != null) visit.setVisitorZone(request.getZone().trim());
+        if (request.getWoreda() != null) visit.setVisitorWoreda(request.getWoreda().trim());
+        if (request.getIdType() != null) visit.setVisitorIdType(request.getIdType().trim());
+        if (request.getIdPhotoUrl() != null) visit.setVisitorIdPhotoUrl(request.getIdPhotoUrl());
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                null,
+                securityUsername,
+                AuditEventType.VISIT_CREATED,
+                AuditStatus.SUCCESS,
+                "FRONT_DESK",
+                "VISIT_MODULE",
+                String.format("Visitor demographics updated for visit '%s' (%s)", saved.getVisitCode(), saved.getGuestDisplayName())
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
+
     private void validateSchedule(Instant start, Instant end) {
         if (start != null && end != null && !end.isAfter(start)) {
             throw new IllegalArgumentException("Scheduled end time must be strictly after scheduled start time.");
@@ -621,14 +661,14 @@ public class VisitServiceImpl implements VisitService {
     }
 
     private String generateVisitCode() {
-        String year = DateTimeFormatter.ofPattern("yyyy").withZone(ZoneOffset.UTC).format(Instant.now());
-        String prefix = "VIS-" + year + "-";
+        String yearMonth = DateTimeFormatter.ofPattern("yyyyMM").withZone(ZoneOffset.UTC).format(Instant.now());
+        String prefix = "VIS-" + yearMonth + "-";
         long nextNum = visitRepository.countByVisitCodeStartingWith(prefix) + 1;
 
-        String code = String.format("%s%04d", prefix, nextNum);
+        String code = String.format("%s%05d", prefix, nextNum);
         while (visitRepository.existsByVisitCode(code)) {
             nextNum++;
-            code = String.format("%s%04d", prefix, nextNum);
+            code = String.format("%s%05d", prefix, nextNum);
         }
         return code;
     }

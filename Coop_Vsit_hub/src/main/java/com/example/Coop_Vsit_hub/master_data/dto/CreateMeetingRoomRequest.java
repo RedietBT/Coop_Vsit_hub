@@ -25,5 +25,7 @@ public class CreateMeetingRoomRequest {
     @Builder.Default
     private Integer capacity = 10;
 
+    private String imageUrl;
+
     private String description;
 }
