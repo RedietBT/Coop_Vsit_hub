@@ -1,62 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
-  Tags,
+  Handshake,
   DoorOpen,
   Plus,
   Trash2,
   Edit2,
   CheckCircle2,
-  XCircle,
-  Sparkles,
+  Image as ImageIcon,
+  Upload,
 } from 'lucide-react';
-import useMasterDataStore from '../store/masterDataStore';
 import Modal from '@/shared/components/ui/Modal';
 import Button from '@/shared/components/ui/Button';
 import Input from '@/shared/components/ui/Input';
+import useMasterDataStore from '../store/masterDataStore';
+import masterDataApi from '../api/masterDataApi';
+import { toast } from 'sonner';
 
 export const MasterDataManagementModal = () => {
   const {
+    isMasterModalOpen,
+    activeTab,
     departments,
     categories,
     meetingRooms,
-    isMasterModalOpen,
     closeMasterModal,
-    activeTab,
     setActiveTab,
+    fetchDepartments,
     createDepartment,
     updateDepartment,
     deleteDepartment,
+    fetchCategories,
     createCategory,
     updateCategory,
     deleteCategory,
+    fetchMeetingRooms,
     createMeetingRoom,
     updateMeetingRoom,
     deleteMeetingRoom,
   } = useMasterDataStore();
 
-  // Form states for creating new items
   const [editingId, setEditingId] = useState(null);
 
-  // Department form state
+  // Forms
   const [deptForm, setDeptForm] = useState({ name: '', code: '', description: '' });
-
-  // Category form state
   const [catForm, setCatForm] = useState({ name: '', description: '' });
-
-  // Meeting room form state
   const [roomForm, setRoomForm] = useState({
     name: '',
-    floorLocation: '',
-    capacity: 10,
-    description: '',
+    capacity: 18,
+    imageUrl: '',
   });
+
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleClose = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
     setCatForm({ name: '', description: '' });
-    setRoomForm({ name: '', floorLocation: '', capacity: 10, description: '' });
+    setRoomForm({ name: '', capacity: 18, imageUrl: '' });
     closeMasterModal();
   };
 
@@ -99,7 +100,41 @@ export const MasterDataManagementModal = () => {
     } else {
       await createMeetingRoom(roomForm);
     }
-    setRoomForm({ name: '', floorLocation: '', capacity: 10, description: '' });
+    setRoomForm({ name: '', capacity: 18, imageUrl: '' });
+  };
+
+  const handleRoomImageUpload = async (e, roomId) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG/JPEG/WEBP)');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      if (roomId) {
+        const updated = await masterDataApi.uploadRoomImage(roomId, file);
+        toast.success('Room photo uploaded successfully!');
+        fetchMeetingRooms(false);
+        if (editingId === roomId) {
+          setRoomForm((prev) => ({ ...prev, imageUrl: updated.imageUrl }));
+        }
+      } else {
+        // Convert to data url for preview before create
+        const reader = new FileReader();
+        reader.onload = () => {
+          setRoomForm((prev) => ({ ...prev, imageUrl: reader.result }));
+          toast.success('Photo ready for new room registration.');
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload room image.');
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   return (
@@ -119,14 +154,14 @@ export const MasterDataManagementModal = () => {
               setActiveTab('departments');
               setEditingId(null);
             }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'departments'
-                ? 'bg-white text-[#000000] shadow-xs'
+                ? 'bg-white text-[#00adef] shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Building2 className="w-4 h-4 text-[#00adef]" />
-            <span>Departments ({departments.length})</span>
+            <Building2 className="w-4 h-4" />
+            <span>Bank Departments ({departments.length})</span>
           </button>
 
           <button
@@ -135,13 +170,13 @@ export const MasterDataManagementModal = () => {
               setActiveTab('categories');
               setEditingId(null);
             }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'categories'
-                ? 'bg-white text-[#000000] shadow-xs'
+                ? 'bg-white text-[#e38524] shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Tags className="w-4 h-4 text-[#e38524]" />
+            <Handshake className="w-4 h-4" />
             <span>Partnership Categories ({categories.length})</span>
           </button>
 
@@ -151,13 +186,13 @@ export const MasterDataManagementModal = () => {
               setActiveTab('rooms');
               setEditingId(null);
             }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'rooms'
-                ? 'bg-white text-[#000000] shadow-xs'
+                ? 'bg-white text-emerald-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <DoorOpen className="w-4 h-4 text-emerald-600" />
+            <DoorOpen className="w-4 h-4" />
             <span>Meeting Rooms & Spaces ({meetingRooms.length})</span>
           </button>
         </div>
@@ -191,7 +226,7 @@ export const MasterDataManagementModal = () => {
                 <div className="sm:col-span-2">
                   <Input
                     label="Department Name"
-                    placeholder="e.g. Digital Banking & Payments"
+                    placeholder="e.g. Digital Banking & Technology"
                     value={deptForm.name}
                     onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })}
                     required
@@ -199,28 +234,25 @@ export const MasterDataManagementModal = () => {
                 </div>
                 <div>
                   <Input
-                    label="Code (Optional)"
-                    placeholder="DIG_BANK"
+                    label="Dept Code"
+                    placeholder="e.g. DBT"
                     value={deptForm.code}
-                    onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value })}
+                    onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value.toUpperCase() })}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Input
-                    label="Description & Scope"
-                    placeholder="e.g. Omnichannel digital payments and fintech peering"
-                    value={deptForm.description}
-                    onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
-                  />
-                </div>
-                <div className="pt-5 shrink-0">
-                  <Button type="submit" variant="orange" size="md" icon={editingId ? CheckCircle2 : Plus}>
-                    {editingId ? 'Update' : 'Add Department'}
-                  </Button>
-                </div>
+              <Input
+                label="Description & Scope"
+                placeholder="e.g. Responsible for digital channels, mobile banking, and fintech partnerships"
+                value={deptForm.description}
+                onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
+              />
+
+              <div className="flex justify-end pt-1">
+                <Button type="submit" variant="primary" size="md" icon={editingId ? CheckCircle2 : Plus}>
+                  {editingId ? 'Update Department' : 'Add Department'}
+                </Button>
               </div>
             </form>
 
@@ -379,22 +411,22 @@ export const MasterDataManagementModal = () => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 3: MEETING ROOMS & SPACES */}
+        {/* TAB 3: MEETING ROOMS & SPACES (3 STRICT FIELDS + PHOTO UPLOAD) */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'rooms' && (
           <div className="space-y-4">
             {/* Create/Edit Form */}
-            <form onSubmit={handleSaveRoom} className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 space-y-3">
+            <form onSubmit={handleSaveRoom} className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                  {editingId ? 'Edit Meeting Room' : 'Register New Meeting Room / Space'}
+                  {editingId ? 'Edit Meeting Room' : 'Register New Meeting Room'}
                 </span>
                 {editingId && (
                   <button
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', floorLocation: '', capacity: 10, description: '' });
+                      setRoomForm({ name: '', capacity: 18, imageUrl: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -404,45 +436,74 @@ export const MasterDataManagementModal = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Room Name & Floor */}
                 <div className="sm:col-span-2">
                   <Input
-                    label="Room / Facility Name"
-                    placeholder="e.g. DxValley Executive Boardroom (4th Floor)"
+                    label="Room Name & Floor"
+                    placeholder="e.g. DxValley Peering Boardroom - 4th Floor"
                     value={roomForm.name}
                     onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
                     required
                   />
                 </div>
+
+                {/* 2. Seating Capacity */}
                 <div>
                   <Input
-                    label="Capacity (Persons)"
+                    label="Seating Capacity"
                     type="number"
                     min="1"
+                    placeholder="e.g. 18"
                     value={roomForm.capacity}
-                    onChange={(e) => setRoomForm({ ...roomForm, capacity: Number(e.target.value) || 10 })}
+                    onChange={(e) => setRoomForm({ ...roomForm, capacity: Number(e.target.value) || 1 })}
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input
-                  label="Floor / Building Location"
-                  placeholder="e.g. 4th Floor, DxValley Innovation Wing"
-                  value={roomForm.floorLocation}
-                  onChange={(e) => setRoomForm({ ...roomForm, floorLocation: e.target.value })}
-                />
-                <Input
-                  label="Room Features & AV Equipment"
-                  placeholder="e.g. Dual video conferencing, digital smart board"
-                  value={roomForm.description}
-                  onChange={(e) => setRoomForm({ ...roomForm, description: e.target.value })}
-                />
+              {/* 3. Room Image & Photo Upload */}
+              <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-2">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Room Image / Photo
+                </label>
+                <div className="flex items-center gap-3">
+                  {roomForm.imageUrl ? (
+                    <img
+                      src={roomForm.imageUrl}
+                      alt="Room Preview"
+                      className="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-16 h-12 rounded-lg bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Paste Image URL or upload photo below"
+                      value={roomForm.imageUrl}
+                      onChange={(e) => setRoomForm({ ...roomForm, imageUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition-all shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleRoomImageUpload(e, editingId)}
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div className="flex justify-end pt-1">
                 <Button type="submit" variant="orange" size="md" icon={editingId ? CheckCircle2 : Plus}>
-                  {editingId ? 'Update Meeting Room' : 'Register Meeting Room'}
+                  {editingId ? 'Update Meeting Room' : 'Register Room'}
                 </Button>
               </div>
             </form>
@@ -452,8 +513,8 @@ export const MasterDataManagementModal = () => {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
-                    <th className="py-2.5 pl-4">Meeting Room & Space</th>
-                    <th className="py-2.5 px-3">Floor / Location</th>
+                    <th className="py-2.5 pl-4">Photo</th>
+                    <th className="py-2.5 px-3">Room Name & Floor</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
                     <th className="py-2.5 pr-4 text-right">Actions</th>
                   </tr>
@@ -461,24 +522,44 @@ export const MasterDataManagementModal = () => {
                 <tbody className="divide-y divide-slate-100">
                   {meetingRooms.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-2.5 pl-4 font-bold text-[#000000]">{r.name}</td>
-                      <td className="py-2.5 px-3 text-slate-500">{r.floorLocation || 'Main Facility'}</td>
+                      <td className="py-2.5 pl-4 w-12">
+                        {r.imageUrl ? (
+                          <img
+                            src={r.imageUrl}
+                            alt={r.name}
+                            className="w-10 h-8 object-cover rounded-md border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-400">
+                            <DoorOpen className="w-4 h-4" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-[#000000]">{r.name}</td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">{r.capacity} Seats</td>
                       <td className="py-2.5 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <label className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer" title="Upload Photo">
+                            <Upload className="w-3.5 h-3.5" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleRoomImageUpload(e, r.id)}
+                            />
+                          </label>
                           <button
                             type="button"
                             onClick={() => {
                               setEditingId(r.id);
                               setRoomForm({
                                 name: r.name,
-                                floorLocation: r.floorLocation || '',
-                                capacity: r.capacity || 10,
-                                description: r.description || '',
+                                capacity: r.capacity || 18,
+                                imageUrl: r.imageUrl || '',
                               });
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"
-                            title="Edit Room"
+                            title="Edit Meeting Room"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>

@@ -11,8 +11,8 @@ import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboard
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
 import BookVisitPage from '@/modules/visits/pages/BookVisitPage';
-import PublicBookingPage from '@/modules/visits/pages/PublicBookingPage';
 import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
+import ReportsAnalyticsPage from '@/modules/reports/pages/ReportsAnalyticsPage';
 import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
 import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
@@ -28,11 +28,6 @@ export const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
-
-      {/* Public Customer / Partner Delegation Booking Request Portal */}
-      <Route path="/book-visit" element={<PublicBookingPage />} />
-      <Route path="/request-visit" element={<PublicBookingPage />} />
-      <Route path="/portal/book" element={<PublicBookingPage />} />
 
       {/* Public Post-Visit Customer Satisfaction (CSAT) Survey */}
       <Route path="/feedback/:token" element={<PublicSurveyPage />} />
@@ -99,6 +94,19 @@ export const AppRoutes = () => {
             <RoleGuard allowedRoles={['ROLE_SECURITY_DESK', 'ROLE_ADMIN']}>
               <DashboardLayout>
                 <SecurityDeskPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_SECURITY_DESK']}>
+              <DashboardLayout>
+                <ReportsAnalyticsPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>

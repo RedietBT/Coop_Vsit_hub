@@ -18,6 +18,9 @@ export const useSecurityStore = create((set, get) => ({
   checkOutTarget: null,
   isCheckOutModalOpen: false,
 
+  editVisitorTarget: null,
+  isEditVisitorModalOpen: false,
+
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
@@ -26,6 +29,9 @@ export const useSecurityStore = create((set, get) => ({
 
   openCheckOutModal: (visit) => set({ checkOutTarget: visit, isCheckOutModalOpen: true }),
   closeCheckOutModal: () => set({ checkOutTarget: null, isCheckOutModalOpen: false }),
+
+  openEditVisitorModal: (visit) => set({ editVisitorTarget: visit, isEditVisitorModalOpen: true }),
+  closeEditVisitorModal: () => set({ editVisitorTarget: null, isEditVisitorModalOpen: false }),
 
   fetchSecurityFeed: async (isManual = false) => {
     set({ isLoading: true, error: null });

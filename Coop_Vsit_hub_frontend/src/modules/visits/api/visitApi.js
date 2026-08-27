@@ -31,6 +31,11 @@ export const visitApi = {
     return response.data;
   },
 
+  updateVisitorDetails: async (id, payload) => {
+    const response = await apiClient.put(`/api/v1/visits/${id}/visitor`, payload);
+    return response.data;
+  },
+
   transitionStatus: async (id, payload) => {
     // payload: { targetStatus: 'APPROVED' | 'REJECTED' | 'UNDER_REVIEW' | 'CANCELLED', approverComments: string }
     const response = await apiClient.put(`/api/v1/visits/${id}/status`, payload);

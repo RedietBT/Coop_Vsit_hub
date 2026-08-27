@@ -15,9 +15,11 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Edit3,
 } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
+import EditVisitorModal from './EditVisitorModal';
 import Badge from '@/shared/components/ui/Badge';
 import Spinner from '@/shared/components/ui/Spinner';
 
@@ -29,6 +31,7 @@ export const VisitTable = () => {
     currentPage,
     isLoading,
     setPage,
+    fetchVisits,
     openDetailDrawer,
     openStatusModal,
     checkIn,
@@ -38,6 +41,7 @@ export const VisitTable = () => {
 
   const { hasRole, hasAnyRole } = useAuthStore();
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [editingVisitor, setEditingVisitor] = useState(null);
   const dropdownRef = useRef(null);
 
   const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
@@ -210,7 +214,20 @@ export const VisitTable = () => {
                             <span>View Full Details</span>
                           </button>
 
-                          {/* 2. Approver: Approve Visit */}
+                          {/* 2. Edit Visitor Demographics */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdownId(null);
+                              setEditingVisitor(visit);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-4 h-4 text-[#e38524]" />
+                            <span>Edit Visitor Demographics</span>
+                          </button>
+
+                          {/* 3. Approver: Approve Visit */}
                           {isApprover && visit.status === 'SUBMITTED' && (
                             <button
                               type="button"
@@ -225,7 +242,7 @@ export const VisitTable = () => {
                             </button>
                           )}
 
-                          {/* 3. Approver: Reject Visit */}
+                          {/* 4. Approver: Reject Visit */}
                           {isApprover && visit.status === 'SUBMITTED' && (
                             <button
                               type="button"
@@ -240,7 +257,7 @@ export const VisitTable = () => {
                             </button>
                           )}
 
-                          {/* 4. Security Desk: Check-In */}
+                          {/* 5. Security Desk: Check-In */}
                           {isSecurity && visit.status === 'APPROVED' && (
                             <button
                               type="button"
@@ -255,7 +272,7 @@ export const VisitTable = () => {
                             </button>
                           )}
 
-                          {/* 5. Security Desk: Check-Out */}
+                          {/* 6. Security Desk: Check-Out */}
                           {isSecurity && visit.status === 'IN_PROGRESS' && (
                             <button
                               type="button"
@@ -270,7 +287,7 @@ export const VisitTable = () => {
                             </button>
                           )}
 
-                          {/* 6. Admin Delete Request */}
+                          {/* 7. Admin Delete Request */}
                           {(visit.status === 'DRAFT' || visit.status === 'SUBMITTED') && isAdmin && (
                             <div className="pt-1 mt-1 border-t border-slate-100">
                               <button
@@ -321,6 +338,14 @@ export const VisitTable = () => {
           </button>
         </div>
       </div>
+
+      {/* Edit Visitor Demographic Modal */}
+      <EditVisitorModal
+        isOpen={Boolean(editingVisitor)}
+        onClose={() => setEditingVisitor(null)}
+        visit={editingVisitor}
+        onSaveSuccess={() => fetchVisits()}
+      />
     </div>
   );
 };

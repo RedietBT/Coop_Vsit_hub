@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { User, Lock, ArrowRight, AlertCircle, ShieldAlert } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Building2, ShieldCheck, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthLayout from '@/core/layouts/AuthLayout';
 import Input from '@/shared/components/ui/Input';
@@ -19,12 +19,14 @@ export const LoginPage = () => {
 
   const { login, isLoading, error, lockoutUntil, clearError } = useAuthStore();
 
+  const [loginMode, setLoginMode] = useState('ACTIVE_DIRECTORY'); // 'ACTIVE_DIRECTORY' | 'LOCAL'
   const [enteredPassword, setEnteredPassword] = useState('');
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
@@ -48,10 +50,9 @@ export const LoginPage = () => {
   const onSubmit = async (data) => {
     clearError();
     setEnteredPassword(data.password);
-    const result = await login(data.identifier, data.password);
+    const result = await login(data.identifier, data.password, loginMode);
 
     if (result.success) {
-      // Check if user must change password on first login
       if (result.user?.mustChangePassword) {
         setShowFirstTimeModal(true);
         return;
@@ -66,7 +67,7 @@ export const LoginPage = () => {
       if (result.status === 429 || (result.error && result.error.toLowerCase().includes('locked'))) {
         toast.error('Account temporarily locked due to 3 failed attempts (15 minutes).');
       } else {
-        toast.error(result.error || 'Invalid username or password.');
+        toast.error(result.error || 'Invalid credentials.');
       }
     }
   };
@@ -82,8 +83,42 @@ export const LoginPage = () => {
   return (
     <AuthLayout
       title="Staff Portal Sign In"
-      subtitle="Enter your credentials to access CoopBank DxValley Visit Hub."
+      subtitle="Sign in to access CoopBank DxValley Visit Hub and Facilities."
     >
+      {/* Login Mode Toggle Tabs */}
+      <div className="flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 mb-5">
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMode('ACTIVE_DIRECTORY');
+            clearError();
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+            loginMode === 'ACTIVE_DIRECTORY'
+              ? 'bg-white text-[#00adef] shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          <span>CoopBank Staff (AD)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMode('LOCAL');
+            clearError();
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+            loginMode === 'LOCAL'
+              ? 'bg-white text-[#e38524] shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          <span>System Admin / Local</span>
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Active Lockout Timer Banner */}
         {isLockedOut && (
@@ -101,11 +136,38 @@ export const LoginPage = () => {
           </div>
         )}
 
+        {/* Informational banner for Active Directory Mode */}
+        {loginMode === 'ACTIVE_DIRECTORY' ? (
+          <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-left flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[11px] font-semibold text-blue-900">
+                Active Directory Single Sign-On
+              </p>
+              <p className="text-[10px] text-blue-700 leading-relaxed">
+                Use your official bank username (e.g. <span className="font-mono font-bold">dalemu</span>) or corporate email.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-left flex items-start gap-2.5">
+            <KeyRound className="w-4 h-4 text-[#e38524] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[11px] font-semibold text-amber-900">
+                Local Database Mode
+              </p>
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                For administrative credentials and local accounts.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Username / Email Field */}
         <Input
-          label="Username or Corporate Email"
+          label={loginMode === 'ACTIVE_DIRECTORY' ? "Staff AD Username or Email" : "Admin Username or Email"}
           name="identifier"
-          placeholder="e.g. admin or your username"
+          placeholder={loginMode === 'ACTIVE_DIRECTORY' ? "e.g. dalemu or staff_test" : "e.g. admin"}
           icon={User}
           sanitize="identifier"
           disabled={isLoading || isLockedOut}
@@ -139,10 +201,10 @@ export const LoginPage = () => {
           </div>
         </div>
 
-        {/* Submit Button in CoopBank Orange #e38524 */}
+        {/* Submit Button */}
         <Button
           type="submit"
-          variant="orange"
+          variant={loginMode === 'ACTIVE_DIRECTORY' ? 'primary' : 'orange'}
           size="lg"
           className="w-full mt-2"
           isLoading={isLoading}
@@ -150,20 +212,8 @@ export const LoginPage = () => {
           icon={ArrowRight}
           iconPosition="right"
         >
-          Sign In to Portal
+          {loginMode === 'ACTIVE_DIRECTORY' ? 'Sign In with Active Directory' : 'Sign In as System Admin'}
         </Button>
-        {/* Public Visit Booking Portal Link for External Partners */}
-        <div className="pt-3 border-t border-slate-100 text-center">
-          <p className="text-[11px] text-slate-500">
-            External corporate partner or dignitary?
-          </p>
-          <Link
-            to="/book-visit"
-            className="inline-flex items-center gap-1 text-xs font-bold text-[#e38524] hover:text-[#00adef] mt-1 transition-colors"
-          >
-            <span>Request an Executive Delegation Visit →</span>
-          </Link>
-        </div>
       </form>
 
       {/* Mandatory First-Time Password Change Modal */}

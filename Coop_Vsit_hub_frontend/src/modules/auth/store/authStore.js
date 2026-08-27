@@ -13,12 +13,13 @@ export const useAuthStore = create(
       error: null,
       lockoutUntil: null,
 
-      login: async (identifier, password) => {
+      login: async (identifier, password, loginType = 'ACTIVE_DIRECTORY') => {
         set({ isLoading: true, error: null });
         try {
           const response = await apiClient.post('/api/v1/auth/login', {
             identifier: identifier.trim(),
             password,
+            loginType,
           });
 
           const { accessToken, refreshToken, user } = response.data;

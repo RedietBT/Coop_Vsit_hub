@@ -6,6 +6,7 @@ import SecurityArrivalsTable from '../components/SecurityArrivalsTable';
 import SecurityOnSiteTable from '../components/SecurityOnSiteTable';
 import CheckInModal from '../components/CheckInModal';
 import CheckOutModal from '../components/CheckOutModal';
+import EditVisitorModal from '@/modules/visits/components/EditVisitorModal';
 import VisitDetailDrawer from '@/modules/visits/components/VisitDetailDrawer';
 import Button from '@/shared/components/ui/Button';
 
@@ -17,6 +18,9 @@ export const SecurityDeskPage = () => {
     activeOnSite,
     isLoading,
     fetchSecurityFeed,
+    editVisitorTarget,
+    isEditVisitorModalOpen,
+    closeEditVisitorModal,
   } = useSecurityStore();
 
   useEffect(() => {
@@ -103,6 +107,12 @@ export const SecurityDeskPage = () => {
       {/* Modals & Slide-out Drawers */}
       <CheckInModal />
       <CheckOutModal />
+      <EditVisitorModal
+        isOpen={isEditVisitorModalOpen}
+        onClose={closeEditVisitorModal}
+        visit={editVisitorTarget}
+        onSaveSuccess={() => fetchSecurityFeed(false)}
+      />
       <VisitDetailDrawer />
     </div>
   );

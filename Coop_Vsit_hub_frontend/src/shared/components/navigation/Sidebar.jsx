@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  FileSpreadsheet,
 } from 'lucide-react';
 import CoopLogo from '@/core/assets/CoopLogo';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -40,6 +41,12 @@ const NAV_ITEMS = [
     path: '/security-desk',
     icon: UserCheck,
     roles: ['ROLE_SECURITY_DESK', 'ROLE_ADMIN'],
+  },
+  {
+    name: 'Reports & Exports',
+    path: '/reports',
+    icon: FileSpreadsheet,
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_SECURITY_DESK'],
   },
   {
     name: 'Partner Organizations',

@@ -56,6 +56,14 @@ export const masterDataApi = {
     const response = await apiClient.put(`/api/v1/meeting-rooms/${id}`, payload);
     return response.data;
   },
+  uploadRoomImage: async (id, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`/api/v1/meeting-rooms/${id}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
   deleteMeetingRoom: async (id) => {
     const response = await apiClient.delete(`/api/v1/meeting-rooms/${id}`);
     return response.data;

@@ -8,6 +8,7 @@ import {
   Clock,
   MapPin,
   CalendarCheck,
+  Edit3,
 } from 'lucide-react';
 import useSecurityStore from '../store/securityStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
@@ -15,7 +16,7 @@ import Badge from '@/shared/components/ui/Badge';
 import Spinner from '@/shared/components/ui/Spinner';
 
 export const SecurityArrivalsTable = () => {
-  const { expectedArrivals, isLoading, openCheckInModal } = useSecurityStore();
+  const { expectedArrivals, isLoading, openCheckInModal, openEditVisitorModal } = useSecurityStore();
   const { openDetailDrawer } = useVisitStore();
 
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -173,6 +174,18 @@ export const SecurityArrivalsTable = () => {
                           >
                             <LogIn className="w-4 h-4 text-[#00adef]" />
                             <span>Check-In Guest & Issue Badge</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdownId(null);
+                              openEditVisitorModal(visit);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-4 h-4 text-[#e38524]" />
+                            <span>Edit Visitor Demographics</span>
                           </button>
 
                           <button
