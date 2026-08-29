@@ -83,8 +83,8 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     navigate('/login');
   };
 
-  const isAdmin = hasAnyRole(['ROLE_ADMIN']);
-  const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK']);
+  const isAdmin = hasAnyRole(['ROLE_ADMIN', 'ADMIN']);
+  const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'SECURITY_DESK']);
   const isStaff = !isAdmin && !isSecurity;
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {

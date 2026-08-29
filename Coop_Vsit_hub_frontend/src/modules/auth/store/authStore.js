@@ -85,14 +85,31 @@ export const useAuthStore = create(
 
       hasRole: (roleName) => {
         const user = get().user;
-        if (!user || !user.roles) return false;
-        return user.roles.includes(roleName);
+        if (!user) return false;
+        const targetClean = String(roleName).replace(/^ROLE_/, '').toUpperCase();
+
+        const checkValue = (val) => {
+          if (!val) return false;
+          const clean = String(val).replace(/^ROLE_/, '').toUpperCase();
+          return clean === targetClean || String(val) === String(roleName);
+        };
+
+        if (Array.isArray(user.roles)) {
+          return user.roles.some((r) => {
+            if (typeof r === 'string') return checkValue(r);
+            if (typeof r === 'object' && r !== null) return checkValue(r.name || r.role || r.authority);
+            return false;
+          });
+        }
+
+        if (typeof user.role === 'string') return checkValue(user.role);
+        return false;
       },
 
       hasAnyRole: (roleNames) => {
         const user = get().user;
-        if (!user || !user.roles) return false;
-        return roleNames.some((role) => user.roles.includes(role));
+        if (!user) return false;
+        return roleNames.some((r) => get().hasRole(r));
       },
 
       clearError: () => set({ error: null }),

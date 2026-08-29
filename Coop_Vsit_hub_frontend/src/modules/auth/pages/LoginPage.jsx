@@ -61,9 +61,14 @@ export const LoginPage = () => {
       soundPlayer.playNotificationChime();
       toast.success(`Welcome back, ${result.user?.firstName || result.user?.username || 'User'}!`);
       
-      const roles = result.user?.roles || [];
-      const isAdmin = roles.includes('ROLE_ADMIN');
-      const isSecurity = roles.includes('ROLE_SECURITY_DESK');
+      const roles = Array.isArray(result.user?.roles) ? result.user.roles : [];
+      const checkRole = (target) =>
+        roles.some((r) => {
+          const name = typeof r === 'string' ? r : r?.name;
+          return name === target || name === `ROLE_${target}`;
+        });
+      const isAdmin = checkRole('ADMIN');
+      const isSecurity = checkRole('SECURITY_DESK');
       let defaultDestination = '/visits/calendar';
       if (isAdmin) {
         defaultDestination = '/dashboard';
