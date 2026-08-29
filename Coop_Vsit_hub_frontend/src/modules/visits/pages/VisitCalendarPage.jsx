@@ -207,13 +207,13 @@ export const VisitCalendarPage = () => {
       const endIso = `${formData.date}T${formData.endTime}:00Z`;
 
       const payload = {
-        title: formData.title.trim(),
+        title: formData.title.trim() || `Room Reservation - ${selectedRoom.name}`,
         requestingDepartment: formData.requestingDepartment.trim(),
         locationRoom: selectedRoom.name,
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
         visitorCount: parseInt(formData.visitorCount, 10) || 1,
-        visitObjective: formData.visitObjective.trim() || 'Internal boardroom session',
+        visitObjective: formData.visitObjective.trim() || 'Internal meeting room reservation',
         visitType: 'INTERNAL',
         priorityLevel: 'MEDIUM',
         guestCategory: 'INDIVIDUAL',
@@ -523,14 +523,14 @@ export const VisitCalendarPage = () => {
                         }}
                         onMouseEnter={() => setHoveredDate(dayNumber)}
                         onMouseLeave={() => setHoveredDate(null)}
-                        className={`h-14 p-1.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none relative ${
+                        className={`h-14 p-1.5 rounded-2xl border transition-colors duration-150 cursor-pointer flex flex-col justify-between select-none relative ${
                           isSelected
                             ? 'border-[#00adef] bg-blue-50/60 shadow-xs'
                             : 'border-slate-100 hover:border-blue-300 hover:bg-slate-50'
                         }`}
                       >
                         <span
-                          className={`text-xs font-bold ${
+                          className={`text-xs font-bold pointer-events-none ${
                             isSelected ? 'text-[#00adef]' : 'text-slate-700'
                           }`}
                         >
@@ -538,14 +538,14 @@ export const VisitCalendarPage = () => {
                         </span>
 
                         {hasBookings ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 pointer-events-none">
                             <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                             <span className="text-[10px] font-bold text-red-600 truncate">
                               {slots.length} Booked
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[9px] font-medium text-emerald-600">
+                          <span className="text-[9px] font-medium text-emerald-600 pointer-events-none">
                             Available
                           </span>
                         )}
@@ -554,9 +554,9 @@ export const VisitCalendarPage = () => {
                   })}
                 </div>
 
-                {/* Interactive Hourly Availability Box (Hover or Selected Day) */}
-                <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl">
-                  <div className="flex items-center justify-between mb-2">
+                {/* Interactive Hourly Availability Box (Locked Stable Height - No Jitter) */}
+                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl h-32 flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between mb-1.5 shrink-0">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
                       Schedule on{' '}
@@ -572,32 +572,31 @@ export const VisitCalendarPage = () => {
                     </span>
                   </div>
 
-                  {activeDateSlots.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {activeDateSlots.map((slot, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-red-500" />
-                            <span>{slot.timeFormatted || 'Reserved Hours'}</span>
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    {activeDateSlots.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {activeDateSlots.map((slot, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-red-500" />
+                              <span>{slot.timeFormatted || 'Reserved Hours'}</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
+                              Booked
+                            </span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
-                            Booked
-                          </span>
-                        </div>
-                      ))}
-                      <p className="text-[11px] text-emerald-600 font-medium mt-1">
-                        ✓ Other remaining hours on this date are open for booking.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      <span>Entire day is currently open. No scheduled bookings yet.</span>
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>Entire day is currently open. No scheduled bookings yet.</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

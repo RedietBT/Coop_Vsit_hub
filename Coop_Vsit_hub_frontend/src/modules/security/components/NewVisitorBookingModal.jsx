@@ -14,6 +14,8 @@ import {
   Search,
   Plus,
   ShieldCheck,
+  DoorOpen,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Modal from '@/shared/components/ui/Modal';
@@ -67,12 +69,15 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
     visitObjective: '',
   });
 
+  const [bookedRoomsForDate, setBookedRoomsForDate] = useState([]);
+
   useEffect(() => {
     if (isOpen) {
       fetchAllMasterData();
       loadOrganizations();
+      loadBookedRooms(formData.scheduledDate);
     }
-  }, [isOpen, fetchAllMasterData]);
+  }, [isOpen, fetchAllMasterData, formData.scheduledDate]);
 
   const loadOrganizations = async () => {
     try {
@@ -80,6 +85,21 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
       setExistingOrgs(Array.isArray(orgs) ? orgs : []);
     } catch (e) {
       console.warn('Failed to load organizations:', e);
+    }
+  };
+
+  const loadBookedRooms = async (dateStr) => {
+    try {
+      const res = await visitApi.getAllVisits({ size: 100 });
+      const allVisits = res?.content || (Array.isArray(res) ? res : []);
+      const matched = allVisits.filter((v) => {
+        if (!v.locationRoom || v.status === 'CANCELLED' || v.status === 'REJECTED') return false;
+        const vDate = v.scheduledStartTime ? v.scheduledStartTime.split('T')[0] : '';
+        return !dateStr || vDate === dateStr;
+      });
+      setBookedRoomsForDate(matched);
+    } catch (e) {
+      console.warn('Failed to load booked rooms for date:', e);
     }
   };
 
@@ -581,10 +601,32 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Room</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Assigned Room</label>
+                  {bookedRoomsForDate.length > 0 && (
+                    <span className="text-[10px] text-[#00adef] font-bold">
+                      {bookedRoomsForDate.length} Booked Room(s)
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formData.locationRoom}
-                  onChange={(e) => handleChange('locationRoom', e.target.value)}
+                  onChange={(e) => {
+                    const roomVal = e.target.value;
+                    handleChange('locationRoom', roomVal);
+                    const matched = bookedRoomsForDate.find((b) => b.locationRoom === roomVal);
+                    if (matched) {
+                      if (!formData.title || formData.title === 'Executive Visit') {
+                        handleChange('title', matched.title);
+                      }
+                      if (matched.scheduledStartTime && matched.scheduledEndTime) {
+                        const s = matched.scheduledStartTime.split('T')[1]?.substring(0, 5);
+                        const en = matched.scheduledEndTime.split('T')[1]?.substring(0, 5);
+                        if (s) handleChange('startTime', s);
+                        if (en) handleChange('endTime', en);
+                      }
+                    }
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
                 >
                   <option value="">None (Lobby / Floor Visit)</option>
@@ -608,6 +650,83 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 />
               </div>
             </div>
+
+            {/* Booked Rooms Linker Assistant */}
+            {bookedRoomsForDate.length > 0 && (
+              <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <DoorOpen className="w-3.5 h-3.5 text-[#00adef]" />
+                    <span>Existing Room Bookings on {formData.scheduledDate}:</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Click to link this visit to a booked room
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {bookedRoomsForDate.map((b) => {
+                    const isLinked = formData.locationRoom === b.locationRoom;
+                    const sTime = b.scheduledStartTime
+                      ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+                    const eTime = b.scheduledEndTime
+                      ? new Date(b.scheduledEndTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+
+                    return (
+                      <div
+                        key={b.id}
+                        onClick={() => {
+                          if (isLinked) {
+                            handleChange('locationRoom', '');
+                          } else {
+                            handleChange('locationRoom', b.locationRoom);
+                            if (!formData.title || formData.title === 'Executive Visit') {
+                              handleChange('title', b.title);
+                            }
+                            if (b.scheduledStartTime && b.scheduledEndTime) {
+                              const s = b.scheduledStartTime.split('T')[1]?.substring(0, 5);
+                              const en = b.scheduledEndTime.split('T')[1]?.substring(0, 5);
+                              if (s) handleChange('startTime', s);
+                              if (en) handleChange('endTime', en);
+                            }
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                          isLinked
+                            ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <DoorOpen className={`w-3.5 h-3.5 shrink-0 ${isLinked ? 'text-white' : 'text-[#00adef]'}`} />
+                            <p className="font-bold text-xs truncate">{b.locationRoom}</p>
+                          </div>
+                          <p className={`text-[11px] truncate mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-500'}`}>
+                            {b.title}
+                          </p>
+                          <p className={`text-[10px] font-mono mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-400'}`}>
+                            ⏰ {sTime} - {eTime}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                            isLinked
+                              ? 'bg-white text-[#00adef] border-white'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {isLinked ? 'Linked ✓' : 'Link Room'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Objective / Notes</label>

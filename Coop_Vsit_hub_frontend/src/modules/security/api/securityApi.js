@@ -15,7 +15,19 @@ export const securityApi = {
       const approved = approvedRes.data?.content || approvedRes.data || [];
       const combined = [...scheduled, ...approved];
       combined.sort((a, b) => new Date(a.scheduledStartTime || 0) - new Date(b.scheduledStartTime || 0));
-      return combined;
+
+      // Front Desk expected arrivals should focus on visitor delegations
+      const visitorArrivals = combined.filter((v) => {
+        // Include if explicitly external or has an affiliated organization
+        if (v.visitType === 'EXTERNAL' || v.guestCategory === 'ORGANIZATION') return true;
+        // Include if visitor demographics were registered (phone, id number, visitor names)
+        if (v.individualGuestPhone || v.visitorPhone || v.visitorIdNumber || v.individualGuestIdNumber) return true;
+        // If it's titled "Room Reservation - " and has no visitor demographics, keep it as internal room booking
+        if (v.title?.startsWith('Room Reservation - ')) return false;
+        return true;
+      });
+
+      return visitorArrivals;
     } catch (e) {
       console.warn('Failed to load expected arrivals:', e);
       return [];
