@@ -69,6 +69,23 @@ export const visitApi = {
     const response = await apiClient.get('/api/v1/guests', { params: { size: 100 } });
     return response.data?.content || response.data || [];
   },
+
+  getRoomSlots: async (roomName, fromDate, toDate) => {
+    const params = { roomName };
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+    const response = await apiClient.get('/api/v1/visits/room-slots', { params });
+    return response.data || [];
+  },
+
+  getAdminRoomBookings: async (roomName, fromDate, toDate) => {
+    const params = {};
+    if (roomName) params.roomName = roomName;
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+    const response = await apiClient.get('/api/v1/visits/room-bookings', { params });
+    return response.data || [];
+  },
 };
 
 export default visitApi;

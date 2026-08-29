@@ -91,4 +91,14 @@ public interface VisitService {
      * Legacy internal mapping helper if needed.
      */
     VisitDetailResponse bookPublicVisit(PublicBookingRequest request);
+
+    /**
+     * Retrieve privacy-safe booked time slots for a meeting room in a given time window.
+     */
+    java.util.List<RoomSlotResponse> getRoomAvailabilitySlots(String roomName, Instant fromDate, Instant toDate);
+
+    /**
+     * Retrieve comprehensive room booking audit roster for Super Admin dashboard.
+     */
+    java.util.List<AdminRoomBookingResponse> getAdminRoomBookings(String roomName, Instant fromDate, Instant toDate);
 }

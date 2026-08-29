@@ -188,4 +188,26 @@ public class VisitController {
                 "deletedVisitId", id.toString()
         ));
     }
+
+    @GetMapping("/room-slots")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get Privacy-Safe Room Booked Slots", description = "Returns reserved time slots for calendar view without exposing employee identities.")
+    public ResponseEntity<java.util.List<RoomSlotResponse>> getRoomSlots(
+            @RequestParam String roomName,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate
+    ) {
+        return ResponseEntity.ok(visitService.getRoomAvailabilitySlots(roomName, fromDate, toDate));
+    }
+
+    @GetMapping("/room-bookings")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @Operation(summary = "Super Admin Room Bookings Roster", description = "Returns complete detailed booking roster with staff identity, email, and meeting purpose.")
+    public ResponseEntity<java.util.List<AdminRoomBookingResponse>> getAdminRoomBookings(
+            @RequestParam(required = false) String roomName,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate
+    ) {
+        return ResponseEntity.ok(visitService.getAdminRoomBookings(roomName, fromDate, toDate));
+    }
 }

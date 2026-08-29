@@ -194,7 +194,15 @@ public class VisitServiceImpl implements VisitService {
         }
 
         String visitCode = generateVisitCode();
-        VisitStatus initialStatus = Boolean.TRUE.equals(request.getIsDraft()) ? VisitStatus.DRAFT : VisitStatus.SUBMITTED;
+        boolean isRoomReservation = StringUtils.hasText(request.getLocationRoom());
+        VisitStatus initialStatus;
+        if (Boolean.TRUE.equals(request.getIsDraft())) {
+            initialStatus = VisitStatus.DRAFT;
+        } else if (isRoomReservation) {
+            initialStatus = VisitStatus.SCHEDULED; // Instant confirmation! No approval wait required!
+        } else {
+            initialStatus = VisitStatus.SUBMITTED;
+        }
 
         String fName = request.getIndividualGuestFirstName();
         String mName = request.getIndividualGuestMiddleName();
@@ -247,11 +255,50 @@ public class VisitServiceImpl implements VisitService {
 
         Visit saved = visitRepository.save(visit);
 
+        // If SUBMITTED, notify approvers
         if (notificationService != null && saved.getStatus() == VisitStatus.SUBMITTED) {
             try {
                 notificationService.notifyVisitRequested(saved);
             } catch (Exception e) {
                 log.warn("Failed to dispatch visit request notification for '{}': {}", saved.getVisitCode(), e.getMessage());
+            }
+        }
+
+        // If SCHEDULED room reservation, instantly notify Super Admins via email & in-app
+        if (notificationService != null && saved.getStatus() == VisitStatus.SCHEDULED && StringUtils.hasText(saved.getLocationRoom())) {
+            try {
+                String dateStr = saved.getScheduledStartTime() != null 
+                        ? DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(saved.getScheduledStartTime())
+                        : "N/A";
+                String timeStr = (saved.getScheduledStartTime() != null && saved.getScheduledEndTime() != null)
+                        ? String.format("%s - %s UTC", 
+                            DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(saved.getScheduledStartTime()),
+                            DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(saved.getScheduledEndTime()))
+                        : "N/A";
+
+                String adminMessage = String.format(
+                        "Staff member %s (%s, Dept: %s) has reserved meeting room '%s' on %s (%s) for '%s' (Visit Code: %s).",
+                        requester.getFullName(),
+                        requester.getEmail(),
+                        requester.getDepartment() != null ? requester.getDepartment() : "General",
+                        saved.getLocationRoom(),
+                        dateStr,
+                        timeStr,
+                        saved.getTitle(),
+                        saved.getVisitCode()
+                );
+
+                notificationService.notifyRoles(
+                        List.of(com.example.coop_vsit_hub.user_and_auth.enums.RoleName.ROLE_ADMIN),
+                        "Room Booking Confirmed: " + saved.getLocationRoom(),
+                        adminMessage,
+                        com.example.coop_vsit_hub.notification_management.enums.NotificationType.VISIT_APPROVED,
+                        saved.getId(),
+                        saved.getVisitCode(),
+                        true // send email via SMTP/MailHog
+                );
+            } catch (Exception e) {
+                log.warn("Failed to dispatch admin notification for room booking: {}", e.getMessage());
             }
         }
 
@@ -684,5 +731,75 @@ public class VisitServiceImpl implements VisitService {
             badge = String.format("%s%04d", prefix, nextNum);
         }
         return badge;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomSlotResponse> getRoomAvailabilitySlots(String roomName, Instant fromDate, Instant toDate) {
+        if (roomName == null || roomName.isBlank()) {
+            return Collections.emptyList();
+        }
+        Instant start = fromDate != null ? fromDate : Instant.now().minus(java.time.Duration.ofDays(7));
+        Instant end = toDate != null ? toDate : Instant.now().plus(java.time.Duration.ofDays(60));
+
+        List<Visit> visits = visitRepository.findActiveRoomVisitsInWindow(roomName.trim(), start, end);
+
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC);
+
+        return visits.stream().map(v -> {
+            String date = v.getScheduledStartTime() != null ? dateFmt.format(v.getScheduledStartTime()) : "";
+            String timeFormatted = "";
+            if (v.getScheduledStartTime() != null && v.getScheduledEndTime() != null) {
+                timeFormatted = String.format("%s - %s", timeFmt.format(v.getScheduledStartTime()), timeFmt.format(v.getScheduledEndTime()));
+            }
+            return RoomSlotResponse.builder()
+                    .roomName(v.getLocationRoom())
+                    .startTime(v.getScheduledStartTime())
+                    .endTime(v.getScheduledEndTime())
+                    .date(date)
+                    .timeFormatted(timeFormatted)
+                    .booked(true)
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminRoomBookingResponse> getAdminRoomBookings(String roomName, Instant fromDate, Instant toDate) {
+        String cleanRoom = (roomName != null && !roomName.isBlank()) ? roomName.trim() : null;
+        List<Visit> visits = visitRepository.findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate);
+
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC);
+
+        return visits.stream().map(v -> {
+            String date = v.getScheduledStartTime() != null ? dateFmt.format(v.getScheduledStartTime()) : "";
+            String timeRange = "";
+            if (v.getScheduledStartTime() != null && v.getScheduledEndTime() != null) {
+                timeRange = String.format("%s - %s", timeFmt.format(v.getScheduledStartTime()), timeFmt.format(v.getScheduledEndTime()));
+            }
+
+            User host = v.getRequester();
+            return AdminRoomBookingResponse.builder()
+                    .visitId(v.getId())
+                    .visitCode(v.getVisitCode())
+                    .roomName(v.getLocationRoom())
+                    .scheduledStartTime(v.getScheduledStartTime())
+                    .scheduledEndTime(v.getScheduledEndTime())
+                    .date(date)
+                    .timeRange(timeRange)
+                    .title(v.getTitle())
+                    .purpose(v.getVisitObjective())
+                    .guestDisplayName(v.getGuestDisplayName())
+                    .visitorCount(v.getVisitorCount())
+                    .status(v.getStatus() != null ? v.getStatus().name() : "")
+                    .bookedById(host != null ? host.getId() : null)
+                    .bookedByName(host != null ? host.getFullName() : "N/A")
+                    .bookedByEmail(host != null ? host.getEmail() : "N/A")
+                    .bookedByDepartment(host != null ? host.getDepartment() : v.getRequestingDepartment())
+                    .bookedByPhone(host != null ? host.getPhoneNumber() : "N/A")
+                    .build();
+        }).toList();
     }
 }
