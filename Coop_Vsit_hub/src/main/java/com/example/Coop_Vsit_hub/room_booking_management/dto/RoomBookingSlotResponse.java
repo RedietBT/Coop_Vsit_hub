@@ -1,5 +1,6 @@
 package com.example.coop_vsit_hub.room_booking_management.dto;
 
+import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,7 +20,13 @@ public class RoomBookingSlotResponse {
     private String meetingTitle;
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
+    private UUID bookedByUserId;
     private String bookedByName;
+    private String bookedByEmail;
+    private String hostDepartment;
+    private Integer expectedAttendees;
+    private String meetingAgenda;
     private String guestOrganizationName;
     private String guestName;
+    private RoomBookingStatus status;
 }

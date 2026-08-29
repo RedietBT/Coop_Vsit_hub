@@ -125,9 +125,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .meetingTitle(b.getMeetingTitle())
                         .scheduledStartTime(b.getScheduledStartTime())
                         .scheduledEndTime(b.getScheduledEndTime())
+                        .bookedByUserId(b.getBookedByUserId())
                         .bookedByName(b.getBookedByName())
+                        .bookedByEmail(b.getBookedByEmail())
+                        .hostDepartment(b.getHostDepartment())
+                        .expectedAttendees(b.getExpectedAttendees())
+                        .meetingAgenda(b.getMeetingAgenda())
                         .guestOrganizationName(b.getGuestOrganizationName())
                         .guestName(b.getGuestName())
+                        .status(b.getStatus())
                         .build())
                 .toList();
     }
