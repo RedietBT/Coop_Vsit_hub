@@ -140,4 +140,10 @@ public class CreateVisitRequest {
     @Builder.Default
     @Schema(description = "Direct booking flag", example = "false")
     private Boolean directBooking = false;
+
+    @Schema(description = "UUID of linked room booking if selected")
+    private UUID linkedBookingId;
+
+    @Schema(description = "Guest VIP classification tier (NORMAL_GUEST, VIP, VVIP)", example = "VIP")
+    private String guestTier;
 }

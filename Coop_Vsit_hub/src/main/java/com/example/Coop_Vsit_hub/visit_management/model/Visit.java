@@ -202,6 +202,13 @@ public class Visit {
     @Column(name = "actual_check_out_time")
     private Instant actualCheckOutTime;
 
+    @Column(name = "linked_booking_id")
+    private UUID linkedBookingId;
+
+    @Column(name = "guest_tier", length = 30)
+    @Builder.Default
+    private String guestTier = "NORMAL_GUEST";
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

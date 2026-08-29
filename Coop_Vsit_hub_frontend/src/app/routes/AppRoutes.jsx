@@ -10,6 +10,7 @@ import VerifyEmailPage from '@/modules/auth/pages/VerifyEmailPage';
 import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboardPage';
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
+import BookingManagementPage from '@/modules/booking/pages/BookingManagementPage';
 import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
 import ReportsAnalyticsPage from '@/modules/reports/pages/ReportsAnalyticsPage';
 import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
@@ -69,6 +70,19 @@ export const AppRoutes = () => {
             <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitCalendarPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/bookings"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK', 'ROLE_APPROVER']}>
+              <DashboardLayout>
+                <BookingManagementPage />
               </DashboardLayout>
             </RoleGuard>
           </ProtectedRoute>

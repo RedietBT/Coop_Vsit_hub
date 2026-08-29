@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Calendar,
   CalendarDays,
+  DoorOpen,
   UserCheck,
   Building2,
   Users2,
@@ -35,6 +36,12 @@ const NAV_ITEMS = [
     path: '/visits/calendar',
     icon: CalendarDays,
     roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER'],
+  },
+  {
+    name: 'Booking Management',
+    path: '/bookings',
+    icon: DoorOpen,
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK', 'ROLE_APPROVER'],
   },
   {
     name: 'Front Desk',

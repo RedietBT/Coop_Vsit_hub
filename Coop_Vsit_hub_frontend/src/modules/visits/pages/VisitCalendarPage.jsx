@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import visitApi from '../api/visitApi';
+import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
@@ -126,8 +127,28 @@ export const VisitCalendarPage = () => {
     if (!roomName) return;
     setIsLoadingSlots(true);
     try {
-      const slots = await visitApi.getRoomSlots(roomName);
-      setRoomSlots(Array.isArray(slots) ? slots : []);
+      const slots = await roomBookingApi.getRoomSlots(roomName);
+      const formatted = (Array.isArray(slots) ? slots : []).map((s) => {
+        const d = s.scheduledStartTime ? s.scheduledStartTime.split('T')[0] : '';
+        const sTime = s.scheduledStartTime
+          ? new Date(s.scheduledStartTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+        const eTime = s.scheduledEndTime
+          ? new Date(s.scheduledEndTime).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+        return {
+          ...s,
+          date: d,
+          timeFormatted: `${sTime} - ${eTime}`,
+        };
+      });
+      setRoomSlots(formatted);
     } catch (err) {
       console.warn('Failed to load room slots:', err);
       setRoomSlots([]);
@@ -207,26 +228,21 @@ export const VisitCalendarPage = () => {
       const endIso = `${formData.date}T${formData.endTime}:00Z`;
 
       const payload = {
-        title: formData.title.trim() || `Room Reservation - ${selectedRoom.name}`,
-        requestingDepartment: formData.requestingDepartment.trim(),
-        locationRoom: selectedRoom.name,
+        roomName: selectedRoom.name,
+        meetingTitle: formData.title.trim(),
+        hostDepartment: formData.requestingDepartment.trim(),
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
-        visitorCount: parseInt(formData.visitorCount, 10) || 1,
-        visitObjective: formData.visitObjective.trim() || 'Internal meeting room reservation',
-        visitType: 'INTERNAL',
-        priorityLevel: 'MEDIUM',
-        guestCategory: 'INDIVIDUAL',
-        individualGuestFirstName: formData.guestName || user?.firstName || 'Host',
-        individualGuestLastName: user?.lastName || 'Staff',
-        isDraft: false,
-        directBooking: true,
+        expectedAttendees: parseInt(formData.visitorCount, 10) || 1,
+        meetingAgenda: formData.visitObjective.trim() || 'Internal boardroom session',
+        guestOrganizationName: formData.guestName?.trim() || null,
+        guestName: formData.guestName?.trim() || null,
       };
 
-      await visitApi.createVisit(payload);
+      const result = await roomBookingApi.createBooking(payload);
       soundPlayer.playNotificationChime();
       toast.success(
-        `🎉 Room "${selectedRoom.name}" booked successfully! Confirmation registered and email sent to Admin.`
+        `🎉 Room "${selectedRoom.name}" booked successfully! Booking Reference: ${result.bookingCode}`
       );
 
       // Refresh slots

@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   DoorOpen,
   Check,
+  Crown,
+  Award,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Modal from '@/shared/components/ui/Modal';
@@ -23,6 +26,7 @@ import Button from '@/shared/components/ui/Button';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import visitApi from '@/modules/visits/api/visitApi';
+import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 
 export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
@@ -57,6 +61,8 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
     zone: '',
     woreda: '',
     idType: 'National ID',
+    guestTier: 'Normal Guest', // 'Normal Guest', 'VIP', 'VVIP'
+    priorityLevel: 'MEDIUM', // 'MEDIUM', 'HIGH', 'LOW'
 
     // Visit Parameters
     title: '',
@@ -67,6 +73,7 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
     endTime: '11:00',
     visitorCount: 1,
     visitObjective: '',
+    linkedBookingId: null,
   });
 
   const [bookedRoomsForDate, setBookedRoomsForDate] = useState([]);
@@ -89,19 +96,41 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const loadBookedRooms = async (dateStr) => {
+    if (!dateStr) return;
     try {
-      const res = await visitApi.getAllVisits({ size: 100 });
-      const allVisits = res?.content || (Array.isArray(res) ? res : []);
-      const matched = allVisits.filter((v) => {
-        if (!v.locationRoom || v.status === 'CANCELLED' || v.status === 'REJECTED') return false;
-        const vDate = v.scheduledStartTime ? v.scheduledStartTime.split('T')[0] : '';
-        return !dateStr || vDate === dateStr;
-      });
-      setBookedRoomsForDate(matched);
+      const fromDate = `${dateStr}T00:00:00Z`;
+      const toDate = `${dateStr}T23:59:59Z`;
+      const bookings = await roomBookingApi.getActiveBookingsForDate(fromDate, toDate);
+      setBookedRoomsForDate(Array.isArray(bookings) ? bookings : []);
     } catch (e) {
-      console.warn('Failed to load booked rooms for date:', e);
+      console.warn('Failed to load active room bookings for date:', e);
+      setBookedRoomsForDate([]);
     }
   };
+
+  // Smart match based on Organization Name, Guest Name, and Date
+  const matchingBookings = (() => {
+    if (!bookedRoomsForDate.length) return [];
+    const normOrg = orgSearchInput?.toLowerCase().trim();
+    const normFirst = formData.firstName?.toLowerCase().trim();
+    const normSurname = formData.surname?.toLowerCase().trim();
+
+    return bookedRoomsForDate.filter((b) => {
+      const bOrg = b.guestOrganizationName?.toLowerCase() || '';
+      const bGuest = b.guestName?.toLowerCase() || '';
+      const bTitle = b.meetingTitle?.toLowerCase() || '';
+
+      if (isAffiliatedOrg && normOrg && normOrg.length >= 2) {
+        if (bOrg.includes(normOrg) || normOrg.includes(bOrg)) return true;
+        if (bTitle.includes(normOrg)) return true;
+      }
+      if (!isAffiliatedOrg) {
+        if (normFirst && normFirst.length >= 3 && (bGuest.includes(normFirst) || bTitle.includes(normFirst))) return true;
+        if (normSurname && normSurname.length >= 3 && (bGuest.includes(normSurname) || bTitle.includes(normSurname))) return true;
+      }
+      return false;
+    });
+  })();
 
   // Close org dropdown on click outside
   useEffect(() => {
@@ -146,7 +175,9 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
         visitorCount: parseInt(formData.visitorCount, 10) || 1,
         visitObjective: formData.visitObjective.trim() || undefined,
         visitType: 'EXTERNAL',
-        priorityLevel: 'MEDIUM',
+        priorityLevel: formData.priorityLevel || 'MEDIUM',
+        guestTier: !isAffiliatedOrg ? (formData.guestTier || 'Normal Guest') : null,
+        linkedBookingId: formData.linkedBookingId || null,
 
         // Organization link
         guestCategory: isAffiliatedOrg ? 'ORGANIZATION' : 'INDIVIDUAL',
@@ -529,6 +560,43 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 <option value="Employee ID">Employee Corporate ID</option>
               </select>
             </div>
+
+            {/* Guest Classification Tier & Priority Level (All Optional) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Crown className="w-3 h-3 text-[#e38524]" />
+                  <span>Guest Classification Tier</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <select
+                  value={formData.guestTier}
+                  onChange={(e) => handleChange('guestTier', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                >
+                  <option value="Normal Guest">Normal Guest (Standard)</option>
+                  <option value="VIP">VIP (Priority Host Escort)</option>
+                  <option value="VVIP">VVIP (Executive & Diplomatic)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-[#00adef]" />
+                  <span>Visit Priority Level</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <select
+                  value={formData.priorityLevel}
+                  onChange={(e) => handleChange('priorityLevel', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                >
+                  <option value="MEDIUM">Medium (Default)</option>
+                  <option value="HIGH">High Priority</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* ========================================================================= */}
@@ -651,22 +719,32 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
             </div>
 
-            {/* Booked Rooms Linker Assistant */}
-            {bookedRoomsForDate.length > 0 && (
-              <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200/90 space-y-2">
+            {/* 🎯 Smart Matching Room Reservation Spotlight */}
+            {matchingBookings.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-amber-50/90 border-2 border-amber-300/90 shadow-xs space-y-2.5 animate-fadeIn">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <DoorOpen className="w-3.5 h-3.5 text-[#00adef]" />
-                    <span>Existing Room Bookings on {formData.scheduledDate}:</span>
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Click to link this visit to a booked room
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
+                    <span className="text-xs font-bold text-amber-900">
+                      Matching Room Reservation Detected!
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 text-[10px] font-black uppercase">
+                    Suggested Link
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {bookedRoomsForDate.map((b) => {
-                    const isLinked = formData.locationRoom === b.locationRoom;
+                <p className="text-[11px] text-amber-800 leading-normal">
+                  Found an active boardroom reservation matching{' '}
+                  <span className="font-bold">
+                    {isAffiliatedOrg ? `"${orgSearchInput}"` : `${formData.firstName} ${formData.surname}`}
+                  </span>{' '}
+                  for today. Link this visit directly with 1 click:
+                </p>
+
+                <div className="space-y-2">
+                  {matchingBookings.map((b) => {
+                    const isLinked = formData.locationRoom === b.roomName || formData.linkedBookingId === b.id;
                     const sTime = b.scheduledStartTime
                       ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
                       : '';
@@ -677,53 +755,141 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                     return (
                       <div
                         key={b.id}
-                        onClick={() => {
-                          if (isLinked) {
-                            handleChange('locationRoom', '');
-                          } else {
-                            handleChange('locationRoom', b.locationRoom);
-                            if (!formData.title || formData.title === 'Executive Visit') {
-                              handleChange('title', b.title);
-                            }
-                            if (b.scheduledStartTime && b.scheduledEndTime) {
-                              const s = b.scheduledStartTime.split('T')[1]?.substring(0, 5);
-                              const en = b.scheduledEndTime.split('T')[1]?.substring(0, 5);
-                              if (s) handleChange('startTime', s);
-                              if (en) handleChange('endTime', en);
-                            }
-                          }
-                        }}
-                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                        className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
                           isLinked
-                            ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
+                            ? 'bg-[#00adef] text-white border-[#00adef] shadow-sm'
+                            : 'bg-white text-slate-800 border-amber-200 hover:border-amber-400'
                         }`}
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <DoorOpen className={`w-3.5 h-3.5 shrink-0 ${isLinked ? 'text-white' : 'text-[#00adef]'}`} />
-                            <p className="font-bold text-xs truncate">{b.locationRoom}</p>
+                          <div className="flex items-center gap-1.5 font-bold text-xs">
+                            <DoorOpen className={`w-4 h-4 ${isLinked ? 'text-white' : 'text-[#e38524]'}`} />
+                            <span>{b.roomName}</span>
+                            <span className="font-mono text-[10px] opacity-80">({b.bookingCode})</span>
                           </div>
-                          <p className={`text-[11px] truncate mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-500'}`}>
-                            {b.title}
+                          <p className={`text-xs font-semibold mt-0.5 truncate ${isLinked ? 'text-sky-100' : 'text-slate-700'}`}>
+                            {b.meetingTitle}
                           </p>
-                          <p className={`text-[10px] font-mono mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-400'}`}>
-                            ⏰ {sTime} - {eTime}
-                          </p>
+                          <div className={`flex flex-wrap items-center gap-2 text-[10px] mt-1 ${isLinked ? 'text-sky-100' : 'text-slate-500'}`}>
+                            <span>⏰ {sTime} - {eTime}</span>
+                            <span>•</span>
+                            <span>Booked By: {b.bookedByName} ({b.hostDepartment})</span>
+                          </div>
                         </div>
 
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isLinked) {
+                              handleChange('locationRoom', '');
+                              handleChange('linkedBookingId', null);
+                            } else {
+                              handleChange('locationRoom', b.roomName);
+                              handleChange('linkedBookingId', b.id);
+                              if (!formData.title || formData.title === 'Executive Visit') {
+                                handleChange('title', b.meetingTitle);
+                              }
+                              if (b.scheduledStartTime && b.scheduledEndTime) {
+                                const s = b.scheduledStartTime.split('T')[1]?.substring(0, 5);
+                                const en = b.scheduledEndTime.split('T')[1]?.substring(0, 5);
+                                if (s) handleChange('startTime', s);
+                                if (en) handleChange('endTime', en);
+                              }
+                              toast.success(`Linked to room "${b.roomName}" (${b.bookingCode})!`);
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shrink-0 cursor-pointer ${
                             isLinked
-                              ? 'bg-white text-[#00adef] border-white'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                              ? 'bg-white text-[#00adef] border-white shadow-xs'
+                              : 'bg-[#00adef] text-white border-[#00adef] hover:bg-[#0096ce]'
                           }`}
                         >
-                          {isLinked ? 'Linked ✓' : 'Link Room'}
-                        </span>
+                          {isLinked ? 'Linked to Reservation ✓' : 'Link to this Reservation'}
+                        </button>
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Other Booked Rooms on this date (that weren't already matched) */}
+            {bookedRoomsForDate.filter((b) => !matchingBookings.some((m) => m.id === b.id)).length > 0 && (
+              <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <DoorOpen className="w-3.5 h-3.5 text-[#00adef]" />
+                    <span>Other Room Reservations on {formData.scheduledDate}:</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Click to link
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {bookedRoomsForDate
+                    .filter((b) => !matchingBookings.some((m) => m.id === b.id))
+                    .map((b) => {
+                      const isLinked = formData.locationRoom === b.roomName || formData.linkedBookingId === b.id;
+                      const sTime = b.scheduledStartTime
+                        ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : '';
+                      const eTime = b.scheduledEndTime
+                        ? new Date(b.scheduledEndTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : '';
+
+                      return (
+                        <div
+                          key={b.id}
+                          onClick={() => {
+                            if (isLinked) {
+                              handleChange('locationRoom', '');
+                              handleChange('linkedBookingId', null);
+                            } else {
+                              handleChange('locationRoom', b.roomName);
+                              handleChange('linkedBookingId', b.id);
+                              if (!formData.title || formData.title === 'Executive Visit') {
+                                handleChange('title', b.meetingTitle);
+                              }
+                              if (b.scheduledStartTime && b.scheduledEndTime) {
+                                const s = b.scheduledStartTime.split('T')[1]?.substring(0, 5);
+                                const en = b.scheduledEndTime.split('T')[1]?.substring(0, 5);
+                                if (s) handleChange('startTime', s);
+                                if (en) handleChange('endTime', en);
+                              }
+                            }
+                          }}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                            isLinked
+                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <DoorOpen className={`w-3.5 h-3.5 shrink-0 ${isLinked ? 'text-white' : 'text-[#00adef]'}`} />
+                              <p className="font-bold text-xs truncate">{b.roomName}</p>
+                            </div>
+                            <p className={`text-[11px] truncate mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-500'}`}>
+                              {b.meetingTitle}
+                            </p>
+                            <p className={`text-[10px] font-mono mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-400'}`}>
+                              ⏰ {sTime} - {eTime}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                              isLinked
+                                ? 'bg-white text-[#00adef] border-white'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {isLinked ? 'Linked ✓' : 'Link'}
+                          </span>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}

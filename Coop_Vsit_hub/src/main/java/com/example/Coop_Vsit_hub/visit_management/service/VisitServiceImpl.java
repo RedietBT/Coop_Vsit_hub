@@ -286,6 +286,8 @@ public class VisitServiceImpl implements VisitService {
                 .sponsor(sponsor)
                 .scheduledStartTime(startTime)
                 .scheduledEndTime(endTime)
+                .linkedBookingId(request.getLinkedBookingId())
+                .guestTier(StringUtils.hasText(request.getGuestTier()) ? request.getGuestTier().trim() : "NORMAL_GUEST")
                 .build();
 
         Visit saved = visitRepository.save(visit);
