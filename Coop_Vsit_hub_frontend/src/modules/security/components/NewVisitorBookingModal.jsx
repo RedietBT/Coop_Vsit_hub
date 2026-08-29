@@ -108,12 +108,14 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Smart match based on Organization Name, Guest Name, and Date
+  // Smart match strictly based on Organization Name, Guest Name, and Date
   const matchingBookings = (() => {
     if (!bookedRoomsForDate.length) return [];
     const normOrg = orgSearchInput?.toLowerCase().trim();
     const normFirst = formData.firstName?.toLowerCase().trim();
+    const normMiddle = formData.middleName?.toLowerCase().trim();
     const normSurname = formData.surname?.toLowerCase().trim();
+    const fullName = `${normFirst} ${normSurname}`.trim();
 
     return bookedRoomsForDate.filter((b) => {
       const bOrg = b.guestOrganizationName?.toLowerCase() || '';
@@ -125,8 +127,10 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
         if (bTitle.includes(normOrg)) return true;
       }
       if (!isAffiliatedOrg) {
+        if (fullName.length >= 3 && (bGuest.includes(fullName) || bTitle.includes(fullName))) return true;
         if (normFirst && normFirst.length >= 3 && (bGuest.includes(normFirst) || bTitle.includes(normFirst))) return true;
         if (normSurname && normSurname.length >= 3 && (bGuest.includes(normSurname) || bTitle.includes(normSurname))) return true;
+        if (normMiddle && normMiddle.length >= 3 && (bGuest.includes(normMiddle) || bTitle.includes(normMiddle))) return true;
       }
       return false;
     });
@@ -809,87 +813,6 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Other Booked Rooms on this date (that weren't already matched) */}
-            {bookedRoomsForDate.filter((b) => !matchingBookings.some((m) => m.id === b.id)).length > 0 && (
-              <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200/90 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <DoorOpen className="w-3.5 h-3.5 text-[#00adef]" />
-                    <span>Other Room Reservations on {formData.scheduledDate}:</span>
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Click to link
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {bookedRoomsForDate
-                    .filter((b) => !matchingBookings.some((m) => m.id === b.id))
-                    .map((b) => {
-                      const isLinked = formData.locationRoom === b.roomName || formData.linkedBookingId === b.id;
-                      const sTime = b.scheduledStartTime
-                        ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                        : '';
-                      const eTime = b.scheduledEndTime
-                        ? new Date(b.scheduledEndTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                        : '';
-
-                      return (
-                        <div
-                          key={b.id}
-                          onClick={() => {
-                            if (isLinked) {
-                              handleChange('locationRoom', '');
-                              handleChange('linkedBookingId', null);
-                            } else {
-                              handleChange('locationRoom', b.roomName);
-                              handleChange('linkedBookingId', b.id);
-                              if (!formData.title || formData.title === 'Executive Visit') {
-                                handleChange('title', b.meetingTitle);
-                              }
-                              if (b.scheduledStartTime && b.scheduledEndTime) {
-                                const s = b.scheduledStartTime.split('T')[1]?.substring(0, 5);
-                                const en = b.scheduledEndTime.split('T')[1]?.substring(0, 5);
-                                if (s) handleChange('startTime', s);
-                                if (en) handleChange('endTime', en);
-                              }
-                            }
-                          }}
-                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
-                            isLinked
-                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <DoorOpen className={`w-3.5 h-3.5 shrink-0 ${isLinked ? 'text-white' : 'text-[#00adef]'}`} />
-                              <p className="font-bold text-xs truncate">{b.roomName}</p>
-                            </div>
-                            <p className={`text-[11px] truncate mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-500'}`}>
-                              {b.meetingTitle}
-                            </p>
-                            <p className={`text-[10px] font-mono mt-0.5 ${isLinked ? 'text-sky-100' : 'text-slate-400'}`}>
-                              ⏰ {sTime} - {eTime}
-                            </p>
-                          </div>
-
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                              isLinked
-                                ? 'bg-white text-[#00adef] border-white'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            {isLinked ? 'Linked ✓' : 'Link'}
-                          </span>
-                        </div>
-                      );
-                    })}
                 </div>
               </div>
             )}
