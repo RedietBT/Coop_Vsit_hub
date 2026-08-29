@@ -4,7 +4,6 @@ import com.example.coop_vsit_hub.visit_management.enums.GuestCategory;
 import com.example.coop_vsit_hub.visit_management.enums.VisitPriority;
 import com.example.coop_vsit_hub.visit_management.enums.VisitType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,121 +11,120 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * Visit Creation Request.
+ * All visitor demographic and parameter fields are optional to facilitate rapid registration.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateVisitRequest {
 
-    @NotBlank(message = "Visit title is required.")
-    @Size(min = 3, max = 200, message = "Visit title must be between 3 and 200 characters.")
-    @Schema(example = "Strategic Partnership Discussion with Ethio Telecom")
+    @Schema(example = "Strategic FinTech Session with Ethio Telecom")
     private String title;
 
-    @NotBlank(message = "Requesting department is required.")
-    @Size(max = 100, message = "Requesting department cannot exceed 100 characters.")
     @Schema(example = "Digital Banking & FinTech Partnerships")
     private String requestingDepartment;
 
-    @NotNull(message = "Visit type is mandatory.")
     @Schema(example = "EXTERNAL")
     private VisitType visitType;
 
-    @NotBlank(message = "Visit objective is required.")
-    @Schema(example = "Discuss API integration for telebirr merchant collections and digital lending syndicate.")
+    @Schema(example = "Executive Discussion & Facility Tour")
     private String visitObjective;
 
-    @Schema(example = "Signed Memorandum of Understanding (MoU) on shared digital infrastructure.")
+    @Schema(example = "Signed Partnership Agreement")
     private String expectedOutcome;
 
-    @NotNull(message = "Priority level is mandatory.")
-    @Schema(example = "CRITICAL")
+    @Schema(example = "MEDIUM")
     private VisitPriority priorityLevel;
 
-    @DecimalMin(value = "0.0", message = "Opportunity value cannot be negative.")
-    @Schema(example = "2500000.00")
+    @Schema(example = "0.0")
     private BigDecimal opportunityValue;
 
-    @Size(max = 10, message = "Currency code cannot exceed 10 characters.")
-    @Schema(example = "USD")
+    @Schema(example = "ETB")
     private String currency;
 
-    @Size(max = 150, message = "Presentation theme cannot exceed 150 characters.")
-    @Schema(example = "Next-Gen Omnichannel Payment Rails")
+    @Schema(example = "Omnichannel Integration")
     private String presentationTheme;
 
-    @Schema(example = "Confidential fee structure discussion and joint regulatory compliance.")
+    @Schema(example = "Confidential")
     private String sensitiveTopics;
 
-    @Size(max = 100, message = "Location room cannot exceed 100 characters.")
-    @Schema(example = "Executive Boardroom (4th Floor)")
+    @Schema(example = "Executive Boardroom - 4th Floor")
     private String locationRoom;
 
-    @Min(value = 1, message = "Visitor count must be at least 1 person.")
-    @Schema(example = "5")
+    @Schema(example = "3")
     private Integer visitorCount;
 
-    @NotNull(message = "Guest category is mandatory (ORGANIZATION or INDIVIDUAL).")
     @Schema(example = "ORGANIZATION")
     private GuestCategory guestCategory;
 
-    @Schema(description = "Required if guestCategory is ORGANIZATION", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+    @Schema(description = "Optional existing organization UUID", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
     private UUID guestOrganizationId;
 
-    @Schema(description = "Optional UUID of registered Individual VIP Guest", example = "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22")
+    @Schema(description = "Direct or newly typed organization name (auto-saved to organizations table)", example = "Safaricom Telecommunications")
+    private String organizationName;
+
+    @Schema(description = "Optional UUID of registered Individual VIP Guest")
     private UUID individualGuestId;
 
-    // Individual Guest Details
-    @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Individual guest first name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
-    )
-    @Size(max = 50, message = "First name cannot exceed 50 characters.")
-    @Schema(example = "Dawit")
+    // Visitor Demographic Details matching Reference Image (All Optional)
+    @Schema(example = "Yusuf")
     private String individualGuestFirstName;
 
-    @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Individual guest middle name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
-    )
-    @Size(max = 50, message = "Middle name cannot exceed 50 characters.")
-    @Schema(example = "Tadesse")
+    @Schema(example = "Hassen")
     private String individualGuestMiddleName;
 
-    @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Individual guest last name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
-    )
-    @Size(max = 50, message = "Last name cannot exceed 50 characters.")
-    @Schema(example = "Alemu")
+    @Schema(example = "Hassen")
     private String individualGuestLastName;
 
-    @Pattern(
-        regexp = "^$|^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$",
-        message = "Individual guest email must be a valid email format (e.g. guest@company.com)."
-    )
-    @Size(max = 100, message = "Email cannot exceed 100 characters.")
-    @Schema(example = "dawit.alemu@ethiotelecom.et")
-    private String individualGuestEmail;
+    @Schema(example = "Hassen")
+    private String individualGuestSurname;
 
-    @Pattern(
-        regexp = "^$|^\\+?[0-9]{10,15}$",
-        message = "Individual guest phone must be a valid international phone format (10-15 digits, optional +)."
-    )
-    @Schema(example = "+251911223344")
+    @Schema(example = "0910149192")
     private String individualGuestPhone;
 
-    @Size(max = 100, message = "Guest title cannot exceed 100 characters.")
-    @Schema(example = "Chief Technology Officer")
-    private String individualGuestTitle;
+    @Schema(example = "yusuf.hassen@example.com")
+    private String individualGuestEmail;
 
-    @Size(max = 50, message = "ID Number cannot exceed 50 characters.")
+    @Schema(example = "1990-05-15")
+    private LocalDate dateOfBirth;
+
+    @Schema(example = "2022-01-10")
+    private LocalDate issuedDate;
+
+    @Schema(example = "2027-01-10")
+    private LocalDate expiredDate;
+
+    @Schema(example = "Male")
+    private String gender;
+
+    @Schema(example = "Ethiopian")
+    private String citizenship;
+
+    @Schema(example = "Oromia")
+    private String region;
+
+    @Schema(example = "Finfinnee Special Zone")
+    private String zone;
+
+    @Schema(example = "Bole")
+    private String woreda;
+
+    @Schema(example = "National ID")
+    private String idType;
+
     @Schema(example = "EP2948194")
     private String individualGuestIdNumber;
 
-    @Schema(description = "Executive business sponsor UUID", example = "00000000-0000-0000-0000-000000000001")
+    @Schema(example = "Chief Technology Officer")
+    private String individualGuestTitle;
+
+    @Schema(description = "Executive business sponsor UUID")
     private UUID sponsorId;
 
     @Schema(description = "Scheduled start date & time (UTC/ISO-8601)", example = "2026-09-01T09:00:00Z")
@@ -138,4 +136,8 @@ public class CreateVisitRequest {
     @Builder.Default
     @Schema(description = "Set true to save as DRAFT without immediate submission", example = "false")
     private Boolean isDraft = false;
+
+    @Builder.Default
+    @Schema(description = "Direct booking flag", example = "false")
+    private Boolean directBooking = false;
 }

@@ -15,6 +15,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     Optional<Organization> findByName(String name);
 
+    Optional<Organization> findByNameIgnoreCase(String name);
+
     boolean existsByName(String name);
 
     boolean existsByNameAndIdNot(String name, UUID id);

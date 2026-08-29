@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, RotateCcw, X, CalendarPlus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, RotateCcw } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
-import useAuthStore from '@/modules/auth/store/authStore';
-import Button from '@/shared/components/ui/Button';
 
 const STATUS_PILLS = [
   { label: 'All Statuses', value: '' },
@@ -16,13 +13,9 @@ const STATUS_PILLS = [
 ];
 
 export const VisitFilterToolbar = () => {
-  const navigate = useNavigate();
-  const { filters, setFilters, resetFilters, openCreateModal, totalElements } = useVisitStore();
+  const { filters, setFilters, resetFilters, totalElements } = useVisitStore();
   const { departments, fetchAllMasterData } = useMasterDataStore();
-  const { hasAnyRole } = useAuthStore();
   const [searchInput, setSearchInput] = useState(filters.search || '');
-
-  const canCreate = hasAnyRole(['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']);
 
   useEffect(() => {
     fetchAllMasterData();
@@ -96,30 +89,6 @@ export const VisitFilterToolbar = () => {
             >
               <RotateCcw className="w-4 h-4" />
             </button>
-          )}
-
-          {/* Dedicated Book Visit Page Button */}
-          {canCreate && (
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/visits/book')}
-              icon={CalendarPlus}
-            >
-              Full Booking Studio
-            </Button>
-          )}
-
-          {/* Quick Create Visit Modal CTA */}
-          {canCreate && (
-            <Button
-              variant="orange"
-              size="md"
-              onClick={openCreateModal}
-              icon={Plus}
-            >
-              Quick Book
-            </Button>
           )}
         </div>
       </div>

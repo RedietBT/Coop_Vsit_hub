@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
-import { Sparkles, Calendar, CalendarDays } from 'lucide-react';
+import { Sparkles, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useVisitStore from '../store/visitStore';
 import VisitFilterToolbar from '../components/VisitFilterToolbar';
 import VisitTable from '../components/VisitTable';
-import CreateVisitModal from '../components/CreateVisitModal';
 import StatusTransitionModal from '../components/StatusTransitionModal';
 import VisitDetailDrawer from '../components/VisitDetailDrawer';
 import Button from '@/shared/components/ui/Button';
@@ -54,7 +53,6 @@ export const VisitsListPage = () => {
       <VisitTable />
 
       {/* Modals & Slide-out Drawers */}
-      <CreateVisitModal />
       <StatusTransitionModal />
       <VisitDetailDrawer />
     </div>

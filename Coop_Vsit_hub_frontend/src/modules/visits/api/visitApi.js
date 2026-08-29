@@ -1,5 +1,30 @@
 import apiClient from '@/core/api/apiClient';
 
+export const toInstantIso = (val) => {
+  if (!val) return null;
+  if (typeof val !== 'string') {
+    try {
+      return new Date(val).toISOString();
+    } catch {
+      return val;
+    }
+  }
+  const trimmed = val.trim();
+  if (trimmed.endsWith('Z')) return trimmed;
+  // If format is YYYY-MM-DDTHH:mm, append :00Z
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}:00Z`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+    return `${trimmed}Z`;
+  }
+  try {
+    return new Date(trimmed).toISOString();
+  } catch {
+    return trimmed;
+  }
+};
+
 export const visitApi = {
   getAllVisits: async (params = {}) => {
     const response = await apiClient.get('/api/v1/visits', { params });
@@ -22,7 +47,14 @@ export const visitApi = {
   },
 
   createVisit: async (payload) => {
-    const response = await apiClient.post('/api/v1/visits', payload);
+    const cleanPayload = { ...payload };
+    if (cleanPayload.scheduledStartTime) {
+      cleanPayload.scheduledStartTime = toInstantIso(cleanPayload.scheduledStartTime);
+    }
+    if (cleanPayload.scheduledEndTime) {
+      cleanPayload.scheduledEndTime = toInstantIso(cleanPayload.scheduledEndTime);
+    }
+    const response = await apiClient.post('/api/v1/visits', cleanPayload);
     return response.data;
   },
 

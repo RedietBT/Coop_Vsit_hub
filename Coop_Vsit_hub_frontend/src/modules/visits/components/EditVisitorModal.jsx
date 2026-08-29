@@ -7,9 +7,7 @@ import {
   CreditCard,
   Calendar,
   MapPin,
-  Camera,
   CheckCircle2,
-  Image as ImageIcon,
 } from 'lucide-react';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
@@ -64,18 +62,6 @@ export const EditVisitorModal = ({ isOpen, onClose, visit, onSaveSuccess }) => {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleIdCapture = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((prev) => ({ ...prev, idPhotoUrl: reader.result }));
-      toast.success('ID Card photo captured successfully.');
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -231,42 +217,6 @@ export const EditVisitorModal = ({ isOpen, onClose, visit, onSaveSuccess }) => {
             value={formData.woreda}
             onChange={(e) => handleChange('woreda', e.target.value)}
           />
-        </div>
-
-        {/* ID Photo Capture / Upload Section */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {formData.idPhotoUrl ? (
-              <img
-                src={formData.idPhotoUrl}
-                alt="ID Snapshot"
-                className="w-16 h-12 object-cover rounded-lg border border-slate-300 shadow-xs"
-              />
-            ) : (
-              <div className="w-16 h-12 rounded-lg bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
-                <ImageIcon className="w-5 h-5" />
-              </div>
-            )}
-            <div>
-              <p className="text-xs font-bold text-slate-800">
-                Visitor Photo / ID Document Capture
-              </p>
-              <p className="text-[10px] text-slate-500">
-                Optional photo or ID document snapshot for high-security check-in.
-              </p>
-            </div>
-          </div>
-
-          <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-300 rounded-xl cursor-pointer shadow-xs transition-all shrink-0">
-            <Camera className="w-4 h-4 text-[#00adef]" />
-            <span>ID Capture</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleIdCapture}
-            />
-          </label>
         </div>
 
         {/* Action Buttons */}

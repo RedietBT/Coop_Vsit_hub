@@ -173,44 +173,44 @@ public class VisitServiceImpl implements VisitService {
         }
 
         Organization guestOrg = null;
-        if (request.getGuestCategory() == GuestCategory.ORGANIZATION) {
-            if (request.getGuestOrganizationId() == null) {
-                throw new IllegalArgumentException("Guest organization ID is required when guestCategory is ORGANIZATION.");
-            }
-            guestOrg = organizationRepository.findById(request.getGuestOrganizationId())
-                    .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + request.getGuestOrganizationId()));
+        if (request.getGuestOrganizationId() != null) {
+            guestOrg = organizationRepository.findById(request.getGuestOrganizationId()).orElse(null);
+        } else if (StringUtils.hasText(request.getOrganizationName())) {
+            String orgName = request.getOrganizationName().trim();
+            guestOrg = organizationRepository.findByNameIgnoreCase(orgName)
+                    .orElseGet(() -> organizationRepository.save(Organization.builder()
+                            .name(orgName)
+                            .category("Partner Organization")
+                            .marketCountry("Ethiopia")
+                            .relationshipScore(50)
+                            .build()));
         }
 
         com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest indGuest = null;
         if (request.getIndividualGuestId() != null) {
-            indGuest = individualGuestRepository.findById(request.getIndividualGuestId())
-                    .orElseThrow(() -> new IllegalArgumentException("Individual guest not found with ID: " + request.getIndividualGuestId()));
+            indGuest = individualGuestRepository.findById(request.getIndividualGuestId()).orElse(null);
         }
 
         User sponsor = null;
         if (request.getSponsorId() != null) {
-            sponsor = userRepository.findById(request.getSponsorId())
-                    .orElseThrow(() -> new IllegalArgumentException("Sponsor user not found with ID: " + request.getSponsorId()));
+            sponsor = userRepository.findById(request.getSponsorId()).orElse(null);
         }
 
         String visitCode = generateVisitCode();
-        boolean isRoomReservation = StringUtils.hasText(request.getLocationRoom());
-        VisitStatus initialStatus;
-        if (Boolean.TRUE.equals(request.getIsDraft())) {
-            initialStatus = VisitStatus.DRAFT;
-        } else if (isRoomReservation) {
-            initialStatus = VisitStatus.SCHEDULED; // Instant confirmation! No approval wait required!
-        } else {
-            initialStatus = VisitStatus.SUBMITTED;
-        }
+        // Direct scheduling without approval gate
+        VisitStatus initialStatus = Boolean.TRUE.equals(request.getIsDraft()) 
+                ? VisitStatus.DRAFT 
+                : VisitStatus.SCHEDULED;
 
-        String fName = request.getIndividualGuestFirstName();
-        String mName = request.getIndividualGuestMiddleName();
-        String lName = request.getIndividualGuestLastName();
-        String email = request.getIndividualGuestEmail();
-        String phone = request.getIndividualGuestPhone();
-        String title = request.getIndividualGuestTitle();
-        String idNum = request.getIndividualGuestIdNumber();
+        String fName = StringUtils.hasText(request.getIndividualGuestFirstName()) ? request.getIndividualGuestFirstName().trim() : null;
+        String mName = StringUtils.hasText(request.getIndividualGuestMiddleName()) ? request.getIndividualGuestMiddleName().trim() : null;
+        String lName = StringUtils.hasText(request.getIndividualGuestLastName()) 
+                ? request.getIndividualGuestLastName().trim() 
+                : (StringUtils.hasText(request.getIndividualGuestSurname()) ? request.getIndividualGuestSurname().trim() : null);
+        String email = StringUtils.hasText(request.getIndividualGuestEmail()) ? request.getIndividualGuestEmail().trim().toLowerCase() : null;
+        String phone = StringUtils.hasText(request.getIndividualGuestPhone()) ? request.getIndividualGuestPhone().trim() : null;
+        String title = StringUtils.hasText(request.getIndividualGuestTitle()) ? request.getIndividualGuestTitle().trim() : null;
+        String idNum = StringUtils.hasText(request.getIndividualGuestIdNumber()) ? request.getIndividualGuestIdNumber().trim() : null;
 
         if (indGuest != null) {
             if (!StringUtils.hasText(fName)) fName = indGuest.getFirstName();
@@ -222,12 +222,31 @@ public class VisitServiceImpl implements VisitService {
             if (!StringUtils.hasText(idNum)) idNum = indGuest.getIdNumber();
         }
 
+        String visitTitle = StringUtils.hasText(request.getTitle()) 
+                ? request.getTitle().trim() 
+                : (guestOrg != null ? "Executive Visit - " + guestOrg.getName() : "Guest Delegation Visit");
+
+        String department = StringUtils.hasText(request.getRequestingDepartment()) 
+                ? request.getRequestingDepartment().trim() 
+                : (requester.getDepartment() != null ? requester.getDepartment() : "General Reception");
+
+        String objective = StringUtils.hasText(request.getVisitObjective()) 
+                ? request.getVisitObjective().trim() 
+                : "Executive meeting and facilities tour";
+
+        Instant startTime = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : Instant.now();
+        Instant endTime = request.getScheduledEndTime() != null ? request.getScheduledEndTime() : startTime.plus(java.time.Duration.ofHours(2));
+
+        GuestCategory category = request.getGuestCategory() != null 
+                ? request.getGuestCategory() 
+                : (guestOrg != null ? GuestCategory.ORGANIZATION : GuestCategory.INDIVIDUAL);
+
         Visit visit = Visit.builder()
                 .visitCode(visitCode)
-                .title(request.getTitle().trim())
-                .requestingDepartment(request.getRequestingDepartment().trim())
+                .title(visitTitle)
+                .requestingDepartment(department)
                 .visitType(request.getVisitType() != null ? request.getVisitType() : VisitType.EXTERNAL)
-                .visitObjective(request.getVisitObjective().trim())
+                .visitObjective(objective)
                 .expectedOutcome(request.getExpectedOutcome() != null ? request.getExpectedOutcome().trim() : null)
                 .priorityLevel(request.getPriorityLevel() != null ? request.getPriorityLevel() : VisitPriority.MEDIUM)
                 .status(initialStatus)
@@ -237,20 +256,36 @@ public class VisitServiceImpl implements VisitService {
                 .sensitiveTopics(request.getSensitiveTopics() != null ? request.getSensitiveTopics().trim() : null)
                 .locationRoom(request.getLocationRoom() != null ? request.getLocationRoom().trim() : null)
                 .visitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1)
-                .guestCategory(request.getGuestCategory())
+                .guestCategory(category)
                 .guestOrganization(guestOrg)
                 .masterIndividualGuest(indGuest)
-                .individualGuestFirstName(fName != null ? fName.trim() : null)
-                .individualGuestMiddleName(mName != null ? mName.trim() : null)
-                .individualGuestLastName(lName != null ? lName.trim() : null)
-                .individualGuestEmail(email != null ? email.trim().toLowerCase() : null)
-                .individualGuestPhone(phone != null ? phone.trim() : null)
-                .individualGuestTitle(title != null ? title.trim() : null)
-                .individualGuestIdNumber(idNum != null ? idNum.trim() : null)
+                .individualGuestFirstName(fName)
+                .individualGuestMiddleName(mName)
+                .individualGuestLastName(lName)
+                .individualGuestEmail(email)
+                .individualGuestPhone(phone)
+                .individualGuestTitle(title)
+                .individualGuestIdNumber(idNum)
+                // Front Desk Visitor Demographics matching Reference Image
+                .visitorFirstName(fName)
+                .visitorMiddleName(mName)
+                .visitorSurname(lName)
+                .visitorIdNumber(idNum)
+                .visitorPhone(phone)
+                .visitorEmail(email)
+                .visitorDateOfBirth(request.getDateOfBirth())
+                .visitorIssuedDate(request.getIssuedDate())
+                .visitorExpiredDate(request.getExpiredDate())
+                .visitorGender(request.getGender() != null ? request.getGender().trim() : "Male")
+                .visitorCitizenship(StringUtils.hasText(request.getCitizenship()) ? request.getCitizenship().trim() : "Ethiopian")
+                .visitorRegion(request.getRegion())
+                .visitorZone(request.getZone())
+                .visitorWoreda(request.getWoreda())
+                .visitorIdType(StringUtils.hasText(request.getIdType()) ? request.getIdType().trim() : "National ID")
                 .requester(requester)
                 .sponsor(sponsor)
-                .scheduledStartTime(request.getScheduledStartTime())
-                .scheduledEndTime(request.getScheduledEndTime())
+                .scheduledStartTime(startTime)
+                .scheduledEndTime(endTime)
                 .build();
 
         Visit saved = visitRepository.save(visit);
