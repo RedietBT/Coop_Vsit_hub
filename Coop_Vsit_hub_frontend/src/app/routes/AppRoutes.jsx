@@ -19,6 +19,16 @@ import UsersPage from '@/modules/users/pages/UsersPage';
 import AuditLogsPage from '@/modules/audit/pages/AuditLogsPage';
 import PublicSurveyPage from '@/modules/feedback/pages/PublicSurveyPage';
 
+import useAuthStore from '@/modules/auth/store/authStore';
+
+const RootRedirect = () => {
+  const { isAuthenticated, hasRole } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (hasRole('ROLE_ADMIN')) return <Navigate to="/dashboard" replace />;
+  if (hasRole('ROLE_SECURITY_DESK')) return <Navigate to="/security-desk" replace />;
+  return <Navigate to="/visits/calendar" replace />;
+};
+
 export const AppRoutes = () => {
   return (
     <Routes>
@@ -39,7 +49,7 @@ export const AppRoutes = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <ExecutiveDashboardPage />
               </DashboardLayout>
@@ -166,7 +176,7 @@ export const AppRoutes = () => {
       />
 
       {/* Fallback */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

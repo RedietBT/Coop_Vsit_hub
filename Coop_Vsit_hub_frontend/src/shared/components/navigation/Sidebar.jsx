@@ -83,7 +83,15 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     navigate('/login');
   };
 
+  const isAdmin = hasAnyRole(['ROLE_ADMIN']);
+  const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK']);
+  const isStaff = !isAdmin && !isSecurity;
+
   const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if (isStaff) {
+      // CoopBank Staff strictly only sees booking options for now
+      return item.path === '/visits/calendar' || item.path === '/visits';
+    }
     if (!item.roles || item.roles.length === 0) return true;
     return hasAnyRole(item.roles);
   });

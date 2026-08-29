@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
+import useAuthStore from '@/modules/auth/store/authStore';
 import VisitDetailDrawer from '../components/VisitDetailDrawer';
 import CreateVisitModal from '../components/CreateVisitModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
@@ -23,14 +24,22 @@ import Button from '@/shared/components/ui/Button';
 
 export const VisitCalendarPage = () => {
   const navigate = useNavigate();
+  const { user, hasRole } = useAuthStore();
+  const isAdmin = hasRole('ROLE_ADMIN');
   const { visits, fetchVisits, openDetailDrawer, openCreateModal } = useVisitStore();
-  const { meetingRooms, fetchMeetingRooms, openMasterModal } = useMasterDataStore();
+  const { meetingRooms, fetchMeetingRooms, fetchAllMasterData, openMasterModal } = useMasterDataStore();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
-    fetchVisits();
-    fetchMeetingRooms(true);
-  }, [fetchVisits, fetchMeetingRooms]);
+    if (typeof fetchVisits === 'function') {
+      fetchVisits();
+    }
+    if (typeof fetchMeetingRooms === 'function') {
+      fetchMeetingRooms(true);
+    } else if (typeof fetchAllMasterData === 'function') {
+      fetchAllMasterData();
+    }
+  }, [fetchVisits, fetchMeetingRooms, fetchAllMasterData]);
 
   const changeDate = (days) => {
     const next = new Date(selectedDate);
@@ -101,14 +110,16 @@ export const VisitCalendarPage = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openMasterModal('rooms')}
-            icon={SlidersHorizontal}
-          >
-            Manage Rooms
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openMasterModal('rooms')}
+              icon={SlidersHorizontal}
+            >
+              Manage Rooms
+            </Button>
+          )}
 
           <Button
             variant="ghost"

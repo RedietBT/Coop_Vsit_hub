@@ -60,7 +60,18 @@ export const LoginPage = () => {
 
       soundPlayer.playNotificationChime();
       toast.success(`Welcome back, ${result.user?.firstName || result.user?.username || 'User'}!`);
-      const from = location.state?.from?.pathname || '/dashboard';
+      
+      const roles = result.user?.roles || [];
+      const isAdmin = roles.includes('ROLE_ADMIN');
+      const isSecurity = roles.includes('ROLE_SECURITY_DESK');
+      let defaultDestination = '/visits/calendar';
+      if (isAdmin) {
+        defaultDestination = '/dashboard';
+      } else if (isSecurity) {
+        defaultDestination = '/security-desk';
+      }
+
+      const from = location.state?.from?.pathname || defaultDestination;
       navigate(from, { replace: true });
     } else {
       soundPlayer.playNotificationChime();
@@ -74,8 +85,7 @@ export const LoginPage = () => {
 
   const handleFirstTimeSuccess = () => {
     setShowFirstTimeModal(false);
-    const from = location.state?.from?.pathname || '/dashboard';
-    navigate(from, { replace: true });
+    navigate('/visits/calendar', { replace: true });
   };
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();

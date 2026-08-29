@@ -37,6 +37,39 @@ export const useMasterDataStore = create((set, get) => ({
     }
   },
 
+  fetchMeetingRooms: async (activeOnly = true) => {
+    try {
+      const rooms = await masterDataApi.getMeetingRooms(activeOnly);
+      set({ meetingRooms: Array.isArray(rooms) ? rooms : [] });
+      return rooms;
+    } catch (e) {
+      console.warn('Failed to fetch meeting rooms:', e);
+      return [];
+    }
+  },
+
+  fetchDepartments: async (activeOnly = true) => {
+    try {
+      const depts = await masterDataApi.getDepartments(activeOnly);
+      set({ departments: Array.isArray(depts) ? depts : [] });
+      return depts;
+    } catch (e) {
+      console.warn('Failed to fetch departments:', e);
+      return [];
+    }
+  },
+
+  fetchCategories: async (activeOnly = true) => {
+    try {
+      const cats = await masterDataApi.getCategories(activeOnly);
+      set({ categories: Array.isArray(cats) ? cats : [] });
+      return cats;
+    } catch (e) {
+      console.warn('Failed to fetch categories:', e);
+      return [];
+    }
+  },
+
   // --- Departments Actions ---
   createDepartment: async (payload) => {
     try {
