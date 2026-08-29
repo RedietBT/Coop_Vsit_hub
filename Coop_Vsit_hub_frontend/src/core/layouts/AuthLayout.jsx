@@ -2,7 +2,7 @@ import React from 'react';
 import { ShieldCheck, Building2, Calendar, Award } from 'lucide-react';
 import CoopLogo from '@/core/assets/CoopLogo';
 
-export const AuthLayout = ({ children, title, subtitle }) => {
+export const AuthLayout = ({ children, title, subtitle, topRightAction }) => {
   return (
     <div className="min-h-screen w-full flex bg-slate-50">
       {/* Left Showcase Banner in CoopBank Cyan & Orange Accent */}
@@ -69,7 +69,14 @@ export const AuthLayout = ({ children, title, subtitle }) => {
       </div>
 
       {/* Right Form Card Panel (Clean White Light Mode) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-white">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-white min-h-screen">
+        {/* Top Right Action Button outside the card */}
+        {topRightAction && (
+          <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-20">
+            {topRightAction}
+          </div>
+        )}
+
         <div className="w-full max-w-md">
           {/* Mobile Logo View */}
           <div className="lg:hidden mb-8 flex justify-center">
