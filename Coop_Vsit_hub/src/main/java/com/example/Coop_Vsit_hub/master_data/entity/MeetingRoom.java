@@ -27,6 +27,9 @@ public class MeetingRoom {
     @Column(name = "floor_location", length = 100)
     private String floorLocation;
 
+    @Column(name = "department", length = 100)
+    private String department;
+
     @Builder.Default
     @Column(name = "capacity", nullable = false)
     private Integer capacity = 10;

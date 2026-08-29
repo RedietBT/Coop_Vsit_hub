@@ -47,6 +47,7 @@ export const MasterDataManagementModal = () => {
   const [catForm, setCatForm] = useState({ name: '', description: '' });
   const [roomForm, setRoomForm] = useState({
     name: '',
+    department: '',
     capacity: 18,
     imageUrl: '',
   });
@@ -57,7 +58,7 @@ export const MasterDataManagementModal = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
     setCatForm({ name: '', description: '' });
-    setRoomForm({ name: '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: '', capacity: 18, imageUrl: '' });
     closeMasterModal();
   };
 
@@ -100,7 +101,7 @@ export const MasterDataManagementModal = () => {
     } else {
       await createMeetingRoom(roomForm);
     }
-    setRoomForm({ name: '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: '', capacity: 18, imageUrl: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -437,17 +438,36 @@ export const MasterDataManagementModal = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* 1. Room Name & Floor */}
-                <div className="sm:col-span-2">
+                <div>
                   <Input
                     label="Room Name & Floor"
-                    placeholder="e.g. Executive Boardroom - 4th Floor"
+                    placeholder="e.g. Executive Boardroom"
                     value={roomForm.name}
                     onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
                     required
                   />
                 </div>
 
-                {/* 2. Seating Capacity */}
+                {/* 2. Department (Dynamically populated from Master Data) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Managing Department
+                  </label>
+                  <select
+                    value={roomForm.department}
+                    onChange={(e) => setRoomForm({ ...roomForm, department: e.target.value })}
+                    className="w-full h-[42px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
+                  >
+                    <option value="">-- Select Department --</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Seating Capacity */}
                 <div>
                   <Input
                     label="Seating Capacity"
@@ -461,7 +481,7 @@ export const MasterDataManagementModal = () => {
                 </div>
               </div>
 
-              {/* 3. Room Image & Photo Upload */}
+              {/* 4. Room Image & Photo Upload */}
               <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-2">
                 <label className="text-xs font-bold text-slate-700 block">
                   Room Image / Photo
@@ -515,6 +535,7 @@ export const MasterDataManagementModal = () => {
                   <tr className="border-b border-slate-100 bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
                     <th className="py-2.5 pl-4">Photo</th>
                     <th className="py-2.5 px-3">Room Name & Floor</th>
+                    <th className="py-2.5 px-3">Managing Department</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
                     <th className="py-2.5 pr-4 text-right">Actions</th>
                   </tr>
@@ -536,6 +557,11 @@ export const MasterDataManagementModal = () => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 font-bold text-[#000000]">{r.name}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded-md bg-sky-50 text-[#00adef] font-bold text-[11px]">
+                          {r.department || 'General Facility'}
+                        </span>
+                      </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">{r.capacity} Seats</td>
                       <td className="py-2.5 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -554,6 +580,7 @@ export const MasterDataManagementModal = () => {
                               setEditingId(r.id);
                               setRoomForm({
                                 name: r.name,
+                                department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
                               });

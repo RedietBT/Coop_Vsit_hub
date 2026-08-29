@@ -205,8 +205,8 @@ export const SecurityDeskPage = () => {
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {visit.requestingDepartment || 'Host Dept'}
+                    <span className="text-[10px] text-[#00adef] font-mono font-bold">
+                      {visit.visitCode || 'VIS-2026'}
                     </span>
 
                     {visit.status !== 'IN_PROGRESS' && (

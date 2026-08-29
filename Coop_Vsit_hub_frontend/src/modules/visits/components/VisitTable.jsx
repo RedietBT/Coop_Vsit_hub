@@ -120,16 +120,13 @@ export const VisitTable = () => {
                   onClick={() => openDetailDrawer(visit)}
                   className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                 >
-                  {/* Visit Code & Department */}
+                  {/* Visit Code */}
                   <td className="py-4 pl-6 font-medium">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-black text-[#00adef] group-hover:underline">
                         {visit.visitCode || 'VIS-2026'}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[140px]">
-                      {visit.requestingDepartment || 'Banking Dept'}
-                    </p>
                   </td>
 
                   {/* Title & Guest Display */}

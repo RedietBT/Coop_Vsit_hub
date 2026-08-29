@@ -230,7 +230,7 @@ export const VisitCalendarPage = () => {
       const payload = {
         roomName: selectedRoom.name,
         meetingTitle: formData.title.trim(),
-        hostDepartment: formData.requestingDepartment.trim(),
+        hostDepartment: selectedRoom.department || user?.department || 'Executive Office',
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
         expectedAttendees: parseInt(formData.visitorCount, 10) || 1,
@@ -366,6 +366,14 @@ export const VisitCalendarPage = () => {
                       alt={room.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    {room.department && (
+                      <div className="absolute top-3 left-3">
+                        <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-[#e38524]" />
+                          <span>{room.department}</span>
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute top-3 right-3">
                       <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-xs flex items-center gap-1">
                         <Users className="w-3 h-3 text-[#00adef]" />
@@ -380,10 +388,14 @@ export const VisitCalendarPage = () => {
                   </h3>
 
                   {/* Capacity & Details */}
-                  <p className="text-slate-500 text-xs font-medium mt-1 flex items-center gap-1.5">
+                  <p className="text-slate-500 text-xs font-medium mt-1 flex items-center gap-1.5 line-clamp-1">
                     <span>👥 Up to {room.capacity || 12} People</span>
-                    <span>•</span>
-                    <span>High-Speed AV & Screen</span>
+                    {room.department && (
+                      <>
+                        <span>•</span>
+                        <span className="text-slate-600 font-bold">{room.department}</span>
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -705,19 +717,12 @@ export const VisitCalendarPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Host Department
+                      Room Managing Department
                     </label>
-                    <input
-                      type="text"
-                      value={formData.requestingDepartment}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          requestingDepartment: e.target.value,
-                        })
-                      }
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
-                    />
+                    <div className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-800 font-semibold flex items-center gap-1.5 h-[38px]">
+                      <Building2 className="w-3.5 h-3.5 text-[#00adef]" />
+                      <span>{selectedRoom.department || 'General Facility'}</span>
+                    </div>
                   </div>
 
                   <div>

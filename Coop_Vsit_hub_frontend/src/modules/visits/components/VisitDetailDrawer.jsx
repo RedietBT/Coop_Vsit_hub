@@ -112,7 +112,7 @@ export const VisitDetailDrawer = () => {
                       {detail.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      {detail.requestingDepartment || 'Digital Banking'}
+                      Room: <span className="font-semibold text-slate-700">{detail.locationRoom || 'Lobby / Floor Visit'}</span>
                     </p>
                   </div>
 

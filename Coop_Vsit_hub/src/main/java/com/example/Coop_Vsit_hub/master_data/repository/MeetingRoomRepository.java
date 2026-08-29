@@ -15,4 +15,5 @@ public interface MeetingRoomRepository extends JpaRepository<MeetingRoom, UUID> 
     Optional<MeetingRoom> findByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndIdNot(String name, UUID id);
+    boolean existsByDepartmentIgnoreCase(String department);
 }

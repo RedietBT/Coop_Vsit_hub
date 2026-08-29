@@ -96,9 +96,6 @@ export const SecurityArrivalsTable = () => {
                     <span className="font-mono text-xs font-black text-[#00adef] group-hover:underline">
                       {visit.visitCode || 'VIS-2026'}
                     </span>
-                    <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[130px]">
-                      {visit.requestingDepartment || 'Banking Dept'}
-                    </p>
                   </td>
 
                   {/* Title & Guest */}

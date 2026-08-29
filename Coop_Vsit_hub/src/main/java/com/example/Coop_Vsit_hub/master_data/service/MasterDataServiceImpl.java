@@ -104,6 +104,11 @@ public class MasterDataServiceImpl implements MasterDataService {
         log.info("Deleting department ID: {}", id);
         Department dept = departmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Department not found with ID: " + id));
+
+        boolean isAssignedToRoom = meetingRoomRepository.existsByDepartmentIgnoreCase(dept.getName());
+        if (isAssignedToRoom) {
+            throw new IllegalStateException("Cannot delete department '" + dept.getName() + "' because it is currently assigned to one or more meeting rooms. Please reassign the meeting rooms before deleting.");
+        }
         departmentRepository.delete(dept);
     }
 
@@ -219,6 +224,7 @@ public class MasterDataServiceImpl implements MasterDataService {
         MeetingRoom room = MeetingRoom.builder()
                 .name(request.getName().trim())
                 .floorLocation(request.getFloorLocation())
+                .department(request.getDepartment())
                 .capacity(request.getCapacity() != null ? request.getCapacity() : 10)
                 .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
@@ -244,6 +250,9 @@ public class MasterDataServiceImpl implements MasterDataService {
 
         room.setName(request.getName().trim());
         room.setFloorLocation(request.getFloorLocation());
+        if (request.getDepartment() != null) {
+            room.setDepartment(request.getDepartment());
+        }
         if (request.getCapacity() != null) {
             room.setCapacity(request.getCapacity());
         }

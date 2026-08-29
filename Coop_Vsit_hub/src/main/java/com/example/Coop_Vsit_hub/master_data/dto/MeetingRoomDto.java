@@ -17,6 +17,7 @@ public class MeetingRoomDto {
     private UUID id;
     private String name;
     private String floorLocation;
+    private String department;
     private Integer capacity;
     private String imageUrl;
     private String description;
@@ -29,6 +30,7 @@ public class MeetingRoomDto {
                 .id(entity.getId())
                 .name(entity.getName())
                 .floorLocation(entity.getFloorLocation())
+                .department(entity.getDepartment())
                 .capacity(entity.getCapacity())
                 .imageUrl(entity.getImageUrl())
                 .description(entity.getDescription())

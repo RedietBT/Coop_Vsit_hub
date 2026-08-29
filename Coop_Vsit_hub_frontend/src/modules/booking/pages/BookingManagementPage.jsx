@@ -337,6 +337,14 @@ export const BookingManagementPage = () => {
                         alt={room.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
+                      {room.department && (
+                        <div className="absolute top-2.5 left-2.5">
+                          <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                            <Building2 className="w-3 h-3 text-[#e38524]" />
+                            <span>{room.department}</span>
+                          </span>
+                        </div>
+                      )}
                       <div className="absolute top-2.5 right-2.5">
                         <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-slate-800 text-[10px] font-bold shadow-xs flex items-center gap-1">
                           <Users className="w-3 h-3 text-[#00adef]" />
@@ -349,7 +357,7 @@ export const BookingManagementPage = () => {
                       {room.name}
                     </h3>
                     <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">
-                      Executive boardroom & meeting suite
+                      {room.department ? `Dept: ${room.department}` : (room.description || 'Executive boardroom & meeting suite')}
                     </p>
                   </div>
 

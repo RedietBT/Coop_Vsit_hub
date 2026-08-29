@@ -66,7 +66,6 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
     // Visit Parameters
     title: '',
-    requestingDepartment: user?.department || 'Executive Office',
     locationRoom: '',
     scheduledDate: new Date().toISOString().split('T')[0],
     startTime: '09:00',
@@ -172,7 +171,6 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
       const payload = {
         title: formData.title.trim() || undefined,
-        requestingDepartment: formData.requestingDepartment || undefined,
         locationRoom: formData.locationRoom || undefined,
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
@@ -233,7 +231,6 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
         woreda: '',
         idType: 'National ID',
         title: '',
-        requestingDepartment: user?.department || 'Executive Office',
         locationRoom: '',
         scheduledDate: new Date().toISOString().split('T')[0],
         startTime: '09:00',
@@ -655,23 +652,7 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Host Department</label>
-                <select
-                  value={formData.requestingDepartment}
-                  onChange={(e) => handleChange('requestingDepartment', e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
-                >
-                  {departments.map((d) => (
-                    <option key={d.id || d.name} value={d.name}>
-                      {d.name}
-                    </option>
-                  ))}
-                  <option value="Lobby & Front Desk">Lobby & Front Desk</option>
-                </select>
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-700">Assigned Room</label>
@@ -704,7 +685,7 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                   <option value="">None (Lobby / Floor Visit)</option>
                   {meetingRooms.map((r) => (
                     <option key={r.id || r.name} value={r.name}>
-                      {r.name}
+                      {r.name} {r.department ? `(${r.department})` : ''}
                     </option>
                   ))}
                 </select>

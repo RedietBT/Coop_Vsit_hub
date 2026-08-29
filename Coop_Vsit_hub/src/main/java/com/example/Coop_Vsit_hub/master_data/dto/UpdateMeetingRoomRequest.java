@@ -21,6 +21,9 @@ public class UpdateMeetingRoomRequest {
     @Size(max = 100, message = "Floor location cannot exceed 100 characters.")
     private String floorLocation;
 
+    @Size(max = 100, message = "Department cannot exceed 100 characters.")
+    private String department;
+
     @Min(value = 1, message = "Room capacity must be at least 1 person.")
     private Integer capacity;
 
