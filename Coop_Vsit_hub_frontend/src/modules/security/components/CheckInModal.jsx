@@ -60,7 +60,7 @@ export const CheckInModal = () => {
 
           <div className="flex items-center gap-1 text-[11px] text-slate-600">
             <MapPin className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
-            <span>Assigned Room: <strong>{checkInTarget.locationRoom || 'Executive Room'}</strong></span>
+            <span>Assigned Room: <strong>{checkInTarget.locationRoom || 'Lobby / Floor Visit'}</strong></span>
           </div>
         </div>
 

@@ -216,7 +216,7 @@ export const VisitDetailDrawer = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-slate-500">Location Room:</span>
                       <span className="font-bold text-[#000000]">
-                        {detail.locationRoom || 'Executive Room'}
+                        {detail.locationRoom || 'Lobby / Floor Visit'}
                       </span>
                     </div>
 

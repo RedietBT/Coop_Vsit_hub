@@ -172,7 +172,7 @@ export const VisitTable = () => {
                     <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5">
                       <MapPin className="w-3 h-3 text-[#e38524] shrink-0" />
                       <span className="truncate max-w-[150px]">
-                        {visit.locationRoom || 'Executive Room'}
+                        {visit.locationRoom || '—'}
                       </span>
                     </div>
                   </td>

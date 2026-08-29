@@ -220,6 +220,55 @@ public class VisitServiceImpl implements VisitService {
             if (!StringUtils.hasText(phone)) phone = indGuest.getPhoneNumber();
             if (!StringUtils.hasText(title)) title = indGuest.getGuestTitle();
             if (!StringUtils.hasText(idNum)) idNum = indGuest.getIdNumber();
+        } else if (StringUtils.hasText(fName)) {
+            String searchLast = StringUtils.hasText(lName) ? lName : (StringUtils.hasText(mName) ? mName : fName);
+            if (StringUtils.hasText(phone)) {
+                indGuest = individualGuestRepository
+                        .findByFirstNameIgnoreCaseAndLastNameIgnoreCaseAndPhoneNumber(fName, searchLast, phone)
+                        .orElse(null);
+            }
+            // If not found in individual guests register, auto-create new IndividualGuest
+            if (indGuest == null) {
+                String safeEmail = StringUtils.hasText(email) ? email : null;
+                if (safeEmail == null || individualGuestRepository.existsByEmail(safeEmail)) {
+                    String cleanPhone = StringUtils.hasText(phone) ? phone.replaceAll("[^0-9]", "") : "";
+                    String candidateEmail = (cleanPhone.length() >= 6 ? cleanPhone : UUID.randomUUID().toString().substring(0, 8)) + "@guest.coopbank.com.et";
+                    if (individualGuestRepository.existsByEmail(candidateEmail)) {
+                        candidateEmail = UUID.randomUUID().toString().substring(0, 8) + "." + candidateEmail;
+                    }
+                    safeEmail = candidateEmail;
+                }
+
+                com.example.coop_vsit_hub.individual_guest_management.enums.VipTier tier = com.example.coop_vsit_hub.individual_guest_management.enums.VipTier.STANDARD;
+                if (request.getGuestTier() != null) {
+                    String gt = request.getGuestTier().toUpperCase();
+                    if (gt.contains("VVIP")) tier = com.example.coop_vsit_hub.individual_guest_management.enums.VipTier.VIP_TIER_1;
+                    else if (gt.contains("VIP")) tier = com.example.coop_vsit_hub.individual_guest_management.enums.VipTier.VIP_TIER_2;
+                }
+
+                com.example.coop_vsit_hub.individual_guest_management.enums.IdentityDocumentType docType = com.example.coop_vsit_hub.individual_guest_management.enums.IdentityDocumentType.NATIONAL_ID;
+                if (request.getIdType() != null) {
+                    String it = request.getIdType().toUpperCase();
+                    if (it.contains("PASSPORT")) docType = com.example.coop_vsit_hub.individual_guest_management.enums.IdentityDocumentType.PASSPORT;
+                    else if (it.contains("DRIVER") || it.contains("LICENSE")) docType = com.example.coop_vsit_hub.individual_guest_management.enums.IdentityDocumentType.DRIVER_LICENSE;
+                    else if (it.contains("DIPLOMAT")) docType = com.example.coop_vsit_hub.individual_guest_management.enums.IdentityDocumentType.DIPLOMATIC_ID;
+                }
+
+                indGuest = individualGuestRepository.save(com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest.builder()
+                        .firstName(fName)
+                        .middleName(mName)
+                        .lastName(searchLast)
+                        .phoneNumber(phone)
+                        .email(safeEmail)
+                        .idNumber(idNum)
+                        .idType(docType)
+                        .vipTier(tier)
+                        .organizationAffiliation(guestOrg != null ? guestOrg.getName() : request.getOrganizationName())
+                        .countryOfResidence(StringUtils.hasText(request.getCitizenship()) ? request.getCitizenship().trim() : "Ethiopia")
+                        .relationshipScore(50)
+                        .build());
+                log.info("Auto-registered new individual guest into master directory: {} {} (ID: {})", fName, searchLast, indGuest.getId());
+            }
         }
 
         String visitTitle = StringUtils.hasText(request.getTitle()) 

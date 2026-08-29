@@ -211,17 +211,17 @@ public class ReportServiceImpl implements ReportService {
         String name = visit.getGuestDisplayName();
         String phone = visit.getVisitorPhone() != null ? visit.getVisitorPhone() : visit.getIndividualGuestPhone();
         String email = visit.getVisitorEmail() != null ? visit.getVisitorEmail() : visit.getIndividualGuestEmail();
-        String host = visit.getRequester() != null ? visit.getRequester().getFullName() : "Bank Staff";
-
-        // Floor extraction
-        String floor = "Floor 4";
-        if (visit.getLocationRoom() != null) {
-            if (visit.getLocationRoom().toLowerCase().contains("ground")) floor = "Ground Floor";
-            else if (visit.getLocationRoom().toLowerCase().contains("4th") || visit.getLocationRoom().toLowerCase().contains("floor 4")) floor = "Floor 4";
-            else if (visit.getLocationRoom().toLowerCase().contains("9")) floor = "Floor 9";
-            else if (visit.getLocationRoom().toLowerCase().contains("10")) floor = "Floor 10";
-            else if (visit.getLocationRoom().toLowerCase().contains("13")) floor = "Floor 13";
+        String host = "—";
+        if (visit.getSponsor() != null && visit.getSponsor().getFullName() != null && !visit.getSponsor().getFullName().isBlank()) {
+            host = visit.getSponsor().getFullName();
+        } else if (visit.getRequester() != null && visit.getRequester().getFullName() != null && !visit.getRequester().getFullName().isBlank()) {
+            host = visit.getRequester().getFullName();
         }
+
+        // Real Room Location / Floor
+        String floor = (visit.getLocationRoom() != null && !visit.getLocationRoom().isBlank())
+                ? visit.getLocationRoom()
+                : "Lobby / Floor Visit";
 
         // Duration calculation
         String duration = "—";

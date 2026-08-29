@@ -22,6 +22,10 @@ public interface IndividualGuestRepository extends JpaRepository<IndividualGuest
 
     Optional<IndividualGuest> findByIdNumber(String idNumber);
 
+    Optional<IndividualGuest> findByFirstNameIgnoreCaseAndLastNameIgnoreCaseAndPhoneNumber(String firstName, String lastName, String phoneNumber);
+
+    List<IndividualGuest> findByPhoneNumber(String phoneNumber);
+
     long countByVipTier(VipTier vipTier);
 
     @Query("SELECT COALESCE(AVG(g.relationshipScore), 0.0) FROM IndividualGuest g")

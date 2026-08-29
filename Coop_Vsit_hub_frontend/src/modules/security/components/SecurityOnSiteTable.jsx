@@ -9,6 +9,7 @@ import {
   Clock,
   MapPin,
   Timer,
+  Phone,
 } from 'lucide-react';
 import useSecurityStore from '../store/securityStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
@@ -65,6 +66,7 @@ export const SecurityOnSiteTable = () => {
             <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-400 font-bold uppercase text-[10px]">
               <th className="py-3.5 pl-6">Active Security Badge</th>
               <th className="py-3.5 px-4">Visitor / Organization</th>
+              <th className="py-3.5 px-4">Visitor Phone</th>
               <th className="py-3.5 px-4">Arrival Check-In</th>
               <th className="py-3.5 px-4">Room Location</th>
               <th className="py-3.5 px-4">Elapsed Duration</th>
@@ -75,7 +77,7 @@ export const SecurityOnSiteTable = () => {
           <tbody className="divide-y divide-slate-100">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="py-20 text-center">
+                <td colSpan={7} className="py-20 text-center">
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <Spinner size="lg" color="navy" />
                     <p className="text-xs font-bold text-slate-500">Checking on-site delegations...</p>
@@ -84,7 +86,7 @@ export const SecurityOnSiteTable = () => {
               </tr>
             ) : activeOnSite.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-20 text-center">
+                <td colSpan={7} className="py-20 text-center">
                   <div className="w-14 h-14 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
                     <ShieldCheck className="w-7 h-7" />
                   </div>
@@ -131,6 +133,18 @@ export const SecurityOnSiteTable = () => {
                     </div>
                   </td>
 
+                  {/* Visitor Phone */}
+                  <td className="py-4 px-4 font-mono text-xs text-slate-700 font-medium">
+                    {visit.visitorPhone ? (
+                      <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                        <Phone className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
+                        <span>{visit.visitorPhone}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">—</span>
+                    )}
+                  </td>
+
                   {/* Arrival Time */}
                   <td className="py-4 px-4 font-semibold text-slate-800">
                     <div className="flex items-center gap-1 text-[11px]">
@@ -144,7 +158,7 @@ export const SecurityOnSiteTable = () => {
                     <div className="flex items-center gap-1 text-[11px] text-slate-600">
                       <MapPin className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
                       <span className="truncate max-w-[160px] font-medium">
-                        {visit.locationRoom || 'Executive Room'}
+                        {visit.locationRoom || '—'}
                       </span>
                     </div>
                   </td>

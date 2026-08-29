@@ -356,8 +356,9 @@ export const ReportsAnalyticsPage = () => {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                   <th className="py-3 pl-6">Visitor ID</th>
-                  <th className="py-3 px-4">Visitor Name & Phone</th>
-                  <th className="py-3 px-4">Department & Floor</th>
+                  <th className="py-3 px-4">Visitor Name</th>
+                  <th className="py-3 px-4">Phone Number</th>
+                  <th className="py-3 px-4">Department & Location</th>
                   <th className="py-3 px-4">Meeting With</th>
                   <th className="py-3 px-4">Check-In Time</th>
                   <th className="py-3 px-4">Duration</th>
@@ -369,7 +370,7 @@ export const ReportsAnalyticsPage = () => {
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-20 text-center">
+                    <td colSpan={9} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Spinner size="lg" color="navy" />
                         <p className="text-xs font-bold text-slate-500">Loading visitor reports...</p>
@@ -378,7 +379,7 @@ export const ReportsAnalyticsPage = () => {
                   </tr>
                 ) : reportItems.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-20 text-center text-slate-400">
+                    <td colSpan={9} className="py-20 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="text-xs font-bold text-slate-600">No visitor records found for selected filters</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting date range or department filter</p>
@@ -392,25 +393,31 @@ export const ReportsAnalyticsPage = () => {
                         {item.visitCode || `#${page * size + idx + 1}`}
                       </td>
 
-                      {/* Name & Phone */}
+                      {/* Visitor Name */}
                       <td className="py-3.5 px-4 font-bold text-[#000000]">
-                        <p>{item.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400 font-normal mt-0.5">
-                          {item.phone || '—'}
-                        </p>
+                        {item.name}
                       </td>
 
-                      {/* Department & Floor */}
+                      {/* Phone Number (Dedicated Column) */}
+                      <td className="py-3.5 px-4 font-mono text-xs font-semibold text-slate-700">
+                        {item.phone && item.phone !== '—' ? (
+                          <span className="text-slate-800">{item.phone}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">—</span>
+                        )}
+                      </td>
+
+                      {/* Department & Location */}
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-800">{item.department || 'General'}</p>
-                        <p className="text-[10px] text-[#e38524] font-bold mt-0.5">
-                          {item.floor || 'Floor 4'}
+                        <p className="font-semibold text-slate-800">{item.department || '—'}</p>
+                        <p className="text-[10px] text-[#00adef] font-bold mt-0.5">
+                          {item.floor || 'Lobby / Floor Visit'}
                         </p>
                       </td>
 
                       {/* Meeting With */}
                       <td className="py-3.5 px-4 font-medium text-slate-700">
-                        {item.meetingWith || 'Bank Staff'}
+                        {item.meetingWith || '—'}
                       </td>
 
                       {/* Check-In Time */}
