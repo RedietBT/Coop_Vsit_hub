@@ -95,43 +95,56 @@ export const LoginPage = () => {
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();
 
+  const isStaffMode = loginMode === 'ACTIVE_DIRECTORY';
+
   return (
     <AuthLayout
-      title="Staff Portal Sign In"
-      subtitle="Sign in to access CoopBank Visit Hub and Facilities."
+      title={isStaffMode ? "Access Receptionist & Staff Portal" : "System Administrator Login"}
+      subtitle={
+        isStaffMode
+          ? "Book a meeting room, schedule executive visits, or check in guest delegations."
+          : "Elevated security portal for system administration, user roles, and audit logs."
+      }
     >
-      {/* Login Mode Toggle Tabs */}
-      <div className="flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 mb-5">
-        <button
-          type="button"
-          onClick={() => {
-            setLoginMode('ACTIVE_DIRECTORY');
-            clearError();
-          }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
-            loginMode === 'ACTIVE_DIRECTORY'
-              ? 'bg-white text-[#00adef] shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          <span>CoopBank Staff (AD)</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setLoginMode('LOCAL');
-            clearError();
-          }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
-            loginMode === 'LOCAL'
-              ? 'bg-white text-[#e38524] shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <KeyRound className="w-3.5 h-3.5" />
-          <span>System Admin / Local</span>
-        </button>
+      {/* Top Portal Switcher Bar */}
+      <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+        {isStaffMode ? (
+          <>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[#00adef] text-xs font-bold">
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Staff & Reception</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('LOCAL');
+                clearError();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-[#e38524]" />
+              <span>Admin Sign In</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-[#e38524] text-xs font-bold">
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>System Admin</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('ACTIVE_DIRECTORY');
+                clearError();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#00adef] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>← Back to Staff Portal</span>
+            </button>
+          </>
+        )}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -151,8 +164,8 @@ export const LoginPage = () => {
           </div>
         )}
 
-        {/* Informational banner for Active Directory Mode */}
-        {loginMode === 'ACTIVE_DIRECTORY' ? (
+        {/* Informational SSO / Local Banner */}
+        {isStaffMode ? (
           <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-left flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
             <div>
@@ -160,7 +173,7 @@ export const LoginPage = () => {
                 Active Directory Single Sign-On
               </p>
               <p className="text-[10px] text-blue-700 leading-relaxed">
-                Use your official bank username (e.g. <span className="font-mono font-bold">dalemu</span>) or corporate email.
+                Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>) to access room booking & visits.
               </p>
             </div>
           </div>
@@ -169,10 +182,10 @@ export const LoginPage = () => {
             <KeyRound className="w-4 h-4 text-[#e38524] shrink-0 mt-0.5" />
             <div>
               <p className="text-[11px] font-semibold text-amber-900">
-                Local Database Mode
+                Local Administrator Authentication
               </p>
               <p className="text-[10px] text-amber-700 leading-relaxed">
-                For administrative credentials and local accounts.
+                Enter administrative credentials (e.g. <span className="font-mono font-bold">admin</span>) for system control.
               </p>
             </div>
           </div>
@@ -180,9 +193,9 @@ export const LoginPage = () => {
 
         {/* Username / Email Field */}
         <Input
-          label={loginMode === 'ACTIVE_DIRECTORY' ? "Staff AD Username or Email" : "Admin Username or Email"}
+          label={isStaffMode ? "Staff AD Username or Email" : "Admin Username or Email"}
           name="identifier"
-          placeholder={loginMode === 'ACTIVE_DIRECTORY' ? "e.g. dalemu or staff_test" : "e.g. admin"}
+          placeholder={isStaffMode ? "e.g. dalemu or staff_test" : "e.g. admin"}
           icon={User}
           sanitize="identifier"
           disabled={isLoading || isLockedOut}
@@ -219,7 +232,7 @@ export const LoginPage = () => {
         {/* Submit Button */}
         <Button
           type="submit"
-          variant={loginMode === 'ACTIVE_DIRECTORY' ? 'primary' : 'orange'}
+          variant={isStaffMode ? 'primary' : 'orange'}
           size="lg"
           className="w-full mt-2"
           isLoading={isLoading}
@@ -227,7 +240,7 @@ export const LoginPage = () => {
           icon={ArrowRight}
           iconPosition="right"
         >
-          {loginMode === 'ACTIVE_DIRECTORY' ? 'Sign In with Active Directory' : 'Sign In as System Admin'}
+          {isStaffMode ? 'Sign In to Staff Portal' : 'Sign In as System Admin'}
         </Button>
       </form>
 
