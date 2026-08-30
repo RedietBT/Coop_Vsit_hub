@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Calendar,
   Layers,
+  DoorOpen,
 } from 'lucide-react';
 import useReportStore from '../store/reportStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
@@ -358,7 +359,7 @@ export const ReportsAnalyticsPage = () => {
                   <th className="py-3 pl-6">Visitor ID</th>
                   <th className="py-3 px-4">Visitor Name</th>
                   <th className="py-3 px-4">Phone Number</th>
-                  <th className="py-3 px-4">Department & Location</th>
+                  <th className="py-3 px-4">Meeting Room</th>
                   <th className="py-3 px-4">Meeting With</th>
                   <th className="py-3 px-4">Check-In Time</th>
                   <th className="py-3 px-4">Duration</th>
@@ -407,17 +408,25 @@ export const ReportsAnalyticsPage = () => {
                         )}
                       </td>
 
-                      {/* Department & Location */}
+                      {/* Meeting Room (Only the room where the meeting took place) */}
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-800">{item.department || '—'}</p>
-                        <p className="text-[10px] text-[#00adef] font-bold mt-0.5">
-                          {item.floor || 'Lobby / Floor Visit'}
-                        </p>
+                        {item.floor && item.floor !== '—' && item.floor !== 'Lobby / Floor Visit' ? (
+                          <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                            <DoorOpen className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
+                            <span>{item.floor}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic font-normal">—</span>
+                        )}
                       </td>
 
-                      {/* Meeting With */}
-                      <td className="py-3.5 px-4 font-medium text-slate-700">
-                        {item.meetingWith || '—'}
+                      {/* Meeting With (Staff from Active Directory or Empty) */}
+                      <td className="py-3.5 px-4 text-xs font-semibold">
+                        {item.meetingWith && item.meetingWith !== '—' && item.meetingWith.trim() !== '' ? (
+                          <span className="text-slate-900 font-bold">{item.meetingWith}</span>
+                        ) : (
+                          <span className="text-slate-400 italic font-normal">—</span>
+                        )}
                       </td>
 
                       {/* Check-In Time */}

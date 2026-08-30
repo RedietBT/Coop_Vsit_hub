@@ -20,6 +20,8 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
 
     Optional<RoomBooking> findByBookingCode(String bookingCode);
 
+    Optional<RoomBooking> findByLinkedVisitId(UUID linkedVisitId);
+
     Optional<RoomBooking> findTopByOrderByCreatedAtDesc();
 
     @Query("SELECT b FROM RoomBooking b WHERE b.roomName = :roomName " +

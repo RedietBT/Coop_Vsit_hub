@@ -41,6 +41,7 @@ public class ReportServiceImpl implements ReportService {
 
     private final VisitRepository visitRepository;
     private final VisitFeedbackRepository feedbackRepository;
+    private final com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository roomBookingRepository;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("M/d/yyyy, h:mm:ss a").withZone(ZoneId.systemDefault());
@@ -116,17 +117,16 @@ public class ReportServiceImpl implements ReportService {
         List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
         StringBuilder sb = new StringBuilder();
 
-        // CSV Header
-        sb.append("Visit Code,Visitor Name,Phone,Email,Department,Floor,Meeting Host,Check-In Time,Check-Out Time,Duration,Feedback,Status,Pipeline ($ USD)\n");
+        // CSV Header - Meeting Room and Meeting With
+        sb.append("Visit Code,Visitor Name,Phone,Email,Meeting Room,Meeting With,Check-In Time,Check-Out Time,Duration,Feedback,Status,Pipeline ($ USD)\n");
 
         for (VisitorReportItemDto item : items) {
             sb.append(escapeCsv(item.getVisitCode())).append(",");
             sb.append(escapeCsv(item.getName())).append(",");
             sb.append(escapeCsv(item.getPhone())).append(",");
             sb.append(escapeCsv(item.getEmail())).append(",");
-            sb.append(escapeCsv(item.getDepartment())).append(",");
-            sb.append(escapeCsv(item.getFloor())).append(",");
-            sb.append(escapeCsv(item.getMeetingWith())).append(",");
+            sb.append(escapeCsv(item.getFloor() != null && !item.getFloor().isBlank() ? item.getFloor() : "—")).append(",");
+            sb.append(escapeCsv(item.getMeetingWith() != null ? item.getMeetingWith() : "")).append(",");
             sb.append(escapeCsv(item.getCheckInTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckInTime()) : "—")).append(",");
             sb.append(escapeCsv(item.getCheckOutTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckOutTime()) : "—")).append(",");
             sb.append(escapeCsv(item.getDuration())).append(",");
@@ -177,7 +177,7 @@ public class ReportServiceImpl implements ReportService {
             table.setWidths(new float[]{1.5f, 2.5f, 2.5f, 2.0f, 2.2f, 1.2f, 1.8f});
 
             // Table Headers
-            String[] headers = {"Visit Code", "Visitor Name & Phone", "Department & Floor", "Meeting With", "Check-In Time", "Duration", "Feedback"};
+            String[] headers = {"Visit Code", "Visitor Name & Phone", "Meeting Room", "Meeting With", "Check-In Time", "Duration", "Feedback"};
             for (String header : headers) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
                 cell.setBackgroundColor(new Color(0, 173, 239));
@@ -190,9 +190,9 @@ public class ReportServiceImpl implements ReportService {
             Font rowFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.DARK_GRAY);
             for (VisitorReportItemDto item : items) {
                 table.addCell(createCell(item.getVisitCode(), rowFont));
-                table.addCell(createCell(item.getName() + (item.getPhone() != null ? "\n" + item.getPhone() : ""), rowFont));
-                table.addCell(createCell(item.getDepartment() + (item.getFloor() != null ? "\n" + item.getFloor() : ""), rowFont));
-                table.addCell(createCell(item.getMeetingWith() != null ? item.getMeetingWith() : "—", rowFont));
+                table.addCell(createCell(item.getName() + (item.getPhone() != null && !item.getPhone().equals("—") ? "\n" + item.getPhone() : ""), rowFont));
+                table.addCell(createCell(item.getFloor() != null && !item.getFloor().isBlank() ? item.getFloor() : "—", rowFont));
+                table.addCell(createCell(item.getMeetingWith() != null && !item.getMeetingWith().isBlank() ? item.getMeetingWith() : "—", rowFont));
                 table.addCell(createCell(item.getCheckInTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckInTime()) : "—", rowFont));
                 table.addCell(createCell(item.getDuration(), rowFont));
                 table.addCell(createCell(item.getFeedback(), rowFont));
@@ -211,17 +211,27 @@ public class ReportServiceImpl implements ReportService {
         String name = visit.getGuestDisplayName();
         String phone = visit.getVisitorPhone() != null ? visit.getVisitorPhone() : visit.getIndividualGuestPhone();
         String email = visit.getVisitorEmail() != null ? visit.getVisitorEmail() : visit.getIndividualGuestEmail();
-        String host = "—";
-        if (visit.getSponsor() != null && visit.getSponsor().getFullName() != null && !visit.getSponsor().getFullName().isBlank()) {
-            host = visit.getSponsor().getFullName();
-        } else if (visit.getRequester() != null && visit.getRequester().getFullName() != null && !visit.getRequester().getFullName().isBlank()) {
-            host = visit.getRequester().getFullName();
+
+        // 1. Host / Meeting With: Check linked Room Booking from Active Directory
+        String host = "";
+        Optional<com.example.coop_vsit_hub.room_booking_management.model.RoomBooking> linkedBooking =
+                roomBookingRepository.findByLinkedVisitId(visit.getId());
+
+        if (linkedBooking.isPresent()) {
+            com.example.coop_vsit_hub.room_booking_management.model.RoomBooking rb = linkedBooking.get();
+            if (rb.getBookedByName() != null && !rb.getBookedByName().isBlank()) {
+                host = rb.getBookedByName().trim();
+            } else if (rb.getBookedByEmail() != null && !rb.getBookedByEmail().isBlank()) {
+                host = rb.getBookedByEmail().trim();
+            }
+        } else if (visit.getSponsor() != null && visit.getSponsor().getFullName() != null && !visit.getSponsor().getFullName().isBlank()) {
+            host = visit.getSponsor().getFullName().trim();
         }
 
-        // Real Room Location / Floor
-        String floor = (visit.getLocationRoom() != null && !visit.getLocationRoom().isBlank())
-                ? visit.getLocationRoom()
-                : "Lobby / Floor Visit";
+        // 2. Real Room Location where meeting took place
+        String roomLocation = (visit.getLocationRoom() != null && !visit.getLocationRoom().isBlank())
+                ? visit.getLocationRoom().trim()
+                : "—";
 
         // Duration calculation
         String duration = "—";
@@ -258,7 +268,7 @@ public class ReportServiceImpl implements ReportService {
                 .phone(phone != null ? phone : "—")
                 .email(email != null ? email : "—")
                 .department(visit.getRequestingDepartment())
-                .floor(floor)
+                .floor(roomLocation)
                 .meetingWith(host)
                 .checkInTime(visit.getActualCheckInTime())
                 .checkOutTime(visit.getActualCheckOutTime())
