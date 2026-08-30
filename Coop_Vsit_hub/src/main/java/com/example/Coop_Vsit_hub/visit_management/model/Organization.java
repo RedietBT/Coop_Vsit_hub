@@ -28,8 +28,9 @@ public class Organization {
     @Column(length = 150, nullable = false, unique = true)
     private String name;
 
-    @Column(length = 100, nullable = false)
-    private String category;
+    @Builder.Default
+    @Column(length = 100)
+    private String category = "Partner Organization";
 
     @Builder.Default
     @Column(name = "market_country", length = 100, nullable = false)
@@ -44,6 +45,9 @@ public class Organization {
 
     @Column(name = "contact_email", length = 100)
     private String contactEmail;
+
+    @Column(name = "portal_password")
+    private String portalPassword;
 
     @Column(name = "contact_phone", length = 30)
     private String contactPhone;

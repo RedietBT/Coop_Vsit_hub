@@ -8,14 +8,6 @@ import OrganizationProfileDrawer from '../components/OrganizationProfileDrawer';
 import CreateVisitModal from '@/modules/visits/components/CreateVisitModal';
 import Button from '@/shared/components/ui/Button';
 
-const CATEGORIES = [
-  { label: 'All Categories', value: '' },
-  { label: 'Strategic Partners', value: 'Strategic Partner' },
-  { label: 'FinTech Peers', value: 'FinTech Peer' },
-  { label: 'Regulators', value: 'Regulator / Government Body' },
-  { label: 'Enterprises', value: 'Commercial Enterprise' },
-];
-
 export const OrganizationsPage = () => {
   const {
     filters,
@@ -39,7 +31,7 @@ export const OrganizationsPage = () => {
     setFilters({ search: searchInput });
   };
 
-  const hasActiveFilters = Boolean(filters.search) || Boolean(filters.category);
+  const hasActiveFilters = Boolean(filters.search);
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
@@ -97,7 +89,7 @@ export const OrganizationsPage = () => {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by partner name, contact, sector..."
+            placeholder="Search by partner name, contact person, sector, phone..."
             className="w-full pl-10 pr-20 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 shadow-xs placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef]"
           />
           <button
@@ -109,18 +101,6 @@ export const OrganizationsPage = () => {
         </form>
 
         <div className="flex items-center gap-2.5 shrink-0">
-          <select
-            value={filters.category || ''}
-            onChange={(e) => setFilters({ category: e.target.value })}
-            className="text-xs font-semibold py-2.5 px-3 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:border-[#00adef] cursor-pointer"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-
           {hasActiveFilters && (
             <button
               type="button"
@@ -128,10 +108,11 @@ export const OrganizationsPage = () => {
                 setSearchInput('');
                 resetFilters();
               }}
-              className="p-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
               title="Reset Filters"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Search</span>
             </button>
           )}
         </div>

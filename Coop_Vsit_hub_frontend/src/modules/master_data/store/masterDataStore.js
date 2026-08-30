@@ -5,11 +5,10 @@ import soundPlayer from '@/core/utils/soundPlayer';
 
 export const useMasterDataStore = create((set, get) => ({
   departments: [],
-  categories: [],
   meetingRooms: [],
   isLoading: false,
   isMasterModalOpen: false,
-  activeTab: 'departments', // 'departments' | 'categories' | 'rooms'
+  activeTab: 'departments', // 'departments' | 'rooms'
 
   openMasterModal: (tab = 'departments') =>
     set({ isMasterModalOpen: true, activeTab: tab }),
@@ -19,15 +18,13 @@ export const useMasterDataStore = create((set, get) => ({
   fetchAllMasterData: async () => {
     set({ isLoading: true });
     try {
-      const [deptRes, catRes, roomRes] = await Promise.allSettled([
+      const [deptRes, roomRes] = await Promise.allSettled([
         masterDataApi.getDepartments(false),
-        masterDataApi.getCategories(false),
         masterDataApi.getMeetingRooms(false),
       ]);
 
       set({
         departments: deptRes.status === 'fulfilled' ? deptRes.value : [],
-        categories: catRes.status === 'fulfilled' ? catRes.value : [],
         meetingRooms: roomRes.status === 'fulfilled' ? roomRes.value : [],
         isLoading: false,
       });
@@ -55,17 +52,6 @@ export const useMasterDataStore = create((set, get) => ({
       return depts;
     } catch (e) {
       console.warn('Failed to fetch departments:', e);
-      return [];
-    }
-  },
-
-  fetchCategories: async (activeOnly = true) => {
-    try {
-      const cats = await masterDataApi.getCategories(activeOnly);
-      set({ categories: Array.isArray(cats) ? cats : [] });
-      return cats;
-    } catch (e) {
-      console.warn('Failed to fetch categories:', e);
       return [];
     }
   },
@@ -105,44 +91,6 @@ export const useMasterDataStore = create((set, get) => ({
       get().fetchAllMasterData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete department.');
-    }
-  },
-
-  // --- Partnership Categories Actions ---
-  createCategory: async (payload) => {
-    try {
-      const created = await masterDataApi.createCategory(payload);
-      soundPlayer.playNotificationChime();
-      toast.success(`Category "${created.name}" created successfully.`);
-      get().fetchAllMasterData();
-      return { success: true, category: created };
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.message || 'Failed to create category.';
-      toast.error(errorMsg);
-      return { success: false, error: errorMsg };
-    }
-  },
-
-  updateCategory: async (id, payload) => {
-    try {
-      const updated = await masterDataApi.updateCategory(id, payload);
-      toast.success(`Category "${updated.name}" updated.`);
-      get().fetchAllMasterData();
-      return { success: true };
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update category.');
-      return { success: false };
-    }
-  },
-
-  deleteCategory: async (id, name) => {
-    try {
-      await masterDataApi.deleteCategory(id);
-      toast.success(`Category "${name}" deleted.`);
-      get().fetchAllMasterData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete category.');
     }
   },
 

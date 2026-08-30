@@ -21,26 +21,6 @@ export const masterDataApi = {
     return response.data;
   },
 
-  // --- Partnership Categories ---
-  getCategories: async (activeOnly = true) => {
-    const response = await apiClient.get('/api/v1/partnership-categories', {
-      params: { activeOnly },
-    });
-    return response.data;
-  },
-  createCategory: async (payload) => {
-    const response = await apiClient.post('/api/v1/partnership-categories', payload);
-    return response.data;
-  },
-  updateCategory: async (id, payload) => {
-    const response = await apiClient.put(`/api/v1/partnership-categories/${id}`, payload);
-    return response.data;
-  },
-  deleteCategory: async (id) => {
-    const response = await apiClient.delete(`/api/v1/partnership-categories/${id}`);
-    return response.data;
-  },
-
   // --- Meeting Rooms ---
   getMeetingRooms: async (activeOnly = true) => {
     const response = await apiClient.get('/api/v1/meeting-rooms', {

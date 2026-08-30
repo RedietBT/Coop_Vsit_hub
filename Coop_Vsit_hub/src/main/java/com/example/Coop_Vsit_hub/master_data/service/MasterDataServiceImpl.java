@@ -3,10 +3,8 @@ package com.example.coop_vsit_hub.master_data.service;
 import com.example.coop_vsit_hub.master_data.dto.*;
 import com.example.coop_vsit_hub.master_data.entity.Department;
 import com.example.coop_vsit_hub.master_data.entity.MeetingRoom;
-import com.example.coop_vsit_hub.master_data.entity.PartnershipCategory;
 import com.example.coop_vsit_hub.master_data.repository.DepartmentRepository;
 import com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository;
-import com.example.coop_vsit_hub.master_data.repository.PartnershipCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -24,7 +22,6 @@ import java.util.stream.Collectors;
 public class MasterDataServiceImpl implements MasterDataService {
 
     private final DepartmentRepository departmentRepository;
-    private final PartnershipCategoryRepository categoryRepository;
     private final MeetingRoomRepository meetingRoomRepository;
 
     // =========================================================================
@@ -113,83 +110,7 @@ public class MasterDataServiceImpl implements MasterDataService {
     }
 
     // =========================================================================
-    // 2. PARTNERSHIP CATEGORIES
-    // =========================================================================
-
-    @Override
-    @Transactional(readOnly = true)
-    @Cacheable(value = "partnership_categories", key = "#activeOnly")
-    public List<PartnershipCategoryDto> getAllCategories(boolean activeOnly) {
-        log.info("Fetching all partnership categories (activeOnly={})", activeOnly);
-        List<PartnershipCategory> list = activeOnly
-                ? categoryRepository.findByIsActiveTrueOrderByNameAsc()
-                : categoryRepository.findAllByOrderByNameAsc();
-        return list.stream().map(PartnershipCategoryDto::from).collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PartnershipCategoryDto getCategoryById(UUID id) {
-        PartnershipCategory cat = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Partnership category not found with ID: " + id));
-        return PartnershipCategoryDto.from(cat);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = "partnership_categories", allEntries = true)
-    public PartnershipCategoryDto createCategory(CreatePartnershipCategoryRequest request) {
-        log.info("Creating partnership category: '{}'", request.getName());
-
-        if (categoryRepository.existsByNameIgnoreCase(request.getName().trim())) {
-            throw new IllegalArgumentException("A category with name '" + request.getName() + "' already exists.");
-        }
-
-        PartnershipCategory category = PartnershipCategory.builder()
-                .name(request.getName().trim())
-                .description(request.getDescription())
-                .isActive(true)
-                .build();
-
-        PartnershipCategory saved = categoryRepository.save(category);
-        return PartnershipCategoryDto.from(saved);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = "partnership_categories", allEntries = true)
-    public PartnershipCategoryDto updateCategory(UUID id, UpdatePartnershipCategoryRequest request) {
-        log.info("Updating partnership category ID: {}", id);
-
-        PartnershipCategory cat = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Partnership category not found with ID: " + id));
-
-        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(request.getName().trim(), id)) {
-            throw new IllegalArgumentException("Another category with name '" + request.getName() + "' already exists.");
-        }
-
-        cat.setName(request.getName().trim());
-        cat.setDescription(request.getDescription());
-        if (request.getIsActive() != null) {
-            cat.setIsActive(request.getIsActive());
-        }
-
-        PartnershipCategory updated = categoryRepository.save(cat);
-        return PartnershipCategoryDto.from(updated);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = "partnership_categories", allEntries = true)
-    public void deleteCategory(UUID id) {
-        log.info("Deleting partnership category ID: {}", id);
-        PartnershipCategory cat = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Partnership category not found with ID: " + id));
-        categoryRepository.delete(cat);
-    }
-
-    // =========================================================================
-    // 3. MEETING ROOMS
+    // 2. MEETING ROOMS
     // =========================================================================
 
     @Override

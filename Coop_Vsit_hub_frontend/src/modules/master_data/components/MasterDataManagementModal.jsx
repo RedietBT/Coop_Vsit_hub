@@ -22,7 +22,6 @@ export const MasterDataManagementModal = () => {
     isMasterModalOpen,
     activeTab,
     departments,
-    categories,
     meetingRooms,
     closeMasterModal,
     setActiveTab,
@@ -30,10 +29,6 @@ export const MasterDataManagementModal = () => {
     createDepartment,
     updateDepartment,
     deleteDepartment,
-    fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
     fetchMeetingRooms,
     createMeetingRoom,
     updateMeetingRoom,
@@ -44,7 +39,6 @@ export const MasterDataManagementModal = () => {
 
   // Forms
   const [deptForm, setDeptForm] = useState({ name: '', code: '', description: '' });
-  const [catForm, setCatForm] = useState({ name: '', description: '' });
   const [roomForm, setRoomForm] = useState({
     name: '',
     department: '',
@@ -57,7 +51,6 @@ export const MasterDataManagementModal = () => {
   const handleClose = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setCatForm({ name: '', description: '' });
     setRoomForm({ name: '', department: '', capacity: 18, imageUrl: '' });
     closeMasterModal();
   };
@@ -74,20 +67,6 @@ export const MasterDataManagementModal = () => {
       await createDepartment(deptForm);
     }
     setDeptForm({ name: '', code: '', description: '' });
-  };
-
-  // --- Category handlers ---
-  const handleSaveCat = async (e) => {
-    e.preventDefault();
-    if (!catForm.name.trim()) return;
-
-    if (editingId) {
-      await updateCategory(editingId, catForm);
-      setEditingId(null);
-    } else {
-      await createCategory(catForm);
-    }
-    setCatForm({ name: '', description: '' });
   };
 
   // --- Meeting Room handlers ---
@@ -143,7 +122,7 @@ export const MasterDataManagementModal = () => {
       isOpen={isMasterModalOpen}
       onClose={handleClose}
       title="Master Data & Facility Management"
-      subtitle="Configure bank departments, partnership categories, and meeting room facilities."
+      subtitle="Configure bank departments and meeting room facilities."
       maxWidth="max-w-4xl"
     >
       <div className="space-y-6 text-left">
@@ -163,22 +142,6 @@ export const MasterDataManagementModal = () => {
           >
             <Building2 className="w-4 h-4" />
             <span>Bank Departments ({departments.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('categories');
-              setEditingId(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'categories'
-                ? 'bg-white text-[#e38524] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Handshake className="w-4 h-4" />
-            <span>Partnership Categories ({categories.length})</span>
           </button>
 
           <button
@@ -310,109 +273,7 @@ export const MasterDataManagementModal = () => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 2: PARTNERSHIP CATEGORIES */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'categories' && (
-          <div className="space-y-4">
-            {/* Create/Edit Form */}
-            <form onSubmit={handleSaveCat} className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/80 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#e38524] uppercase tracking-wider">
-                  {editingId ? 'Edit Partnership Category' : 'Add New Category'}
-                </span>
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(null);
-                      setCatForm({ name: '', description: '' });
-                    }}
-                    className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Input
-                    label="Category Name"
-                    placeholder="e.g. Strategic Partner, FinTech Peer"
-                    value={catForm.name}
-                    onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Input
-                    label="Description & Strategic Criteria"
-                    placeholder="e.g. High-priority institutional alliance partners"
-                    value={catForm.description}
-                    onChange={(e) => setCatForm({ ...catForm, description: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <Button type="submit" variant="orange" size="md" icon={editingId ? CheckCircle2 : Plus}>
-                  {editingId ? 'Update Category' : 'Add Category'}
-                </Button>
-              </div>
-            </form>
-
-            {/* List Table */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
-                    <th className="py-2.5 pl-4">Category Name</th>
-                    <th className="py-2.5 px-3">Description</th>
-                    <th className="py-2.5 pr-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {categories.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-2.5 pl-4 font-bold text-[#000000]">{c.name}</td>
-                      <td className="py-2.5 px-3 text-slate-500 max-w-[340px] truncate">{c.description || '—'}</td>
-                      <td className="py-2.5 pr-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingId(c.id);
-                              setCatForm({ name: c.name, description: c.description || '' });
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"
-                            title="Edit Category"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm(`Delete category "${c.name}"?`)) {
-                                deleteCategory(c.id, c.name);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Delete Category"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 3: MEETING ROOMS & SPACES (3 STRICT FIELDS + PHOTO UPLOAD) */}
+        {/* TAB 2: MEETING ROOMS & SPACES (3 STRICT FIELDS + PHOTO UPLOAD) */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'rooms' && (
           <div className="space-y-4">

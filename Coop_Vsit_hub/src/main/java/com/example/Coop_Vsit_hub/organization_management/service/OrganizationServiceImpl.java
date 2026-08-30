@@ -136,13 +136,18 @@ public class OrganizationServiceImpl implements OrganizationService {
             throw new IllegalArgumentException(String.format("An organization with name '%s' already exists.", trimmedName));
         }
 
+        String contactPerson = StringUtils.hasText(request.getContactPersonName())
+                ? request.getContactPersonName().trim()
+                : (StringUtils.hasText(request.getPrimaryContactPerson()) ? request.getPrimaryContactPerson().trim() : null);
+
         Organization org = Organization.builder()
                 .name(trimmedName)
-                .category(request.getCategory().trim())
+                .category(StringUtils.hasText(request.getCategory()) ? request.getCategory().trim() : "Partner Organization")
                 .marketCountry(StringUtils.hasText(request.getMarketCountry()) ? request.getMarketCountry().trim() : "Ethiopia")
-                .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 50)
-                .contactPersonName(StringUtils.hasText(request.getContactPersonName()) ? request.getContactPersonName().trim() : null)
+                .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 85)
+                .contactPersonName(contactPerson)
                 .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null)
+                .portalPassword(StringUtils.hasText(request.getPassword()) ? request.getPassword().trim() : null)
                 .contactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null)
                 .website(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null)
                 .industrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null)
@@ -158,7 +163,7 @@ public class OrganizationServiceImpl implements OrganizationService {
                 AuditStatus.SUCCESS,
                 "SYSTEM",
                 "ORGANIZATION_MODULE",
-                String.format("Registered new partner organization '%s' (Category: %s)", saved.getName(), saved.getCategory())
+                String.format("Registered new partner organization '%s'", saved.getName())
         );
 
         return OrganizationDetailResponse.from(saved, 0, BigDecimal.ZERO, List.of());
@@ -178,9 +183,15 @@ public class OrganizationServiceImpl implements OrganizationService {
         }
 
         org.setName(trimmedName);
-        org.setCategory(request.getCategory().trim());
-        org.setMarketCountry(request.getMarketCountry().trim());
-        org.setRelationshipScore(request.getRelationshipScore());
+        if (StringUtils.hasText(request.getCategory())) {
+            org.setCategory(request.getCategory().trim());
+        }
+        if (StringUtils.hasText(request.getMarketCountry())) {
+            org.setMarketCountry(request.getMarketCountry().trim());
+        }
+        if (request.getRelationshipScore() != null) {
+            org.setRelationshipScore(request.getRelationshipScore());
+        }
         org.setContactPersonName(StringUtils.hasText(request.getContactPersonName()) ? request.getContactPersonName().trim() : null);
         org.setContactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null);
         org.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);

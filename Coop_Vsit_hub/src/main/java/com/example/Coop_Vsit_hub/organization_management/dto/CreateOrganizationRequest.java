@@ -18,10 +18,10 @@ public class CreateOrganizationRequest {
     @Schema(example = "Ethio Telecom")
     private String name;
 
-    @NotBlank(message = "Organization category is required.")
+    @Builder.Default
     @Size(max = 100, message = "Category cannot exceed 100 characters.")
-    @Schema(example = "Strategic Partners")
-    private String category;
+    @Schema(example = "Partner Organization")
+    private String category = "Partner Organization";
 
     @Builder.Default
     @Size(max = 100, message = "Market country cannot exceed 100 characters.")
@@ -42,6 +42,9 @@ public class CreateOrganizationRequest {
     @Schema(example = "Frehiwot Tamru")
     private String contactPersonName;
 
+    @Schema(example = "Frehiwot Tamru")
+    private String primaryContactPerson;
+
     @Pattern(
         regexp = "^$|^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$",
         message = "Contact email must be a valid email format (e.g. contact@domain.com)."
@@ -49,6 +52,10 @@ public class CreateOrganizationRequest {
     @Size(max = 100, message = "Contact email cannot exceed 100 characters.")
     @Schema(example = "corporate@ethiotelecom.et")
     private String contactEmail;
+
+    @Size(max = 100, message = "Password cannot exceed 100 characters.")
+    @Schema(example = "CoopPartner#2026")
+    private String password;
 
     @Pattern(
         regexp = "^$|^\\+?[0-9]{10,15}$",

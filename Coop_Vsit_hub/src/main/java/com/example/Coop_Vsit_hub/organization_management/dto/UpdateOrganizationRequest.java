@@ -18,9 +18,8 @@ public class UpdateOrganizationRequest {
     @Schema(example = "Ethio Telecom")
     private String name;
 
-    @NotBlank(message = "Organization category is required.")
     @Size(max = 100, message = "Category cannot exceed 100 characters.")
-    @Schema(example = "Strategic Partners")
+    @Schema(example = "Partner Organization")
     private String category;
 
     @NotBlank(message = "Market country is required.")

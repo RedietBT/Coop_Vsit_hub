@@ -15,13 +15,6 @@ public interface MasterDataService {
     DepartmentDto updateDepartment(UUID id, UpdateDepartmentRequest request);
     void deleteDepartment(UUID id);
 
-    // --- Partnership Categories ---
-    List<PartnershipCategoryDto> getAllCategories(boolean activeOnly);
-    PartnershipCategoryDto getCategoryById(UUID id);
-    PartnershipCategoryDto createCategory(CreatePartnershipCategoryRequest request);
-    PartnershipCategoryDto updateCategory(UUID id, UpdatePartnershipCategoryRequest request);
-    void deleteCategory(UUID id);
-
     // --- Meeting Rooms ---
     List<MeetingRoomDto> getAllMeetingRooms(boolean activeOnly);
     MeetingRoomDto getMeetingRoomById(UUID id);
