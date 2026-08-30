@@ -4,6 +4,7 @@ import useOrganizationStore from '../store/organizationStore';
 import OrganizationKpiBanner from '../components/OrganizationKpiBanner';
 import OrganizationTable from '../components/OrganizationTable';
 import CreateOrganizationModal from '../components/CreateOrganizationModal';
+import EditOrganizationModal from '../components/EditOrganizationModal';
 import OrganizationProfileDrawer from '../components/OrganizationProfileDrawer';
 import CreateVisitModal from '@/modules/visits/components/CreateVisitModal';
 import Button from '@/shared/components/ui/Button';
@@ -123,6 +124,7 @@ export const OrganizationsPage = () => {
 
       {/* Modals & Drawers */}
       <CreateOrganizationModal />
+      <EditOrganizationModal />
       <OrganizationProfileDrawer />
       <CreateVisitModal />
     </div>

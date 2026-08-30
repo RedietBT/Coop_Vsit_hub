@@ -35,8 +35,8 @@ public class CreateOrganizationRequest {
     private Integer relationshipScore = 50;
 
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Contact person name must contain only letters, spaces, hyphens, or apostrophes."
+        regexp = "^[a-zA-Z0-9\\s\\-'.(),/]*$",
+        message = "Contact person name contains invalid characters."
     )
     @Size(max = 100, message = "Contact person name cannot exceed 100 characters.")
     @Schema(example = "Frehiwot Tamru")

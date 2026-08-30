@@ -172,20 +172,6 @@ public class VisitServiceImpl implements VisitService {
             validateRoomConflict(request.getLocationRoom(), request.getScheduledStartTime(), request.getScheduledEndTime(), null);
         }
 
-        Organization guestOrg = null;
-        if (request.getGuestOrganizationId() != null) {
-            guestOrg = organizationRepository.findById(request.getGuestOrganizationId()).orElse(null);
-        } else if (StringUtils.hasText(request.getOrganizationName())) {
-            String orgName = request.getOrganizationName().trim();
-            guestOrg = organizationRepository.findByNameIgnoreCase(orgName)
-                    .orElseGet(() -> organizationRepository.save(Organization.builder()
-                            .name(orgName)
-                            .category("Partner Organization")
-                            .marketCountry("Ethiopia")
-                            .relationshipScore(50)
-                            .build()));
-        }
-
         com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest indGuest = null;
         if (request.getIndividualGuestId() != null) {
             indGuest = individualGuestRepository.findById(request.getIndividualGuestId()).orElse(null);
@@ -220,6 +206,27 @@ public class VisitServiceImpl implements VisitService {
             if (!StringUtils.hasText(phone)) phone = indGuest.getPhoneNumber();
             if (!StringUtils.hasText(title)) title = indGuest.getGuestTitle();
             if (!StringUtils.hasText(idNum)) idNum = indGuest.getIdNumber();
+        }
+
+        Organization guestOrg = null;
+        if (request.getGuestOrganizationId() != null) {
+            guestOrg = organizationRepository.findById(request.getGuestOrganizationId()).orElse(null);
+        } else if (StringUtils.hasText(request.getOrganizationName())) {
+            String orgName = request.getOrganizationName().trim();
+            final String visitorContact = (StringUtils.hasText(fName) ? fName : "") + (StringUtils.hasText(lName) ? " " + lName : "");
+            final String visitorPhone = phone;
+            final String visitorEmail = email;
+
+            guestOrg = organizationRepository.findByNameIgnoreCase(orgName)
+                    .orElseGet(() -> organizationRepository.save(Organization.builder()
+                            .name(orgName)
+                            .category("Partner Organization")
+                            .marketCountry("Ethiopia")
+                            .relationshipScore(85)
+                            .contactPersonName(StringUtils.hasText(visitorContact.trim()) ? visitorContact.trim() : null)
+                            .contactPhone(StringUtils.hasText(visitorPhone) ? visitorPhone : null)
+                            .contactEmail(StringUtils.hasText(visitorEmail) ? visitorEmail : null)
+                            .build()));
         } else if (StringUtils.hasText(fName)) {
             String searchLast = StringUtils.hasText(lName) ? lName : (StringUtils.hasText(mName) ? mName : fName);
             if (StringUtils.hasText(phone)) {

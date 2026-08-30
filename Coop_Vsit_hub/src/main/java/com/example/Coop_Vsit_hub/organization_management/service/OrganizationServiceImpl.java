@@ -132,8 +132,18 @@ public class OrganizationServiceImpl implements OrganizationService {
         log.info("Registering new guest organization '{}' by user '{}'", request.getName(), authenticatedUsername);
 
         String trimmedName = request.getName().trim();
-        if (organizationRepository.existsByName(trimmedName)) {
-            throw new IllegalArgumentException(String.format("An organization with name '%s' already exists.", trimmedName));
+        if (organizationRepository.existsByNameIgnoreCase(trimmedName)) {
+            throw new IllegalArgumentException(String.format("An organization with name '%s' is already registered.", trimmedName));
+        }
+
+        String phone = StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null;
+        if (phone != null && organizationRepository.existsByContactPhone(phone)) {
+            throw new IllegalArgumentException(String.format("An organization with phone number '%s' is already registered.", phone));
+        }
+
+        String email = StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null;
+        if (email != null && organizationRepository.existsByContactEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException(String.format("An organization with email '%s' is already registered.", email));
         }
 
         String contactPerson = StringUtils.hasText(request.getContactPersonName())
@@ -146,8 +156,8 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .marketCountry(StringUtils.hasText(request.getMarketCountry()) ? request.getMarketCountry().trim() : "Ethiopia")
                 .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 85)
                 .contactPersonName(contactPerson)
-                .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null)
-                .contactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null)
+                .contactEmail(email)
+                .contactPhone(phone)
                 .website(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null)
                 .industrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null)
                 .notes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null)
@@ -177,8 +187,18 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .orElseThrow(() -> new IllegalArgumentException("Organization not found with ID: " + id));
 
         String trimmedName = request.getName().trim();
-        if (organizationRepository.existsByNameAndIdNot(trimmedName, id)) {
+        if (organizationRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, id)) {
             throw new IllegalArgumentException(String.format("Another organization with name '%s' already exists.", trimmedName));
+        }
+
+        String phone = StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null;
+        if (phone != null && organizationRepository.existsByContactPhoneAndIdNot(phone, id)) {
+            throw new IllegalArgumentException(String.format("Another organization with phone number '%s' is already registered.", phone));
+        }
+
+        String email = StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null;
+        if (email != null && organizationRepository.existsByContactEmailIgnoreCaseAndIdNot(email, id)) {
+            throw new IllegalArgumentException(String.format("Another organization with email '%s' is already registered.", email));
         }
 
         org.setName(trimmedName);
@@ -192,8 +212,8 @@ public class OrganizationServiceImpl implements OrganizationService {
             org.setRelationshipScore(request.getRelationshipScore());
         }
         org.setContactPersonName(StringUtils.hasText(request.getContactPersonName()) ? request.getContactPersonName().trim() : null);
-        org.setContactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null);
-        org.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);
+        org.setContactEmail(email);
+        org.setContactPhone(phone);
         org.setWebsite(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null);
         org.setIndustrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null);
         org.setNotes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null);

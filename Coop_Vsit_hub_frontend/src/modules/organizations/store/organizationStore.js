@@ -20,7 +20,9 @@ export const useOrganizationStore = create((set, get) => ({
   },
 
   selectedOrg: null,
+  editingOrg: null,
   isCreateModalOpen: false,
+  isEditModalOpen: false,
   isProfileDrawerOpen: false,
 
   setFilters: (newFilters) => {
@@ -46,6 +48,9 @@ export const useOrganizationStore = create((set, get) => ({
 
   openCreateModal: () => set({ isCreateModalOpen: true }),
   closeCreateModal: () => set({ isCreateModalOpen: false }),
+
+  openEditModal: (org) => set({ editingOrg: org, isEditModalOpen: true }),
+  closeEditModal: () => set({ editingOrg: null, isEditModalOpen: false }),
 
   openProfileDrawer: (org) => set({ selectedOrg: org, isProfileDrawerOpen: true }),
   closeProfileDrawer: () => set({ selectedOrg: null, isProfileDrawerOpen: false }),
@@ -100,6 +105,28 @@ export const useOrganizationStore = create((set, get) => ({
         err.response?.data?.message ||
         err.response?.data?.error ||
         'Failed to register organization.';
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  },
+
+  updateOrganization: async (id, payload) => {
+    try {
+      const updated = await organizationApi.updateOrganization(id, payload);
+      toast.success(`Organization "${updated.name}" updated successfully.`);
+      get().closeEditModal();
+      // If drawer is viewing this org, update drawer state too
+      if (get().selectedOrg?.id === id) {
+        set({ selectedOrg: updated });
+      }
+      get().fetchOrganizations();
+      get().fetchStats();
+      return { success: true, organization: updated };
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Failed to update organization.';
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     }

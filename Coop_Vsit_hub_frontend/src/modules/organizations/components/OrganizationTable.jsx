@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useRef } from 'react';
 import {
   ChevronDown,
   Building2,
@@ -8,6 +7,7 @@ import {
   Globe,
   Mail,
   Phone,
+  Edit2,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
@@ -29,6 +29,7 @@ export const OrganizationTable = () => {
     isLoading,
     setPage,
     openProfileDrawer,
+    openEditModal,
     deleteOrganization,
   } = useOrganizationStore();
 
@@ -214,12 +215,29 @@ export const OrganizationTable = () => {
                               <span>View Partner Dossier</span>
                             </button>
 
-                            {/* 2. Book Visit for Partner */}
+                            {/* 2. Edit Organization */}
                             <button
                               type="button"
                               onClick={() => {
                                 setOpenDropdownId(null);
-                                openVisitModal();
+                                openEditModal(org);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4 text-slate-400" />
+                              <span>Edit Organization</span>
+                            </button>
+
+                            {/* 3. Book Visit for Partner */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openVisitModal({
+                                  organizationName: org.name,
+                                  guestOrganizationId: org.id,
+                                  purpose: `Corporate Alliance Review with ${org.name}`,
+                                });
                               }}
                               className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
@@ -227,7 +245,7 @@ export const OrganizationTable = () => {
                               <span>Book Visit for Partner</span>
                             </button>
 
-                            {/* 3. Delete Record (Admin) */}
+                            {/* 4. Delete Record (Admin) */}
                             {isAdmin && (
                               <div className="pt-1 mt-1 border-t border-slate-100">
                                 <button

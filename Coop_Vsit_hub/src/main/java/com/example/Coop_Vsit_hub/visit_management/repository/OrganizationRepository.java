@@ -19,7 +19,19 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     boolean existsByName(String name);
 
+    boolean existsByNameIgnoreCase(String name);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, UUID id);
+
     boolean existsByNameAndIdNot(String name, UUID id);
+
+    boolean existsByContactPhone(String contactPhone);
+
+    boolean existsByContactPhoneAndIdNot(String contactPhone, UUID id);
+
+    boolean existsByContactEmailIgnoreCase(String contactEmail);
+
+    boolean existsByContactEmailIgnoreCaseAndIdNot(String contactEmail, UUID id);
 
     List<Organization> findByCategory(String category);
 
