@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import securityApi from '../api/securityApi';
+import visitApi from '@/modules/visits/api/visitApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 
 export const useSecurityStore = create((set, get) => ({
@@ -21,6 +22,9 @@ export const useSecurityStore = create((set, get) => ({
   editVisitorTarget: null,
   isEditVisitorModalOpen: false,
 
+  cancelTarget: null,
+  isCancelModalOpen: false,
+
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
@@ -32,6 +36,9 @@ export const useSecurityStore = create((set, get) => ({
 
   openEditVisitorModal: (visit) => set({ editVisitorTarget: visit, isEditVisitorModalOpen: true }),
   closeEditVisitorModal: () => set({ editVisitorTarget: null, isEditVisitorModalOpen: false }),
+
+  openCancelModal: (visit) => set({ cancelTarget: visit, isCancelModalOpen: true }),
+  closeCancelModal: () => set({ cancelTarget: null, isCancelModalOpen: false }),
 
   fetchSecurityFeed: async (isManual = false) => {
     set({ isLoading: true, error: null });
@@ -93,6 +100,24 @@ export const useSecurityStore = create((set, get) => ({
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || 'Check-out failed.';
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  },
+
+  cancelVisit: async (visitId, reason) => {
+    try {
+      await visitApi.transitionStatus(visitId, {
+        status: 'CANCELLED',
+        decisionNotes: reason || 'Cancelled from Front Desk reception',
+      });
+      toast.success('Visit has been cancelled and recorded in archive.');
+      get().closeCancelModal();
+      get().fetchSecurityFeed();
+      return { success: true };
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message || 'Failed to cancel visit.';
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     }

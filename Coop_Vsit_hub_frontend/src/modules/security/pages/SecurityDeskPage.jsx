@@ -20,6 +20,7 @@ import SecurityArrivalsTable from '../components/SecurityArrivalsTable';
 import SecurityOnSiteTable from '../components/SecurityOnSiteTable';
 import CheckInModal from '../components/CheckInModal';
 import CheckOutModal from '../components/CheckOutModal';
+import CancelVisitModal from '../components/CancelVisitModal';
 import EditVisitorModal from '@/modules/visits/components/EditVisitorModal';
 import NewVisitorBookingModal from '../components/NewVisitorBookingModal';
 import VisitDetailDrawer from '@/modules/visits/components/VisitDetailDrawer';
@@ -270,6 +271,7 @@ export const SecurityDeskPage = () => {
       {/* Modals & Slide-out Drawers */}
       <CheckInModal />
       <CheckOutModal />
+      <CancelVisitModal />
       <NewVisitorBookingModal
         isOpen={isNewVisitModalOpen}
         onClose={() => setIsNewVisitModalOpen(false)}

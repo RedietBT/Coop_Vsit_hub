@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   Edit3,
   Phone,
+  XCircle,
 } from 'lucide-react';
 import useSecurityStore from '../store/securityStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
@@ -17,7 +18,13 @@ import Badge from '@/shared/components/ui/Badge';
 import Spinner from '@/shared/components/ui/Spinner';
 
 export const SecurityArrivalsTable = () => {
-  const { expectedArrivals, isLoading, openCheckInModal, openEditVisitorModal } = useSecurityStore();
+  const {
+    expectedArrivals,
+    isLoading,
+    openCheckInModal,
+    openEditVisitorModal,
+    openCancelModal,
+  } = useSecurityStore();
   const { openDetailDrawer } = useVisitStore();
 
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -152,66 +159,85 @@ export const SecurityArrivalsTable = () => {
                     </span>
                   </td>
 
-                  {/* Actions Dropdown */}
+                  {/* Actions Column: Dedicated Check In Button + Actions Dropdown */}
                   <td
                     className="py-4 pr-6 text-right relative"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="relative inline-block text-left" ref={openDropdownId === visit.id ? dropdownRef : null}>
+                    <div className="flex items-center justify-end gap-2">
+                      {/* 1. Dedicated Direct Check In Button */}
                       <button
                         type="button"
-                        onClick={(e) => toggleDropdown(visit.id, e)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                          openDropdownId === visit.id
-                            ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs'
-                        }`}
+                        onClick={() => openCheckInModal(visit)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#00adef] hover:bg-sky-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                        title="Check-In Visitor & Issue Badge"
                       >
-                        <span>Actions</span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          openDropdownId === visit.id ? 'rotate-180 text-white' : 'text-slate-400'
-                        }`} />
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>Check In</span>
                       </button>
 
-                      {openDropdownId === visit.id && (
-                        <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-fadeIn text-left">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              openCheckInModal(visit);
-                            }}
-                            className="w-full px-3.5 py-2 text-xs font-semibold text-[#00adef] hover:bg-sky-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                          >
-                            <LogIn className="w-4 h-4 text-[#00adef]" />
-                            <span>Check-In Guest & Issue Badge</span>
-                          </button>
+                      {/* 2. Actions Dropdown */}
+                      <div className="relative inline-block text-left" ref={openDropdownId === visit.id ? dropdownRef : null}>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleDropdown(visit.id, e)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            openDropdownId === visit.id
+                              ? 'bg-slate-800 text-white border-slate-800 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs'
+                          }`}
+                        >
+                          <span>Actions</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            openDropdownId === visit.id ? 'rotate-180 text-white' : 'text-slate-400'
+                          }`} />
+                        </button>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              openEditVisitorModal(visit);
-                            }}
-                            className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                          >
-                            <Edit3 className="w-4 h-4 text-[#e38524]" />
-                            <span>Edit Visitor Demographics</span>
-                          </button>
+                        {openDropdownId === visit.id && (
+                          <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-fadeIn text-left">
+                            {/* View Full Details */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openDetailDrawer(visit);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4 text-slate-400" />
+                              <span>View Full Details</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdownId(null);
-                              openDetailDrawer(visit);
-                            }}
-                            className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4 text-slate-400" />
-                            <span>View Full Details</span>
-                          </button>
-                        </div>
-                      )}
+                            {/* Edit Demographics */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openEditVisitorModal(visit);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-4 h-4 text-slate-400" />
+                              <span>Edit Visitor Demographics</span>
+                            </button>
+
+                            {/* Cancel Visit */}
+                            <div className="pt-1 mt-1 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenDropdownId(null);
+                                  openCancelModal(visit);
+                                }}
+                                className="w-full px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                              >
+                                <XCircle className="w-4 h-4 text-rose-500" />
+                                <span>Cancel Visit</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
