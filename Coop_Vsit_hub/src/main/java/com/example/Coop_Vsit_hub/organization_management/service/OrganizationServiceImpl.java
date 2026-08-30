@@ -147,7 +147,6 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 85)
                 .contactPersonName(contactPerson)
                 .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail().trim().toLowerCase() : null)
-                .portalPassword(StringUtils.hasText(request.getPassword()) ? request.getPassword().trim() : null)
                 .contactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null)
                 .website(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null)
                 .industrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null)

@@ -12,7 +12,6 @@ const orgSchema = z.object({
   name: z.string().trim().min(2, 'Organization name is required'),
   industrySector: z.string().optional(),
   contactEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
-  password: z.string().optional(),
   contactPhone: z.string().optional(),
   primaryContactPerson: z.string().optional(),
   marketCountry: z.string().default('Ethiopia'),
@@ -76,7 +75,6 @@ export const CreateOrganizationModal = () => {
       name: '',
       industrySector: '',
       contactEmail: '',
-      password: '',
       contactPhone: '',
       primaryContactPerson: '',
       marketCountry: 'Ethiopia',
@@ -188,11 +186,11 @@ export const CreateOrganizationModal = () => {
           )}
         </div>
 
-        {/* Credentials & Access: Email & Password */}
+        {/* Organization Contact Details */}
         <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-200/80 space-y-3">
           <span className="text-xs font-bold text-[#00adef] uppercase tracking-wider flex items-center gap-1.5">
             <Mail className="w-3.5 h-3.5" />
-            <span>Organization Contact & Credentials</span>
+            <span>Organization Contact Details</span>
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -204,39 +202,32 @@ export const CreateOrganizationModal = () => {
               {...register('contactEmail')}
             />
             <Input
-              label="Portal Password"
-              type="password"
-              placeholder="e.g. CoopPartner#2026"
-              error={errors.password?.message}
-              {...register('password')}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
               label="Organization Phone Number"
               type="tel"
               placeholder="e.g. +251 11 550 0000 or 0911000000"
               error={errors.contactPhone?.message}
               {...register('contactPhone')}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Primary Contact Person"
-              placeholder="e.g. Frehiwot Tamru"
+              placeholder="e.g. Frehiwot Tamru (Executive Liaison)"
               error={errors.primaryContactPerson?.message}
               {...register('primaryContactPerson')}
+            />
+            <Input
+              label="Market Country of Origin"
+              placeholder="Ethiopia"
+              error={errors.marketCountry?.message}
+              {...register('marketCountry')}
             />
           </div>
         </div>
 
-        {/* Country & Relationship Score */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Market Country of Origin"
-            placeholder="Ethiopia"
-            error={errors.marketCountry?.message}
-            {...register('marketCountry')}
-          />
+        {/* Relationship Score */}
+        <div>
           <Input
             label="Initial Relationship Score (0-100)"
             type="number"

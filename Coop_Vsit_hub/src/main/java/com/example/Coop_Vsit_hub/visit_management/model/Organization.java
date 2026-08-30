@@ -46,9 +46,6 @@ public class Organization {
     @Column(name = "contact_email", length = 100)
     private String contactEmail;
 
-    @Column(name = "portal_password")
-    private String portalPassword;
-
     @Column(name = "contact_phone", length = 30)
     private String contactPhone;
 

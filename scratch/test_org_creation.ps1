@@ -12,10 +12,9 @@ $headers = @{ "Authorization" = "Bearer $token" }
 
 Write-Host "`n1. Testing New Organization Registration..."
 $orgBody = @{
-    name                 = "Google DeepMind Innovations"
+    name                 = "Google DeepMind Innovations UK"
     industrySector       = "Artificial Intelligence & Cloud"
     contactEmail         = "partnerships@deepmind.google.com"
-    password             = "DeepMind@2026"
     contactPhone         = "+251911998877"
     primaryContactPerson = "Demis Hassabis"
     marketCountry        = "United Kingdom"

@@ -53,10 +53,6 @@ public class CreateOrganizationRequest {
     @Schema(example = "corporate@ethiotelecom.et")
     private String contactEmail;
 
-    @Size(max = 100, message = "Password cannot exceed 100 characters.")
-    @Schema(example = "CoopPartner#2026")
-    private String password;
-
     @Pattern(
         regexp = "^$|^\\+?[0-9]{10,15}$",
         message = "Contact phone must be a valid international phone format (10-15 digits, optional +)."
