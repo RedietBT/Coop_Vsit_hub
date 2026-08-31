@@ -46,7 +46,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Value("${app.frontend.url:http://localhost:8080}")
     private String frontendUrl;
 
-    @Value("${spring.mail.username:feedback@coopbank.com.et}")
+    @Value("${spring.mail.from:feedback@coopbank.com.et}")
     private String senderEmail;
 
     @Override
@@ -320,7 +320,8 @@ public class FeedbackServiceImpl implements FeedbackService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(senderEmail);
+            String from = StringUtils.hasText(senderEmail) ? senderEmail.trim() : "feedback@coopbank.com.et";
+            helper.setFrom(from);
             helper.setTo(recipientEmail);
             helper.setSubject("CoopBank - How was your executive visit? (" + visit.getVisitCode() + ")");
 

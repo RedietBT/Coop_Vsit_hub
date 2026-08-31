@@ -37,7 +37,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username:notifications@coopbank.com.et}")
+    @Value("${spring.mail.from:notifications@coopbank.com.et}")
     private String senderEmail;
 
     @Override
@@ -244,7 +244,8 @@ public class NotificationServiceImpl implements NotificationService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(senderEmail);
+            String from = StringUtils.hasText(senderEmail) ? senderEmail.trim() : "notifications@coopbank.com.et";
+            helper.setFrom(from);
             helper.setTo(recipientEmail);
             helper.setSubject("CoopBank Visit Hub - " + subject);
 
