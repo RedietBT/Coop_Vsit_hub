@@ -58,10 +58,12 @@ public class ExecutiveDashboardResponse {
     private Map<String, Long> visitsByStatus;
     private Map<String, Long> visitsByPriority;
     private Map<String, Long> visitsByDepartment;
+    private Map<String, Long> visitsByMeetingRoom;
 
     // 6. Top Entities & Timelines
     private List<OrganizationSummaryResponse> topPartnerOrganizations;
     private List<IndividualGuestSummaryResponse> topVipGuests;
     private List<VisitSummaryResponse> upcomingScheduledVisits;
+    private List<VisitSummaryResponse> recentVisits;
     private List<AuditLogResponse> recentAuditActivities;
 }

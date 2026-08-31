@@ -98,6 +98,8 @@ export const useVisitStore = create((set, get) => ({
       const params = {
         page: currentPage,
         size: pageSize,
+        sortBy: 'scheduledStartTime',
+        sortDirection: 'desc',
         ...(filters.search && { search: filters.search.trim() }),
         ...(filters.status && { status: filters.status }),
         ...(filters.priority && { priority: filters.priority }),

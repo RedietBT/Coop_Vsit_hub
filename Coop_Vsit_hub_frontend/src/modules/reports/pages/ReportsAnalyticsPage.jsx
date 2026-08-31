@@ -241,20 +241,20 @@ export const ReportsAnalyticsPage = () => {
           </div>
         </div>
 
-        {/* Top Department */}
+        {/* Most Visited Meeting Room */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <Building2 className="w-6 h-6" />
+            <DoorOpen className="w-6 h-6" />
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Top Department
+              Most Visited Room
             </p>
             <h3 className="font-heading font-black text-sm text-[#000000] mt-0.5 truncate max-w-[160px]">
-              {summary ? summary.topDepartment : 'Growth and Operations'}
+              {summary && summary.topMeetingRoom ? summary.topMeetingRoom : 'Executive Boardroom'}
             </h3>
             <p className="text-[10px] text-purple-600 font-bold mt-0.5">
-              Floor 4 ({summary ? summary.topDepartmentVisitorsCount : 0} visits)
+              {summary && summary.topMeetingRoomVisitorsCount ? summary.topMeetingRoomVisitorsCount : 0} Reservations
             </p>
           </div>
         </div>
@@ -315,15 +315,15 @@ export const ReportsAnalyticsPage = () => {
 
         <button
           type="button"
-          onClick={() => setActiveTab('departments')}
+          onClick={() => setActiveTab('rooms')}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-            activeTab === 'departments'
+            activeTab === 'rooms' || activeTab === 'departments'
               ? 'bg-white text-[#000000] shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Building2 className="w-3.5 h-3.5 text-[#e38524]" />
-          <span>Department Stats</span>
+          <DoorOpen className="w-3.5 h-3.5 text-[#e38524]" />
+          <span>Room Activity</span>
         </button>
 
         <button
@@ -340,7 +340,7 @@ export const ReportsAnalyticsPage = () => {
         </button>
       </div>
 
-      {/* 4. Tab 1: Detailed Visitor Report Table (Matching Image 2) */}
+      {/* 4. Tab 1: Detailed Visitor Report Table */}
       {activeTab === 'detailed' && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
@@ -348,7 +348,7 @@ export const ReportsAnalyticsPage = () => {
               Visitor Check-In Log & Activity Report
             </h2>
             <span className="text-xs font-bold text-slate-500">
-              Showing {reportItems.length} of {totalElements} Records
+              Showing {reportItems.length} of {totalElements} Records (Latest First)
             </span>
           </div>
 
@@ -363,7 +363,7 @@ export const ReportsAnalyticsPage = () => {
                   <th className="py-3 px-4">Meeting With</th>
                   <th className="py-3 px-4">Check-In Time</th>
                   <th className="py-3 px-4">Duration</th>
-                  <th className="py-3 px-4">Feedback</th>
+                  <th className="py-3 px-4">Feedback Rating</th>
                   <th className="py-3 pr-6 text-right">Status</th>
                 </tr>
               </thead>
@@ -387,80 +387,84 @@ export const ReportsAnalyticsPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  reportItems.map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Visitor ID (Index or Code) */}
-                      <td className="py-3.5 pl-6 font-mono font-bold text-[#00adef]">
-                        {item.visitCode || `#${page * size + idx + 1}`}
-                      </td>
+                  reportItems.map((item, idx) => {
+                    const isSubmitted = item.feedback && item.feedback !== 'In Progress' && item.feedback.includes('★');
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                        {/* Visitor ID */}
+                        <td className="py-3.5 pl-6 font-mono font-bold text-[#00adef]">
+                          {item.visitCode || `#${page * size + idx + 1}`}
+                        </td>
 
-                      {/* Visitor Name */}
-                      <td className="py-3.5 px-4 font-bold text-[#000000]">
-                        {item.name}
-                      </td>
+                        {/* Visitor Name */}
+                        <td className="py-3.5 px-4 font-bold text-[#000000]">
+                          {item.name}
+                        </td>
 
-                      {/* Phone Number (Dedicated Column) */}
-                      <td className="py-3.5 px-4 font-mono text-xs font-semibold text-slate-700">
-                        {item.phone && item.phone !== '—' ? (
-                          <span className="text-slate-800">{item.phone}</span>
-                        ) : (
-                          <span className="text-slate-400 italic">—</span>
-                        )}
-                      </td>
+                        {/* Phone Number */}
+                        <td className="py-3.5 px-4 font-mono text-xs font-semibold text-slate-700">
+                          {item.phone && item.phone !== '—' ? (
+                            <span className="text-slate-800">{item.phone}</span>
+                          ) : (
+                            <span className="text-slate-400 italic">—</span>
+                          )}
+                        </td>
 
-                      {/* Meeting Room (Only the room where the meeting took place) */}
-                      <td className="py-3.5 px-4">
-                        {item.floor && item.floor !== '—' && item.floor !== 'Lobby / Floor Visit' ? (
-                          <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                            <DoorOpen className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
-                            <span>{item.floor}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic font-normal">—</span>
-                        )}
-                      </td>
+                        {/* Meeting Room */}
+                        <td className="py-3.5 px-4">
+                          {item.floor && item.floor !== '—' && item.floor !== 'Lobby / Floor Visit' ? (
+                            <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                              <DoorOpen className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
+                              <span>{item.floor}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic font-normal">—</span>
+                          )}
+                        </td>
 
-                      {/* Meeting With (Staff from Active Directory or Empty) */}
-                      <td className="py-3.5 px-4 text-xs font-semibold">
-                        {item.meetingWith && item.meetingWith !== '—' && item.meetingWith.trim() !== '' ? (
-                          <span className="text-slate-900 font-bold">{item.meetingWith}</span>
-                        ) : (
-                          <span className="text-slate-400 italic font-normal">—</span>
-                        )}
-                      </td>
+                        {/* Meeting With */}
+                        <td className="py-3.5 px-4 text-xs font-semibold">
+                          {item.meetingWith && item.meetingWith !== '—' && item.meetingWith.trim() !== '' ? (
+                            <span className="text-slate-900 font-bold">{item.meetingWith}</span>
+                          ) : (
+                            <span className="text-slate-400 italic font-normal">—</span>
+                          )}
+                        </td>
 
-                      {/* Check-In Time */}
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                        {formatTimestamp(item.checkInTime)}
-                      </td>
+                        {/* Check-In Time */}
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                          {formatTimestamp(item.checkInTime)}
+                        </td>
 
-                      {/* Duration */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px]">
-                          {item.duration || '—'}
-                        </span>
-                      </td>
+                        {/* Duration */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px]">
+                            {item.duration || '—'}
+                          </span>
+                        </td>
 
-                      {/* Feedback */}
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.feedback === 'Exceptional'
-                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : item.feedback === 'Satisfied'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                          <span>{item.feedback || 'Pending'}</span>
-                        </span>
-                      </td>
+                        {/* Feedback Rating or In Progress */}
+                        <td className="py-3.5 px-4">
+                          {isSubmitted ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                              <span>{item.feedback}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/70">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>In Progress</span>
+                            </span>
+                          )}
+                        </td>
 
-                      {/* Status */}
-                      <td className="py-3.5 pr-6 text-right">
-                        <Badge status={item.status} />
-                      </td>
-                    </tr>
-                  ))
+                        {/* Status */}
+                        <td className="py-3.5 pr-6 text-right">
+                          <Badge status={item.status} />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -493,20 +497,24 @@ export const ReportsAnalyticsPage = () => {
         </div>
       )}
 
-      {/* 5. Tab 2: Department Stats (100% Real Dynamic Data) */}
-      {activeTab === 'departments' && (
+      {/* 5. Tab 2: Meeting Room Stats */}
+      {(activeTab === 'rooms' || activeTab === 'departments') && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
-            <h3 className="font-heading font-black text-base text-[#000000]">
-              Department Activity Distribution
-            </h3>
+            <div className="flex items-center gap-2">
+              <DoorOpen className="w-5 h-5 text-[#00adef]" />
+              <h3 className="font-heading font-black text-base text-[#000000]">
+                Most Visited Meeting Rooms
+              </h3>
+            </div>
             <p className="text-xs text-slate-500">
-              Live proportion of visiting executive delegations received by each bank division.
+              Live proportion of visiting executive delegations allocated across bank meeting facilities.
             </p>
 
-            {summary?.departmentDistribution && summary.departmentDistribution.length > 0 ? (
+            {(summary?.roomDistribution && summary.roomDistribution.length > 0) ||
+            (summary?.departmentDistribution && summary.departmentDistribution.length > 0) ? (
               <div className="space-y-3 pt-2">
-                {summary.departmentDistribution.map((d, index) => {
+                {(summary.roomDistribution?.length ? summary.roomDistribution : summary.departmentDistribution).map((d, index) => {
                   const colors = ['bg-[#00adef]', 'bg-[#e38524]', 'bg-purple-600', 'bg-emerald-600', 'bg-sky-600'];
                   const color = colors[index % colors.length];
                   return (
@@ -524,22 +532,26 @@ export const ReportsAnalyticsPage = () => {
               </div>
             ) : (
               <div className="py-8 text-center text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                No department visit records found for this period.
+                No meeting room visit records found for this period.
               </div>
             )}
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
-            <h3 className="font-heading font-black text-base text-[#000000]">
-              Average Visit Duration by Department
-            </h3>
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#e38524]" />
+              <h3 className="font-heading font-black text-base text-[#000000]">
+                Average Visit Duration by Room
+              </h3>
+            </div>
             <p className="text-xs text-slate-500">
-              Live lobby dwell time and executive meeting length computed from actual visit timestamps.
+              Live meeting dwell time and executive facility usage computed from actual visit timestamps.
             </p>
 
-            {summary?.departmentDwellStats && summary.departmentDwellStats.length > 0 ? (
+            {(summary?.roomDwellStats && summary.roomDwellStats.length > 0) ||
+            (summary?.departmentDwellStats && summary.departmentDwellStats.length > 0) ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                {summary.departmentDwellStats.map((d, index) => {
+                {(summary.roomDwellStats?.length ? summary.roomDwellStats : summary.departmentDwellStats).map((d, index) => {
                   const styles = [
                     { bg: 'bg-sky-50/60', border: 'border-sky-100', text: 'text-sky-700', val: 'text-sky-900', sub: 'text-sky-600' },
                     { bg: 'bg-orange-50/60', border: 'border-orange-100', text: 'text-[#e38524]', val: 'text-orange-950', sub: 'text-orange-700' },

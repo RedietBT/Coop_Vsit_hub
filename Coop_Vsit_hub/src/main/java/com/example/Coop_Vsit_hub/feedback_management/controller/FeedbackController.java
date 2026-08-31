@@ -30,10 +30,23 @@ public class FeedbackController {
 
     private final FeedbackService feedbackService;
 
+    @org.springframework.beans.factory.annotation.Value("${coopbank.app.frontend-url:${app.frontend.url:http://localhost:5173}}")
+    private String frontendUrl;
+
     @GetMapping("/verify/{token}")
     @Operation(summary = "Verify Feedback Survey Token (Public)", description = "Validates if single-use survey token is valid, active, and not yet completed.")
-    public ResponseEntity<FeedbackVerifyResponse> verifyFeedbackToken(@PathVariable String token) {
-        return ResponseEntity.ok(feedbackService.verifyFeedbackToken(token));
+    public ResponseEntity<?> verifyFeedbackToken(
+            @PathVariable String token,
+            @RequestHeader(value = "Accept", required = false) String acceptHeader
+    ) {
+        FeedbackVerifyResponse response = feedbackService.verifyFeedbackToken(token);
+        if (acceptHeader != null && acceptHeader.contains("text/html")) {
+            String target = (org.springframework.util.StringUtils.hasText(frontendUrl) ? frontendUrl.trim() : "http://localhost:5173") + "/feedback/" + token;
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                    .location(java.net.URI.create(target))
+                    .build();
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/submit")

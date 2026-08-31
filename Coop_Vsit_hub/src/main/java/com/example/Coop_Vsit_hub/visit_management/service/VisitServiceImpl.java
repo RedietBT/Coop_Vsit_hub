@@ -85,9 +85,9 @@ public class VisitServiceImpl implements VisitService {
         log.info("Searching visits with status={}, priority={}, dept={}, room={}, page={}, size={}",
                 status, priority, department, locationRoom, page, size);
 
-        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
         String sortProperty = (sortBy != null && !sortBy.isBlank()) ? sortBy : "scheduledStartTime";
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty).and(Sort.by(Sort.Direction.DESC, "createdAt")));
 
         Specification<Visit> spec = VisitSpecification.filterVisits(
                 search, status, priority, visitType, guestCategory, department, locationRoom,
@@ -95,7 +95,22 @@ public class VisitServiceImpl implements VisitService {
         );
 
         Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
-        Page<VisitSummaryResponse> dtoPage = visitPage.map(VisitSummaryResponse::from);
+        Page<VisitSummaryResponse> dtoPage = visitPage.map(v -> {
+            VisitSummaryResponse dto = VisitSummaryResponse.from(v);
+            if (feedbackService != null) {
+                try {
+                    com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fb = feedbackService.getFeedbackByVisitId(v.getId());
+                    if (fb != null && fb.isSubmitted()) {
+                        dto.setFeedbackSubmitted(true);
+                        dto.setGuestRating(fb.getOverallScore());
+                        dto.setFeedbackComments(fb.getComments());
+                    } else {
+                        dto.setFeedbackSubmitted(false);
+                    }
+                } catch (Exception ignored) {}
+            }
+            return dto;
+        });
 
         return PageResponse.from(dtoPage);
     }

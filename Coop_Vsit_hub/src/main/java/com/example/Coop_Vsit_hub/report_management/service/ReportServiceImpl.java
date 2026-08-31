@@ -82,9 +82,35 @@ public class ReportServiceImpl implements ReportService {
             topDeptCount = topEntry.getValue();
         }
 
-        // 1. Dynamic Department Distribution
-        List<ReportSummaryDto.DepartmentActivityDto> deptDist = new ArrayList<>();
+        // Find top meeting room
+        Map<String, Long> roomCounts = visits.stream()
+                .filter(v -> v.getLocationRoom() != null && !v.getLocationRoom().isBlank())
+                .collect(Collectors.groupingBy(v -> v.getLocationRoom().trim(), Collectors.counting()));
+
+        String topRoom = "Executive Boardroom";
+        long topRoomCount = 0;
+        if (!roomCounts.isEmpty()) {
+            Map.Entry<String, Long> topRoomEntry = Collections.max(roomCounts.entrySet(), Map.Entry.comparingByValue());
+            topRoom = topRoomEntry.getKey();
+            topRoomCount = topRoomEntry.getValue();
+        }
+
+        // 1. Dynamic Meeting Room Distribution (Most Visited Rooms)
+        List<ReportSummaryDto.DepartmentActivityDto> roomDist = new ArrayList<>();
         long grandTotalVisits = visits.size();
+        for (Map.Entry<String, Long> entry : roomCounts.entrySet()) {
+            double pctVal = grandTotalVisits > 0 ? (entry.getValue() / (double) grandTotalVisits) * 100.0 : 0.0;
+            roomDist.add(ReportSummaryDto.DepartmentActivityDto.builder()
+                    .name(entry.getKey())
+                    .count(entry.getValue())
+                    .pct(String.format("%.0f%%", pctVal))
+                    .floor("Meeting Facility")
+                    .build());
+        }
+        roomDist.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
+
+        // 1b. Dynamic Department Distribution
+        List<ReportSummaryDto.DepartmentActivityDto> deptDist = new ArrayList<>();
         for (Map.Entry<String, Long> entry : deptCounts.entrySet()) {
             double pctVal = grandTotalVisits > 0 ? (entry.getValue() / (double) grandTotalVisits) * 100.0 : 0.0;
             deptDist.add(ReportSummaryDto.DepartmentActivityDto.builder()
@@ -96,7 +122,38 @@ public class ReportServiceImpl implements ReportService {
         }
         deptDist.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
 
-        // 2. Dynamic Department Average Dwell Duration
+        // 2. Dynamic Room Average Dwell Duration
+        Map<String, List<Long>> roomDurations = new HashMap<>();
+        for (Visit v : visits) {
+            String rName = (v.getLocationRoom() != null && !v.getLocationRoom().isBlank())
+                    ? v.getLocationRoom().trim() : "Main Reception";
+            long durationMinutes = 30;
+            if (v.getActualCheckInTime() != null && v.getActualCheckOutTime() != null) {
+                durationMinutes = Math.max(5, Duration.between(v.getActualCheckInTime(), v.getActualCheckOutTime()).toMinutes());
+            } else if (v.getScheduledStartTime() != null && v.getScheduledEndTime() != null) {
+                durationMinutes = Math.max(5, Duration.between(v.getScheduledStartTime(), v.getScheduledEndTime()).toMinutes());
+            }
+            roomDurations.computeIfAbsent(rName, k -> new ArrayList<>()).add(durationMinutes);
+        }
+
+        List<ReportSummaryDto.DepartmentDwellDto> roomDwellStats = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> entry : roomDurations.entrySet()) {
+            double avgMin = entry.getValue().stream().mapToLong(Long::longValue).average().orElse(30.0);
+            long avgMinRounded = Math.round(avgMin);
+            String formatted = avgMinRounded >= 60
+                    ? String.format("%dh %dm", avgMinRounded / 60, avgMinRounded % 60)
+                    : String.format("%d mins", avgMinRounded);
+
+            roomDwellStats.add(ReportSummaryDto.DepartmentDwellDto.builder()
+                    .name(entry.getKey())
+                    .avgMinutes(avgMinRounded)
+                    .formattedDuration(formatted)
+                    .subtitle("Average dwell (" + entry.getValue().size() + " visits)")
+                    .build());
+        }
+        roomDwellStats.sort((a, b) -> Long.compare(b.getAvgMinutes(), a.getAvgMinutes()));
+
+        // 2b. Dynamic Department Average Dwell Duration
         Map<String, List<Long>> deptDurations = new HashMap<>();
         for (Visit v : visits) {
             String dName = v.getRequestingDepartment() != null ? v.getRequestingDepartment() : "General Reception";
@@ -125,7 +182,7 @@ public class ReportServiceImpl implements ReportService {
                     .build());
         }
 
-        // 3. Dynamic Financial Pipeline & Valuation
+        // 3. Financial Deals
         List<Visit> dealsWithOpp = visits.stream()
                 .filter(v -> v.getOpportunityValue() != null && v.getOpportunityValue().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
@@ -142,9 +199,13 @@ public class ReportServiceImpl implements ReportService {
                 .totalVisitors(totalVisitors)
                 .topDepartment(topDept)
                 .topDepartmentVisitorsCount(topDeptCount)
+                .topMeetingRoom(topRoom)
+                .topMeetingRoomVisitorsCount(topRoomCount)
                 .totalOpportunityUSD(totalOpportunity)
                 .activeVisitorsCount(activeCount)
                 .completedVisitorsCount(completedCount)
+                .roomDistribution(roomDist)
+                .roomDwellStats(roomDwellStats)
                 .departmentDistribution(deptDist)
                 .departmentDwellStats(dwellStats)
                 .totalActivePipeline(totalOpportunity)
@@ -308,18 +369,22 @@ public class ReportServiceImpl implements ReportService {
         }
 
         // Feedback calculation
-        String feedback = "Satisfied";
+        String feedback = "In Progress";
         Optional<VisitFeedback> fb = feedbackRepository.findByVisitId(visit.getId());
         if (fb.isPresent() && fb.get().isSubmitted()) {
             VisitFeedback f = fb.get();
-            int h = f.getHospitalityRating() != null ? f.getHospitalityRating() : 5;
-            int fac = f.getFacilityRating() != null ? f.getFacilityRating() : 5;
-            int obj = f.getObjectiveRating() != null ? f.getObjectiveRating() : 5;
-            double avg = (h + fac + obj) / 3.0;
-            if (avg >= 4.5) feedback = "Exceptional";
-            else if (avg >= 3.5) feedback = "Satisfied";
-            else feedback = "Fair";
-        } else if (visit.getStatus() != VisitStatus.COMPLETED) {
+            double avg = 0.0;
+            int count = 0;
+            if (f.getHospitalityRating() != null) { avg += f.getHospitalityRating(); count++; }
+            if (f.getFacilityRating() != null) { avg += f.getFacilityRating(); count++; }
+            if (f.getObjectiveRating() != null) { avg += f.getObjectiveRating(); count++; }
+            if (count > 0) {
+                double avgRating = avg / count;
+                feedback = String.format(Locale.US, "%.1f ★", avgRating);
+            } else {
+                feedback = "5.0 ★";
+            }
+        } else {
             feedback = "In Progress";
         }
 

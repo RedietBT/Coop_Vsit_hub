@@ -98,6 +98,11 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
     @Query("SELECT COALESCE(v.requestingDepartment, 'Unassigned'), COUNT(v) FROM Visit v GROUP BY v.requestingDepartment")
     List<Object[]> countVisitsByDepartmentGroup();
 
+    @Query("SELECT v.locationRoom, COUNT(v) FROM Visit v WHERE v.locationRoom IS NOT NULL AND TRIM(v.locationRoom) != '' GROUP BY v.locationRoom ORDER BY COUNT(v) DESC")
+    List<Object[]> countVisitsByMeetingRoomGroup();
+
+    List<Visit> findTop10ByOrderByCreatedAtDesc();
+
     @Query("SELECT v FROM Visit v WHERE v.scheduledStartTime >= :now AND v.status IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.APPROVED, com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SCHEDULED) ORDER BY v.scheduledStartTime ASC")
     List<Visit> findUpcomingScheduledVisits(@Param("now") Instant now);
 

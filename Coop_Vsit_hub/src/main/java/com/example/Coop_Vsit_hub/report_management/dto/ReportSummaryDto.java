@@ -16,11 +16,17 @@ public class ReportSummaryDto {
     private long totalVisitors;
     private String topDepartment;
     private long topDepartmentVisitorsCount;
+    private String topMeetingRoom;
+    private long topMeetingRoomVisitorsCount;
     private BigDecimal totalOpportunityUSD;
     private long activeVisitorsCount;
     private long completedVisitorsCount;
 
-    // Dynamic Tab 2: Department Activity & Dwell Durations
+    // Dynamic Tab 2: Room Activity & Dwell Durations
+    private List<DepartmentActivityDto> roomDistribution;
+    private List<DepartmentDwellDto> roomDwellStats;
+
+    // Dynamic Department Activity & Dwell Durations
     private List<DepartmentActivityDto> departmentDistribution;
     private List<DepartmentDwellDto> departmentDwellStats;
 

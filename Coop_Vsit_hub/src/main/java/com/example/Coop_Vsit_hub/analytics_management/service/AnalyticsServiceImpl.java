@@ -141,6 +141,15 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             deptMap.put(dept, count);
         }
 
+        Map<String, Long> roomMap = new LinkedHashMap<>();
+        for (Object[] row : visitRepository.countVisitsByMeetingRoomGroup()) {
+            String room = (String) row[0];
+            Long count = (Long) row[1];
+            if (org.springframework.util.StringUtils.hasText(room)) {
+                roomMap.put(room.trim(), count);
+            }
+        }
+
         // 6. Top Entities & Recent Activities
         List<OrganizationSummaryResponse> topOrgs = organizationRepository.findAll(
                 PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "relationshipScore"))
@@ -152,6 +161,31 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
         List<VisitSummaryResponse> upcomingVisits = visitRepository.findUpcomingScheduledVisits(Instant.now())
                 .stream().map(VisitSummaryResponse::from).toList();
+
+        List<Visit> recentVisitEntities = visitRepository.findTop10ByOrderByCreatedAtDesc();
+        List<VisitSummaryResponse> recentVisits = recentVisitEntities.stream().map(v -> {
+            VisitSummaryResponse dto = VisitSummaryResponse.from(v);
+            feedbackRepository.findByVisitId(v.getId()).ifPresent(fb -> {
+                if (fb.isSubmitted()) {
+                    dto.setFeedbackSubmitted(true);
+                    double avg = 0.0;
+                    int count = 0;
+                    if (fb.getHospitalityRating() != null) { avg += fb.getHospitalityRating(); count++; }
+                    if (fb.getFacilityRating() != null) { avg += fb.getFacilityRating(); count++; }
+                    if (fb.getObjectiveRating() != null) { avg += fb.getObjectiveRating(); count++; }
+                    if (count > 0) {
+                        dto.setGuestRating(Math.round((avg / count) * 10.0) / 10.0);
+                    }
+                    dto.setFeedbackComments(fb.getComments());
+                } else {
+                    dto.setFeedbackSubmitted(false);
+                }
+            });
+            if (dto.getFeedbackSubmitted() == null) {
+                dto.setFeedbackSubmitted(false);
+            }
+            return dto;
+        }).toList();
 
         List<AuditLogResponse> recentAudits = auditLogRepository.findTop10ByOrderByCreatedAtDesc()
                 .stream().map(AuditLogResponse::from).collect(Collectors.toList());
@@ -184,9 +218,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .visitsByStatus(statusMap)
                 .visitsByPriority(priorityMap)
                 .visitsByDepartment(deptMap)
+                .visitsByMeetingRoom(roomMap)
                 .topPartnerOrganizations(topOrgs)
                 .topVipGuests(topGuests)
                 .upcomingScheduledVisits(upcomingVisits)
+                .recentVisits(recentVisits)
                 .recentAuditActivities(recentAudits)
                 .build();
     }

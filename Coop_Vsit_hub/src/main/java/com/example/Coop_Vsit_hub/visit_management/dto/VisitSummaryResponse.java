@@ -47,6 +47,11 @@ public class VisitSummaryResponse {
     private Instant actualCheckOutTime;
     private Instant createdAt;
 
+    // Guest Feedback & Satisfaction Rating
+    private Boolean feedbackSubmitted;
+    private Double guestRating;
+    private String feedbackComments;
+
     public static VisitSummaryResponse from(Visit visit) {
         String phone = visit.getVisitorPhone();
         if (phone == null || phone.isBlank()) {
