@@ -54,6 +54,10 @@ public class VisitFeedback {
     @Column(columnDefinition = "TEXT")
     private String comments;
 
+    @Builder.Default
+    @Column(name = "is_pinned", nullable = false)
+    private boolean isPinned = false;
+
     @Column(name = "submitted_at")
     private Instant submittedAt;
 

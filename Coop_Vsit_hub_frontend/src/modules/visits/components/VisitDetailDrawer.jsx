@@ -20,9 +20,14 @@ import {
   FileText,
   DollarSign,
   Sparkles,
+  Star,
+  MessageSquareQuote,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
+import feedbackApi from '@/modules/feedback/api/feedbackApi';
 import Badge from '@/shared/components/ui/Badge';
 import Button from '@/shared/components/ui/Button';
 
@@ -40,6 +45,7 @@ export const VisitDetailDrawer = () => {
 
   const { hasRole, hasAnyRole } = useAuthStore();
   const [detail, setDetail] = useState(null);
+  const [visitFeedback, setVisitFeedback] = useState(null);
 
   const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
   const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_ADMIN']);
@@ -49,10 +55,29 @@ export const VisitDetailDrawer = () => {
     if (selectedVisit?.id && isDetailDrawerOpen) {
       setDetail(selectedVisit);
       fetchVisitById(selectedVisit.id).then((d) => {
-        if (d) setDetail(d);
+        if (d) {
+          setDetail(d);
+          if (d.feedback) {
+            setVisitFeedback(d.feedback);
+          }
+        }
       });
+      feedbackApi.getFeedbackByVisitId(selectedVisit.id)
+        .then((fb) => {
+          if (fb) setVisitFeedback(fb);
+        })
+        .catch(() => {});
     }
   }, [selectedVisit, isDetailDrawerOpen, fetchVisitById]);
+
+  const handleTogglePin = async (feedbackId) => {
+    try {
+      const updated = await feedbackApi.togglePin(feedbackId);
+      setVisitFeedback((prev) => (prev ? { ...prev, pinned: updated.pinned } : updated));
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+    }
+  };
 
   if (!detail) return null;
 
@@ -281,6 +306,97 @@ export const VisitDetailDrawer = () => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* 4. Customer Feedback & Review */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                      <MessageSquareQuote className="w-4 h-4 text-[#00adef]" />
+                      <span>Customer Post-Visit Feedback</span>
+                    </div>
+
+                    {visitFeedback && (
+                      <div className="flex items-center gap-2">
+                        {visitFeedback.pinned && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center gap-1">
+                            <Pin className="w-2.5 h-2.5" />
+                            <span>Pinned on Cockpit</span>
+                          </span>
+                        )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePin(visitFeedback.id)}
+                            className={`p-1 rounded-lg border text-xs transition-all cursor-pointer ${
+                              visitFeedback.pinned
+                                ? 'bg-[#e38524] text-white border-[#e38524]'
+                                : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-[#e38524]'
+                            }`}
+                            title={visitFeedback.pinned ? 'Unpin from Executive Cockpit' : 'Pin to Executive Cockpit'}
+                          >
+                            {visitFeedback.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {visitFeedback && visitFeedback.submitted ? (
+                    <div className="space-y-3 text-xs">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Overall CSAT Rating</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex items-center">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`w-3.5 h-3.5 ${
+                                    s <= Math.floor(visitFeedback.overallRating || 5)
+                                      ? 'text-amber-400 fill-amber-400'
+                                      : 'text-slate-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 text-xs">
+                              {(visitFeedback.overallRating || 5.0).toFixed(1)} / 5.0
+                            </span>
+                          </div>
+                        </div>
+
+                        {visitFeedback.npsScore !== null && (
+                          <div className="text-right">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">NPS Score</p>
+                            <p className="font-mono font-black text-sm text-emerald-700 mt-0.5">
+                              {visitFeedback.npsScore} / 10
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {visitFeedback.comments ? (
+                        <div className="p-3 rounded-xl bg-amber-50/40 border border-amber-200/60">
+                          <p className="text-[10px] uppercase font-bold text-amber-800 mb-1">Customer Comment</p>
+                          <p className="italic text-slate-700 leading-relaxed">
+                            "{visitFeedback.comments}"
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 italic text-[11px]">No additional written comments provided.</p>
+                      )}
+
+                      <div className="text-[10px] text-slate-400 font-mono text-right">
+                        Submitted: {visitFeedback.submittedAt ? new Date(visitFeedback.submittedAt).toLocaleString() : 'Recent'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-400">
+                      <p className="font-medium text-xs">Survey invitation pending or not yet submitted.</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Guest feedback will automatically appear once completed.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

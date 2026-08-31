@@ -58,15 +58,38 @@ public class FeedbackController {
         return ResponseEntity.ok(feedbackService.getFeedbackByVisitId(visitId));
     }
 
-    @PostMapping("/resend/{visitId}")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).RELATIONSHIP_MANAGER)")
+    @PutMapping("/{id}/pin")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Resend Feedback Survey Invitation Email", description = "Re-sends survey invitation email via MailHog for a completed visit.")
-    public ResponseEntity<Map<String, String>> resendFeedbackInvitation(@PathVariable UUID visitId) {
-        feedbackService.resendFeedbackInvitation(visitId);
-        return ResponseEntity.ok(Map.of(
-                "message", "Feedback survey invitation successfully re-sent to guest email.",
-                "visitId", visitId.toString()
-        ));
+    @Operation(summary = "Toggle Admin Pin for Feedback", description = "Pins/unpins feedback comment to display on the Executive Analytics Cockpit.")
+    public ResponseEntity<FeedbackDetailResponse> togglePinFeedback(
+            @PathVariable UUID id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails
+    ) {
+        String adminUsername = userDetails != null ? userDetails.getUsername() : "admin";
+        return ResponseEntity.ok(feedbackService.togglePinFeedback(id, adminUsername));
+    }
+
+    @GetMapping("/pinned")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get Pinned Feedback Reviews", description = "Retrieves all admin-pinned feedback comments for the Executive Analytics Cockpit.")
+    public ResponseEntity<java.util.List<FeedbackDetailResponse>> getPinnedFeedbacks() {
+        return ResponseEntity.ok(feedbackService.getPinnedFeedbacks());
+    }
+
+    @GetMapping("/guest/{guestId}")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get Guest Feedbacks", description = "Retrieves all submitted feedback surveys for an individual guest.")
+    public ResponseEntity<java.util.List<FeedbackDetailResponse>> getFeedbacksByGuestId(@PathVariable UUID guestId) {
+        return ResponseEntity.ok(feedbackService.getFeedbacksByGuestId(guestId));
+    }
+
+    @GetMapping("/organization/{orgId}")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get Organization Feedbacks", description = "Retrieves all submitted feedback surveys for an organization.")
+    public ResponseEntity<java.util.List<FeedbackDetailResponse>> getFeedbacksByOrganizationId(@PathVariable UUID orgId) {
+        return ResponseEntity.ok(feedbackService.getFeedbacksByOrganizationId(orgId));
     }
 }

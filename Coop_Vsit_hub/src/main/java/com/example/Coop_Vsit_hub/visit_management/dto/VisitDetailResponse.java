@@ -86,10 +86,15 @@ public class VisitDetailResponse {
     private Instant scheduledEndTime;
     private Instant actualCheckInTime;
     private Instant actualCheckOutTime;
+    private com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse feedback;
     private Instant createdAt;
     private Instant updatedAt;
 
     public static VisitDetailResponse from(Visit visit) {
+        return from(visit, null);
+    }
+
+    public static VisitDetailResponse from(Visit visit, com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse feedback) {
         return VisitDetailResponse.builder()
                 .id(visit.getId())
                 .visitCode(visit.getVisitCode())
@@ -143,6 +148,7 @@ public class VisitDetailResponse {
                 .scheduledEndTime(visit.getScheduledEndTime())
                 .actualCheckInTime(visit.getActualCheckInTime())
                 .actualCheckOutTime(visit.getActualCheckOutTime())
+                .feedback(feedback)
                 .createdAt(visit.getCreatedAt())
                 .updatedAt(visit.getUpdatedAt())
                 .build();

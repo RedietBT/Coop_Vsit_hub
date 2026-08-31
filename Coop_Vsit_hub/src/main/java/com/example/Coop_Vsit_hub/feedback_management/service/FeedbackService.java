@@ -42,4 +42,24 @@ public interface FeedbackService {
      * Resend survey invitation for a completed visit.
      */
     void resendFeedbackInvitation(UUID visitId);
+
+    /**
+     * Toggle admin pin status for spotlight on Executive Analytics.
+     */
+    FeedbackDetailResponse togglePinFeedback(UUID id, String adminUsername);
+
+    /**
+     * Get all pinned feedback reviews for Executive Analytics.
+     */
+    java.util.List<FeedbackDetailResponse> getPinnedFeedbacks();
+
+    /**
+     * Get submitted feedback reviews for an individual guest.
+     */
+    java.util.List<FeedbackDetailResponse> getFeedbacksByGuestId(UUID guestId);
+
+    /**
+     * Get submitted feedback reviews for an organization.
+     */
+    java.util.List<FeedbackDetailResponse> getFeedbacksByOrganizationId(UUID orgId);
 }

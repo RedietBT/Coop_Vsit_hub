@@ -102,4 +102,62 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to send onboarding email to {}: {}", recipientEmail, e.getMessage(), e);
         }
     }
+
+    @Override
+    public void sendRoomBookingAdminNotification(
+            String adminEmail,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String visitCode,
+            String visitTitle,
+            String guestName,
+            String organizationName,
+            java.time.Instant startTime,
+            java.time.Instant endTime,
+            String purpose,
+            int visitorCount
+    ) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(adminEmail);
+            helper.setSubject("🏢 [Room Booking Alert] " + (roomName != null ? roomName : "Meeting Facility") + " Reserved (" + (visitCode != null ? visitCode : "Direct") + ")");
+
+            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Time";
+            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled Time";
+
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
+                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Facility Management & Room Reservation Alert</p>"
+                    + "</div>"
+                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
+                    + "<p style='margin-top: 0;'>Hello <strong>System Administrator</strong>,</p>"
+                    + "<p>A new meeting room booking has been registered in the Visit Hub system. Here are the reservation details:</p>"
+                    + "<div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #00adef; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
+                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #0284c7; font-weight: bold;'>" + (roomName != null ? roomName : "Executive Boardroom") + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>👤 Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "General Division") + ")</p>"
+                    + "<p style='margin: 4px 0;'><strong>🔖 Visit / Reference:</strong> " + (visitCode != null ? visitCode : "Direct Reservation") + " — " + (visitTitle != null ? visitTitle : "Executive Briefing") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>👥 Guest / Delegation:</strong> " + (guestName != null ? guestName : "Visitor") + (organizationName != null ? " (" + organizationName + ")" : "") + " — " + visitorCount + " Guest(s)</p>"
+                    + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>📝 Purpose:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
+                    + "</div>"
+                    + "<p style='font-size: 12px; color: #64748b;'>You can review or manage active room allocations in the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Booking Management Portal</a>.</p>"
+                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
+                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated System Notification</p>"
+                    + "</div>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+
+            log.info("Room booking notification email dispatched to admin '{}' for room '{}'", adminEmail, roomName);
+        } catch (Exception e) {
+            log.error("Failed to dispatch room booking notification email to {}: {}", adminEmail, e.getMessage(), e);
+        }
+    }
 }

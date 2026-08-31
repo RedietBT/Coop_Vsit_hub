@@ -40,6 +40,7 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
     private final IndividualGuestRepository guestRepository;
     private final VisitRepository visitRepository;
     private final AuditLoggerService auditLoggerService;
+    private final com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRepository feedbackRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -103,7 +104,14 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
                 .map(VisitSummaryResponse::from)
                 .collect(Collectors.toList());
 
-        return IndividualGuestDetailResponse.from(guest, totalVisits, pipelineValue, recentVisitDtos);
+        List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks = feedbackRepository != null
+                ? feedbackRepository.findByVisit_MasterIndividualGuest_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(id)
+                        .stream()
+                        .map(com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse::from)
+                        .collect(Collectors.toList())
+                : List.of();
+
+        return IndividualGuestDetailResponse.from(guest, totalVisits, pipelineValue, recentVisitDtos, recentFeedbacks);
     }
 
     @Override

@@ -38,6 +38,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final VisitRepository visitRepository;
     private final AuditLoggerService auditLoggerService;
+    private final com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRepository feedbackRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -53,12 +54,11 @@ public class OrganizationServiceImpl implements OrganizationService {
             String sortBy,
             String sortDirection
     ) {
-        log.info("Fetching organizations list with search={}, category={}, country={}, page={}, size={}",
-                search, category, marketCountry, page, size);
+        log.info("Fetching organizations with search: '{}', category: '{}', sector: '{}'", search, category, industrySector);
 
-        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        String sortProperty = (sortBy != null && !sortBy.isBlank()) ? sortBy : "relationshipScore";
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty));
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortProperty = StringUtils.hasText(sortBy) ? sortBy : "createdAt";
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, sortProperty));
 
         Specification<Organization> spec = OrganizationSpecification.filterOrganizations(
                 search, category, marketCountry, industrySector, minScore, maxScore
@@ -71,8 +71,8 @@ public class OrganizationServiceImpl implements OrganizationService {
         if (!orgIds.isEmpty()) {
             List<Object[]> counts = visitRepository.countVisitsGroupedByGuestOrganizationIds(orgIds);
             for (Object[] row : counts) {
-                if (row != null && row.length >= 2 && row[0] instanceof UUID orgId && row[1] instanceof Long cnt) {
-                    visitCountMap.put(orgId, cnt);
+                if (row != null && row.length >= 2 && row[0] instanceof UUID oId && row[1] instanceof Long cnt) {
+                    visitCountMap.put(oId, cnt);
                 }
             }
         }
@@ -101,7 +101,14 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .map(VisitSummaryResponse::from)
                 .collect(Collectors.toList());
 
-        return OrganizationDetailResponse.from(org, totalVisits, pipelineValue, recentVisits);
+        List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks = feedbackRepository != null
+                ? feedbackRepository.findByVisit_GuestOrganization_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(id)
+                        .stream()
+                        .map(com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse::from)
+                        .collect(Collectors.toList())
+                : List.of();
+
+        return OrganizationDetailResponse.from(org, totalVisits, pipelineValue, recentVisits, recentFeedbacks);
     }
 
     @Override

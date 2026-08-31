@@ -55,6 +55,13 @@ public class VisitServiceImpl implements VisitService {
     @org.springframework.beans.factory.annotation.Autowired
     private com.example.coop_vsit_hub.notification_management.service.NotificationService notificationService;
 
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
+
+    @org.springframework.beans.factory.annotation.Value("${coopbank.app.admin-email:}")
+    private String configuredAdminEmail;
+
     @Override
     @Transactional(readOnly = true)
     public PageResponse<VisitSummaryResponse> getAllVisits(
@@ -99,7 +106,14 @@ public class VisitServiceImpl implements VisitService {
         log.info("Fetching visit details for ID: {}", id);
         Visit visit = visitRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
-        return VisitDetailResponse.from(visit);
+
+        com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fbDto = null;
+        if (feedbackService != null) {
+            try {
+                fbDto = feedbackService.getFeedbackByVisitId(id);
+            } catch (Exception ignored) {}
+        }
+        return VisitDetailResponse.from(visit, fbDto);
     }
 
     @Override
@@ -108,7 +122,14 @@ public class VisitServiceImpl implements VisitService {
         log.info("Fetching visit details for code: {}", visitCode);
         Visit visit = visitRepository.findByVisitCode(visitCode.trim().toUpperCase())
                 .orElseThrow(() -> new IllegalArgumentException("Visit not found with Code: " + visitCode));
-        return VisitDetailResponse.from(visit);
+
+        com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fbDto = null;
+        if (feedbackService != null) {
+            try {
+                fbDto = feedbackService.getFeedbackByVisitId(visit.getId());
+            } catch (Exception ignored) {}
+        }
+        return VisitDetailResponse.from(visit, fbDto);
     }
 
     @Override
@@ -423,6 +444,36 @@ public class VisitServiceImpl implements VisitService {
                         saved.getVisitCode(),
                         true // send email via SMTP/MailHog
                 );
+
+                if (emailService != null) {
+                    List<String> adminEmails = new ArrayList<>(userRepository.findAll().stream()
+                            .filter(u -> u.getRoles() != null && u.getRoles().stream().anyMatch(r -> r.getName() == com.example.coop_vsit_hub.user_and_auth.enums.RoleName.ROLE_ADMIN || r.getName().name().contains("ADMIN")))
+                            .map(com.example.coop_vsit_hub.user_and_auth.model.User::getEmail)
+                            .filter(StringUtils::hasText)
+                            .distinct()
+                            .toList());
+
+                    if (adminEmails.isEmpty() && StringUtils.hasText(configuredAdminEmail)) {
+                        adminEmails.add(configuredAdminEmail.trim());
+                    }
+
+                    for (String aEmail : adminEmails) {
+                        emailService.sendRoomBookingAdminNotification(
+                                aEmail,
+                                saved.getLocationRoom(),
+                                requester.getFullName(),
+                                requester.getDepartment(),
+                                saved.getVisitCode(),
+                                saved.getTitle(),
+                                saved.getGuestDisplayName(),
+                                saved.getGuestOrganization() != null ? saved.getGuestOrganization().getName() : null,
+                                saved.getScheduledStartTime(),
+                                saved.getScheduledEndTime(),
+                                saved.getVisitObjective(),
+                                saved.getVisitorCount()
+                        );
+                    }
+                }
             } catch (Exception e) {
                 log.warn("Failed to dispatch admin notification for room booking: {}", e.getMessage());
             }

@@ -34,6 +34,7 @@ public class IndividualGuestSummaryResponse {
     private String countryOfResidence;
     private VipTier vipTier;
     private int relationshipScore;
+    private Double starRating;
     private long totalVisits;
     private Instant createdAt;
 
@@ -42,6 +43,7 @@ public class IndividualGuestSummaryResponse {
     }
 
     public static IndividualGuestSummaryResponse from(IndividualGuest guest, long totalVisits) {
+        double stars = Math.round((Math.max(20, guest.getRelationshipScore()) / 20.0) * 10.0) / 10.0;
         return IndividualGuestSummaryResponse.builder()
                 .id(guest.getId())
                 .firstName(guest.getFirstName())
@@ -57,6 +59,7 @@ public class IndividualGuestSummaryResponse {
                 .countryOfResidence(guest.getCountryOfResidence())
                 .vipTier(guest.getVipTier())
                 .relationshipScore(guest.getRelationshipScore())
+                .starRating(stars)
                 .totalVisits(totalVisits)
                 .createdAt(guest.getCreatedAt())
                 .build();

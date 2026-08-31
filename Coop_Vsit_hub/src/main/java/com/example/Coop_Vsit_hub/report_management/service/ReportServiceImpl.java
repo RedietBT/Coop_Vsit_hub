@@ -74,13 +74,69 @@ public class ReportServiceImpl implements ReportService {
                 .filter(v -> v.getRequestingDepartment() != null && !v.getRequestingDepartment().isBlank())
                 .collect(Collectors.groupingBy(Visit::getRequestingDepartment, Collectors.counting()));
 
-        String topDept = "Growth and Operations";
+        String topDept = "General Operations";
         long topDeptCount = 0;
         if (!deptCounts.isEmpty()) {
             Map.Entry<String, Long> topEntry = Collections.max(deptCounts.entrySet(), Map.Entry.comparingByValue());
             topDept = topEntry.getKey();
             topDeptCount = topEntry.getValue();
         }
+
+        // 1. Dynamic Department Distribution
+        List<ReportSummaryDto.DepartmentActivityDto> deptDist = new ArrayList<>();
+        long grandTotalVisits = visits.size();
+        for (Map.Entry<String, Long> entry : deptCounts.entrySet()) {
+            double pctVal = grandTotalVisits > 0 ? (entry.getValue() / (double) grandTotalVisits) * 100.0 : 0.0;
+            deptDist.add(ReportSummaryDto.DepartmentActivityDto.builder()
+                    .name(entry.getKey())
+                    .count(entry.getValue())
+                    .pct(String.format("%.0f%%", pctVal))
+                    .floor("HQ Division")
+                    .build());
+        }
+        deptDist.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
+
+        // 2. Dynamic Department Average Dwell Duration
+        Map<String, List<Long>> deptDurations = new HashMap<>();
+        for (Visit v : visits) {
+            String dName = v.getRequestingDepartment() != null ? v.getRequestingDepartment() : "General Reception";
+            long durationMinutes = 30;
+            if (v.getActualCheckInTime() != null && v.getActualCheckOutTime() != null) {
+                durationMinutes = Math.max(5, Duration.between(v.getActualCheckInTime(), v.getActualCheckOutTime()).toMinutes());
+            } else if (v.getScheduledStartTime() != null && v.getScheduledEndTime() != null) {
+                durationMinutes = Math.max(5, Duration.between(v.getScheduledStartTime(), v.getScheduledEndTime()).toMinutes());
+            }
+            deptDurations.computeIfAbsent(dName, k -> new ArrayList<>()).add(durationMinutes);
+        }
+
+        List<ReportSummaryDto.DepartmentDwellDto> dwellStats = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> entry : deptDurations.entrySet()) {
+            double avgMin = entry.getValue().stream().mapToLong(Long::longValue).average().orElse(30.0);
+            long avgMinRounded = Math.round(avgMin);
+            String formatted = avgMinRounded >= 60
+                    ? String.format("%dh %dm", avgMinRounded / 60, avgMinRounded % 60)
+                    : String.format("%d mins", avgMinRounded);
+
+            dwellStats.add(ReportSummaryDto.DepartmentDwellDto.builder()
+                    .name(entry.getKey())
+                    .avgMinutes(avgMinRounded)
+                    .formattedDuration(formatted)
+                    .subtitle("Average duration (" + entry.getValue().size() + " visits)")
+                    .build());
+        }
+
+        // 3. Dynamic Financial Pipeline & Valuation
+        List<Visit> dealsWithOpp = visits.stream()
+                .filter(v -> v.getOpportunityValue() != null && v.getOpportunityValue().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+
+        long dealsCount = dealsWithOpp.size();
+        BigDecimal avgDeal = BigDecimal.ZERO;
+        if (dealsCount > 0) {
+            avgDeal = totalOpportunity.divide(BigDecimal.valueOf(dealsCount), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        double convRate = grandTotalVisits > 0 ? (completedCount / (double) grandTotalVisits) * 100.0 : 0.0;
 
         return ReportSummaryDto.builder()
                 .totalVisitors(totalVisitors)
@@ -89,6 +145,12 @@ public class ReportServiceImpl implements ReportService {
                 .totalOpportunityUSD(totalOpportunity)
                 .activeVisitorsCount(activeCount)
                 .completedVisitorsCount(completedCount)
+                .departmentDistribution(deptDist)
+                .departmentDwellStats(dwellStats)
+                .totalActivePipeline(totalOpportunity)
+                .conversionRate(Math.round(convRate * 10.0) / 10.0)
+                .avgDealSize(avgDeal)
+                .totalDealsCount(dealsCount)
                 .build();
     }
 

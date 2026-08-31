@@ -260,6 +260,60 @@ public class FeedbackServiceImpl implements FeedbackService {
         createAndSendFeedbackInvitation(visit);
     }
 
+    @Override
+    @Transactional
+    public FeedbackDetailResponse togglePinFeedback(UUID id, String adminUsername) {
+        log.info("Toggling pin status for feedback ID: {} by '{}'", id, adminUsername);
+        VisitFeedback feedback = feedbackRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Feedback survey not found with ID: " + id));
+
+        feedback.setPinned(!feedback.isPinned());
+        VisitFeedback saved = feedbackRepository.save(feedback);
+
+        auditLoggerService.logEvent(
+                null,
+                adminUsername,
+                AuditEventType.VISIT_STATUS_CHANGED,
+                AuditStatus.SUCCESS,
+                "FEEDBACK_MODULE",
+                "FEEDBACK_MANAGEMENT",
+                String.format("Feedback '%s' for visit '%s' was %s on Executive Dashboard by %s",
+                        saved.getId(), saved.getVisit().getVisitCode(), saved.isPinned() ? "PINNED" : "UNPINNED", adminUsername)
+        );
+
+        return FeedbackDetailResponse.from(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeedbackDetailResponse> getPinnedFeedbacks() {
+        log.info("Fetching all pinned feedback reviews for Executive Analytics");
+        return feedbackRepository.findByIsSubmittedTrueAndIsPinnedTrueOrderBySubmittedAtDesc()
+                .stream()
+                .map(FeedbackDetailResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeedbackDetailResponse> getFeedbacksByGuestId(UUID guestId) {
+        log.info("Fetching feedback reviews for guest ID: {}", guestId);
+        return feedbackRepository.findByVisit_MasterIndividualGuest_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(guestId)
+                .stream()
+                .map(FeedbackDetailResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeedbackDetailResponse> getFeedbacksByOrganizationId(UUID orgId) {
+        log.info("Fetching feedback reviews for organization ID: {}", orgId);
+        return feedbackRepository.findByVisit_GuestOrganization_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(orgId)
+                .stream()
+                .map(FeedbackDetailResponse::from)
+                .collect(Collectors.toList());
+    }
+
     private void sendSurveyEmail(String recipientEmail, Visit visit, String token) {
         try {
             String surveyUrl = frontendUrl + "/api/v1/feedback/verify/" + token;

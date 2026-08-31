@@ -493,7 +493,7 @@ export const ReportsAnalyticsPage = () => {
         </div>
       )}
 
-      {/* 5. Tab 2: Department Stats */}
+      {/* 5. Tab 2: Department Stats (100% Real Dynamic Data) */}
       {activeTab === 'departments' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
@@ -501,27 +501,32 @@ export const ReportsAnalyticsPage = () => {
               Department Activity Distribution
             </h3>
             <p className="text-xs text-slate-500">
-              Proportion of visiting executive delegations received by each bank division.
+              Live proportion of visiting executive delegations received by each bank division.
             </p>
 
-            <div className="space-y-3 pt-2">
-              {[
-                { name: 'Growth and Operations', count: 14, pct: '58%', floor: 'Floor 4', color: 'bg-[#00adef]' },
-                { name: 'Digital Banking & Technology', count: 6, pct: '25%', floor: 'Floor 4', color: 'bg-[#e38524]' },
-                { name: 'Corporate Alliances & FinTech', count: 3, pct: '12%', floor: 'Floor 9', color: 'bg-purple-600' },
-                { name: 'Executive Secretariat', count: 1, pct: '5%', floor: 'Floor 10', color: 'bg-emerald-600' },
-              ].map((d) => (
-                <div key={d.name} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-slate-800">
-                    <span>{d.name} ({d.floor})</span>
-                    <span>{d.count} visits ({d.pct})</span>
-                  </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div className={`h-full ${d.color} rounded-full`} style={{ width: d.pct }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+            {summary?.departmentDistribution && summary.departmentDistribution.length > 0 ? (
+              <div className="space-y-3 pt-2">
+                {summary.departmentDistribution.map((d, index) => {
+                  const colors = ['bg-[#00adef]', 'bg-[#e38524]', 'bg-purple-600', 'bg-emerald-600', 'bg-sky-600'];
+                  const color = colors[index % colors.length];
+                  return (
+                    <div key={d.name} className="space-y-1">
+                      <div className="flex justify-between text-xs font-bold text-slate-800">
+                        <span>{d.name}</span>
+                        <span>{d.count} visit{d.count > 1 ? 's' : ''} ({d.pct})</span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: d.pct }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                No department visit records found for this period.
+              </div>
+            )}
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
@@ -529,39 +534,38 @@ export const ReportsAnalyticsPage = () => {
               Average Visit Duration by Department
             </h3>
             <p className="text-xs text-slate-500">
-              Lobby dwell time and executive meeting length.
+              Live lobby dwell time and executive meeting length computed from actual visit timestamps.
             </p>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-100">
-                <p className="text-[10px] font-bold text-sky-700 uppercase">Growth & Ops</p>
-                <p className="font-heading font-black text-xl text-sky-900 mt-1">26 mins</p>
-                <p className="text-[10px] text-sky-600 mt-0.5">Average meeting</p>
+            {summary?.departmentDwellStats && summary.departmentDwellStats.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                {summary.departmentDwellStats.map((d, index) => {
+                  const styles = [
+                    { bg: 'bg-sky-50/60', border: 'border-sky-100', text: 'text-sky-700', val: 'text-sky-900', sub: 'text-sky-600' },
+                    { bg: 'bg-orange-50/60', border: 'border-orange-100', text: 'text-[#e38524]', val: 'text-orange-950', sub: 'text-orange-700' },
+                    { bg: 'bg-purple-50/60', border: 'border-purple-100', text: 'text-purple-700', val: 'text-purple-950', sub: 'text-purple-700' },
+                    { bg: 'bg-emerald-50/60', border: 'border-emerald-100', text: 'text-emerald-700', val: 'text-emerald-950', sub: 'text-emerald-700' },
+                  ];
+                  const style = styles[index % styles.length];
+                  return (
+                    <div key={d.name} className={`p-4 rounded-2xl ${style.bg} border ${style.border}`}>
+                      <p className={`text-[10px] font-bold uppercase truncate ${style.text}`}>{d.name}</p>
+                      <p className={`font-heading font-black text-xl mt-1 ${style.val}`}>{d.formattedDuration}</p>
+                      <p className={`text-[10px] mt-0.5 ${style.sub}`}>{d.subtitle}</p>
+                    </div>
+                  );
+                })}
               </div>
-
-              <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100">
-                <p className="text-[10px] font-bold text-[#e38524] uppercase">Digital Banking</p>
-                <p className="font-heading font-black text-xl text-orange-950 mt-1">45 mins</p>
-                <p className="text-[10px] text-orange-700 mt-0.5">Tech presentations</p>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                No duration data recorded for this period.
               </div>
-
-              <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
-                <p className="text-[10px] font-bold text-purple-700 uppercase">FinTech Alliances</p>
-                <p className="font-heading font-black text-xl text-purple-950 mt-1">1h 15m</p>
-                <p className="text-[10px] text-purple-700 mt-0.5">MoU & Strategic</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-                <p className="text-[10px] font-bold text-emerald-700 uppercase">Executive Suite</p>
-                <p className="font-heading font-black text-xl text-emerald-950 mt-1">35 mins</p>
-                <p className="text-[10px] text-emerald-700 mt-0.5">Boardroom briefing</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 6. Tab 3: Financial Pipeline Valuation */}
+      {/* 6. Tab 3: Financial Pipeline Valuation (100% Real Dynamic Data) */}
       {activeTab === 'financials' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-6">
           <div>
@@ -569,7 +573,7 @@ export const ReportsAnalyticsPage = () => {
               Strategic Opportunity & Financial Pipeline Valuation
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Aggregated strategic alliance and deal value ($M USD) driven by high-level guest delegations.
+              Real aggregated strategic alliance and deal value ($M USD) driven by high-level guest delegations.
             </p>
           </div>
 
@@ -577,21 +581,29 @@ export const ReportsAnalyticsPage = () => {
             <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-left">
               <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Total Active Pipeline</p>
               <p className="font-heading font-black text-3xl text-emerald-900 mt-1">
-                ${summary && summary.totalOpportunityUSD ? (summary.totalOpportunityUSD / 1000000).toFixed(2) : '24.50'}M
+                ${summary && summary.totalOpportunityUSD ? (Number(summary.totalOpportunityUSD) / 1000000).toFixed(2) : '0.00'}M
               </p>
-              <p className="text-[11px] text-emerald-700 mt-1">USD Strategic Pipeline</p>
+              <p className="text-[11px] text-emerald-700 mt-1">
+                {summary?.totalDealsCount ?? 0} Active Strategic Deal{summary?.totalDealsCount === 1 ? '' : 's'}
+              </p>
             </div>
 
             <div className="p-5 rounded-2xl bg-sky-50 border border-sky-200 text-left">
-              <p className="text-[10px] font-bold text-[#00adef] uppercase tracking-wider">Estimated Conversion</p>
-              <p className="font-heading font-black text-3xl text-sky-900 mt-1">82.4%</p>
-              <p className="text-[11px] text-sky-700 mt-1">Post-visit MoU closure rate</p>
+              <p className="text-[10px] font-bold text-[#00adef] uppercase tracking-wider">Visit Completion Rate</p>
+              <p className="font-heading font-black text-3xl text-sky-900 mt-1">
+                {summary?.conversionRate ?? 0}%
+              </p>
+              <p className="text-[11px] text-sky-700 mt-1">
+                {summary?.completedVisitorsCount ?? 0} Completed / {summary?.totalVisitors ?? 0} Total
+              </p>
             </div>
 
             <div className="p-5 rounded-2xl bg-purple-50 border border-purple-200 text-left">
-              <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Avg Deal Size / Visit</p>
-              <p className="font-heading font-black text-3xl text-purple-900 mt-1">$1.02M</p>
-              <p className="text-[11px] text-purple-700 mt-1">Per visiting institution</p>
+              <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Avg Deal Size / Opportunity</p>
+              <p className="font-heading font-black text-3xl text-purple-900 mt-1">
+                ${summary && summary.avgDealSize ? (Number(summary.avgDealSize) / 1000000).toFixed(2) : '0.00'}M
+              </p>
+              <p className="text-[11px] text-purple-700 mt-1">Per visiting strategic partner</p>
             </div>
           </div>
         </div>

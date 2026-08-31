@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Crown,
   Edit2,
+  Star,
 } from 'lucide-react';
 import useGuestStore from '../store/guestStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
@@ -177,17 +178,30 @@ export const GuestTable = () => {
                       </span>
                     </td>
 
-                    {/* Relationship Health Score */}
+                    {/* Relationship Health Star Rating */}
                     <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 max-w-[140px]">
-                        <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-linear-to-r from-[#00adef] via-[#00adef] to-[#e38524] rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, score)}%` }}
-                          />
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center">
+                          {[1, 2, 3, 4, 5].map((star) => {
+                            const starVal = g.starRating || (g.relationshipScore ? Math.round((g.relationshipScore / 20) * 10) / 10 : 4.8);
+                            const isFilled = star <= Math.floor(starVal);
+                            const isHalf = !isFilled && star === Math.ceil(starVal) && starVal % 1 >= 0.3;
+                            return (
+                              <Star
+                                key={star}
+                                className={`w-3.5 h-3.5 ${
+                                  isFilled
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : isHalf
+                                    ? 'text-amber-400 fill-amber-400/50'
+                                    : 'text-slate-200'
+                                }`}
+                              />
+                            );
+                          })}
                         </div>
-                        <span className="font-mono font-bold text-slate-800 text-[11px]">
-                          {score}/100
+                        <span className="font-mono font-bold text-slate-800 text-xs">
+                          {(g.starRating || (g.relationshipScore ? Math.round((g.relationshipScore / 20) * 10) / 10 : 4.8)).toFixed(1)}
                         </span>
                       </div>
                     </td>

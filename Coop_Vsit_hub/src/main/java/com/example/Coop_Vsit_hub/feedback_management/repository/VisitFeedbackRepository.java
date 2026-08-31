@@ -40,4 +40,16 @@ public interface VisitFeedbackRepository extends JpaRepository<VisitFeedback, UU
 
     @Query("SELECT f FROM VisitFeedback f WHERE f.isSubmitted = true ORDER BY f.submittedAt DESC")
     List<VisitFeedback> findTop20RecentSubmittedFeedback();
+
+    List<VisitFeedback> findByIsSubmittedTrueAndIsPinnedTrueOrderBySubmittedAtDesc();
+
+    List<VisitFeedback> findByVisit_MasterIndividualGuest_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(UUID guestId);
+
+    List<VisitFeedback> findByVisit_GuestOrganization_IdAndIsSubmittedTrueOrderBySubmittedAtDesc(UUID orgId);
+
+    @Query("SELECT COALESCE(AVG((f.hospitalityRating + f.facilityRating + f.objectiveRating) / 3.0), 5.0) FROM VisitFeedback f WHERE f.isSubmitted = true AND f.visit.masterIndividualGuest.id = :guestId")
+    Double getAverageRatingByGuestId(@org.springframework.data.repository.query.Param("guestId") UUID guestId);
+
+    @Query("SELECT COALESCE(AVG((f.hospitalityRating + f.facilityRating + f.objectiveRating) / 3.0), 5.0) FROM VisitFeedback f WHERE f.isSubmitted = true AND f.visit.guestOrganization.id = :orgId")
+    Double getAverageRatingByOrgId(@org.springframework.data.repository.query.Param("orgId") UUID orgId);
 }

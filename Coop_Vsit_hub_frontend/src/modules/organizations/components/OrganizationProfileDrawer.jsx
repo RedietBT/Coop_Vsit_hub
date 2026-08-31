@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -14,10 +14,15 @@ import {
   Sparkles,
   Award,
   Layers,
+  Star,
+  MessageSquareQuote,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import useOrganizationStore from '../store/organizationStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
+import feedbackApi from '@/modules/feedback/api/feedbackApi';
 import Button from '@/shared/components/ui/Button';
 
 export const OrganizationProfileDrawer = () => {
@@ -26,6 +31,34 @@ export const OrganizationProfileDrawer = () => {
   const { visits, openCreateModal: openVisitModal } = useVisitStore();
   const { hasRole } = useAuthStore();
   const isAdmin = hasRole('ROLE_ADMIN');
+
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [isLoadingFeedbacks, setIsLoadingFeedbacks] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrg && selectedOrg.id && isProfileDrawerOpen) {
+      setIsLoadingFeedbacks(true);
+      feedbackApi.getOrgFeedbacks(selectedOrg.id)
+        .then((res) => {
+          setFeedbacks(res || []);
+        })
+        .catch(() => {
+          setFeedbacks(selectedOrg.recentFeedbacks || []);
+        })
+        .finally(() => setIsLoadingFeedbacks(false));
+    }
+  }, [selectedOrg, isProfileDrawerOpen]);
+
+  const handleTogglePin = async (feedbackId) => {
+    try {
+      const updated = await feedbackApi.togglePin(feedbackId);
+      setFeedbacks((prev) =>
+        prev.map((fb) => (fb.id === feedbackId ? { ...fb, pinned: updated.pinned } : fb))
+      );
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+    }
+  };
 
   // Find recent visits associated with this organization
   const orgVisits = useMemo(() => {
@@ -40,16 +73,16 @@ export const OrganizationProfileDrawer = () => {
 
   if (!selectedOrg) return null;
 
-  const score = selectedOrg.relationshipScore || selectedOrg.relationshipHealthScore || 85;
+  const starScore = selectedOrg.starRating || (selectedOrg.relationshipScore ? Math.round((selectedOrg.relationshipScore / 20) * 10) / 10 : 4.8);
   const contactPerson = selectedOrg.primaryContactPerson || selectedOrg.contactPersonName;
 
   const getScoreRating = (s) => {
-    if (s >= 80) return { label: 'Strategic Tier 1', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
-    if (s >= 60) return { label: 'Active Commercial Tier', color: 'text-sky-600 bg-sky-50 border-sky-200' };
+    if (s >= 4.5) return { label: 'Strategic Tier 1', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
+    if (s >= 3.5) return { label: 'Active Commercial Tier', color: 'text-sky-600 bg-sky-50 border-sky-200' };
     return { label: 'Emerging Alliance', color: 'text-amber-600 bg-amber-50 border-amber-200' };
   };
 
-  const rating = getScoreRating(score);
+  const rating = getScoreRating(starScore);
 
   return (
     <AnimatePresence>
@@ -115,20 +148,33 @@ export const OrganizationProfileDrawer = () => {
                   </div>
                 </div>
 
-                {/* Score Banner */}
-                <div className="mt-5 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-                  <div className="flex items-center justify-between text-xs font-bold mb-2">
-                    <span className="text-[#e38524] uppercase tracking-wider flex items-center gap-1.5">
+                {/* Score Banner (1-5 Stars) */}
+                <div className="mt-5 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[#e38524] uppercase tracking-wider text-[11px] font-bold flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-[#e38524]" />
-                      <span>Relationship Health Score</span>
+                      <span>Relationship Health & CSAT</span>
                     </span>
-                    <span className="font-mono text-sm font-black text-[#000000]">{score}/100</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Aggregated guest satisfaction index</p>
                   </div>
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-linear-to-r from-[#00adef] via-[#00adef] to-[#e38524] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, score)}%` }}
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= Math.floor(starScore)
+                              ? 'text-amber-400 fill-amber-400'
+                              : star === Math.ceil(starScore) && starScore % 1 >= 0.3
+                              ? 'text-amber-400 fill-amber-400/50'
+                              : 'text-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="font-mono text-base font-black text-[#000000]">
+                      {starScore.toFixed(1)} <span className="text-xs text-slate-400 font-bold">/ 5.0</span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -217,7 +263,98 @@ export const OrganizationProfileDrawer = () => {
                   </div>
                 )}
 
-                {/* 4. Recent Visits List */}
+                {/* 4. Customer Feedback & Comments (With Admin Pin) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-[#00adef]" />
+                      <span>Customer Feedback & Comments ({feedbacks.length})</span>
+                    </span>
+                  </div>
+
+                  {isLoadingFeedbacks ? (
+                    <div className="p-4 text-center text-slate-400 text-xs font-bold">Loading guest feedback...</div>
+                  ) : feedbacks.length === 0 ? (
+                    <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/70 text-center text-slate-400">
+                      <p className="font-medium text-xs">No feedback reviews submitted yet.</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Post-visit ratings will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                      {feedbacks.map((fb) => {
+                        const ratingVal = fb.overallRating || 5.0;
+                        return (
+                          <div
+                            key={fb.id}
+                            className={`p-3.5 rounded-2xl border transition-all ${
+                              fb.pinned
+                                ? 'bg-amber-50/50 border-[#e38524] shadow-xs'
+                                : 'bg-white border-slate-200/80 shadow-2xs'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex items-center">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={`w-3 h-3 ${
+                                        s <= Math.floor(ratingVal)
+                                          ? 'text-amber-400 fill-amber-400'
+                                          : 'text-slate-200'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-bold text-slate-800 text-[11px]">
+                                  {ratingVal.toFixed(1)} / 5.0
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {fb.pinned && (
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center gap-1">
+                                    <Pin className="w-2.5 h-2.5" />
+                                    <span>Pinned on Cockpit</span>
+                                  </span>
+                                )}
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePin(fb.id)}
+                                    className={`p-1 rounded-lg border text-xs transition-all cursor-pointer ${
+                                      fb.pinned
+                                        ? 'bg-[#e38524] text-white border-[#e38524]'
+                                        : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-[#e38524]'
+                                    }`}
+                                    title={fb.pinned ? 'Unpin from Executive Cockpit' : 'Pin to Executive Cockpit'}
+                                  >
+                                    {fb.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {fb.comments ? (
+                              <p className="text-slate-700 text-xs italic bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                                "{fb.comments}"
+                              </p>
+                            ) : (
+                              <p className="text-slate-400 text-[11px] italic">No written comment provided.</p>
+                            )}
+
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 font-mono">
+                              <span>Visit: {fb.visitCode || 'VIS-HUB'}</span>
+                              <span>{fb.submittedAt ? new Date(fb.submittedAt).toLocaleDateString() : 'Recent'}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Recent Visits List */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">

@@ -21,8 +21,13 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import com.example.coop_vsit_hub.user_and_auth.service.AuditLoggerService;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditEventType;
+import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     private final RoomBookingRepository roomBookingRepository;
     private final NotificationService notificationService;
+    private final com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
+    private final com.example.coop_vsit_hub.user_and_auth.repository.UserRepository userRepository;
+    private final AuditLoggerService auditLoggerService;
+
+    @org.springframework.beans.factory.annotation.Value("${coopbank.app.admin-email:}")
+    private String configuredAdminEmail;
 
     @Override
     @Transactional
@@ -94,10 +105,53 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         bookingCode,
                         true
                 );
+
+                if (emailService != null) {
+                    List<String> adminEmails = new ArrayList<>(userRepository.findAll().stream()
+                            .filter(u -> u.getRoles() != null && u.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN || r.getName().name().contains("ADMIN")))
+                            .map(User::getEmail)
+                            .filter(StringUtils::hasText)
+                            .distinct()
+                            .toList());
+
+                    if (adminEmails.isEmpty() && StringUtils.hasText(configuredAdminEmail)) {
+                        adminEmails.add(configuredAdminEmail.trim());
+                    }
+
+                    for (String aEmail : adminEmails) {
+                        emailService.sendRoomBookingAdminNotification(
+                                aEmail,
+                                saved.getRoomName(),
+                                saved.getBookedByName(),
+                                saved.getHostDepartment(),
+                                saved.getBookingCode(),
+                                saved.getMeetingTitle(),
+                                saved.getGuestName(),
+                                saved.getGuestOrganizationName(),
+                                saved.getScheduledStartTime(),
+                                saved.getScheduledEndTime(),
+                                saved.getMeetingAgenda(),
+                                saved.getExpectedAttendees()
+                        );
+                    }
+                }
             } catch (Exception e) {
                 log.warn("Failed to dispatch admin notification for room booking: {}", e.getMessage());
             }
         }
+
+        // Security Audit Log
+        auditLoggerService.logEvent(
+                currentUser,
+                currentUser != null ? currentUser.getUsername() : bookedByUsername,
+                AuditEventType.ROOM_BOOKING_CREATED,
+                AuditStatus.SUCCESS,
+                null,
+                null,
+                String.format("Meeting room '%s' booked with code '%s' for '%s' (Requester: %s, Time: %s to %s)",
+                        saved.getRoomName(), saved.getBookingCode(), saved.getMeetingTitle(), saved.getBookedByName(),
+                        saved.getScheduledStartTime(), saved.getScheduledEndTime())
+        );
 
         return mapToResponse(saved);
     }
@@ -154,6 +208,20 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         booking.setStatus(RoomBookingStatus.CANCELLED);
         RoomBooking updated = roomBookingRepository.save(booking);
+
+        // Security Audit Log
+        auditLoggerService.logEvent(
+                currentUser,
+                currentUser != null ? currentUser.getUsername() : "system",
+                AuditEventType.ROOM_BOOKING_CANCELLED,
+                AuditStatus.SUCCESS,
+                null,
+                null,
+                String.format("Room booking '%s' for room '%s' was CANCELLED by %s",
+                        updated.getBookingCode(), updated.getRoomName(),
+                        currentUser != null ? currentUser.getFullName() : "Administrator")
+        );
+
         return mapToResponse(updated);
     }
 

@@ -29,6 +29,7 @@ public class OrganizationSummaryResponse {
     private String website;
     private String industrySector;
     private long totalVisits;
+    private Double starRating;
     private Instant createdAt;
 
     public static OrganizationSummaryResponse from(Organization org) {
@@ -36,12 +37,14 @@ public class OrganizationSummaryResponse {
     }
 
     public static OrganizationSummaryResponse from(Organization org, long totalVisits) {
+        double stars = Math.round((Math.max(20, org.getRelationshipScore()) / 20.0) * 10.0) / 10.0;
         return OrganizationSummaryResponse.builder()
                 .id(org.getId())
                 .name(org.getName())
                 .category(org.getCategory())
                 .marketCountry(org.getMarketCountry())
                 .relationshipScore(org.getRelationshipScore())
+                .starRating(stars)
                 .contactPersonName(org.getContactPersonName())
                 .contactEmail(org.getContactEmail())
                 .contactPhone(org.getContactPhone())

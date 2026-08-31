@@ -33,9 +33,11 @@ public class OrganizationDetailResponse {
     private String industrySector;
     private String notes;
     private long totalVisitsHosted;
+    private Double starRating;
     private BigDecimal totalOpportunityPipelineValue;
     private String currency;
     private List<VisitSummaryResponse> recentVisits;
+    private List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -45,12 +47,24 @@ public class OrganizationDetailResponse {
             BigDecimal pipelineValue,
             List<VisitSummaryResponse> recentVisits
     ) {
+        return from(org, totalVisits, pipelineValue, recentVisits, List.of());
+    }
+
+    public static OrganizationDetailResponse from(
+            Organization org,
+            long totalVisits,
+            BigDecimal pipelineValue,
+            List<VisitSummaryResponse> recentVisits,
+            List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks
+    ) {
+        double stars = Math.round((Math.max(20, org.getRelationshipScore()) / 20.0) * 10.0) / 10.0;
         return OrganizationDetailResponse.builder()
                 .id(org.getId())
                 .name(org.getName())
                 .category(org.getCategory())
                 .marketCountry(org.getMarketCountry())
                 .relationshipScore(org.getRelationshipScore())
+                .starRating(stars)
                 .contactPersonName(org.getContactPersonName())
                 .contactEmail(org.getContactEmail())
                 .contactPhone(org.getContactPhone())
@@ -61,6 +75,7 @@ public class OrganizationDetailResponse {
                 .totalOpportunityPipelineValue(pipelineValue != null ? pipelineValue : BigDecimal.ZERO)
                 .currency("USD")
                 .recentVisits(recentVisits)
+                .recentFeedbacks(recentFeedbacks)
                 .createdAt(org.getCreatedAt())
                 .updatedAt(org.getUpdatedAt())
                 .build();

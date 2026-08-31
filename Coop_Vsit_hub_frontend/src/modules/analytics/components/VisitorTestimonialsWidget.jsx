@@ -8,14 +8,10 @@ export const VisitorTestimonialsWidget = ({ feedbackReviews = [] }) => {
   const { pinnedFeedbackIds, togglePinFeedback } = useAnalyticsStore();
   const isAdmin = hasRole('ROLE_ADMIN');
 
-  // Sort pinned reviews first
-  const sortedReviews = [...feedbackReviews].sort((a, b) => {
-    const aPinned = pinnedFeedbackIds.includes(a.id);
-    const bPinned = pinnedFeedbackIds.includes(b.id);
-    if (aPinned && !bPinned) return -1;
-    if (!aPinned && bPinned) return 1;
-    return 0;
-  });
+  // Filter only reviews that have been explicitly pinned by an admin
+  const pinnedReviews = feedbackReviews.filter(
+    (review) => review.pinned || pinnedFeedbackIds.includes(review.id)
+  );
 
   return (
     <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs text-left">
@@ -28,35 +24,36 @@ export const VisitorTestimonialsWidget = ({ feedbackReviews = [] }) => {
             </h3>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Post-visit guest reviews and CSAT testimonials
+            Admin-pinned guest reviews and executive CSAT testimonials
           </p>
         </div>
 
-        {feedbackReviews.length > 0 && (
+        {pinnedReviews.length > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5 text-[#e38524]" />
-            <span>Verified Reviews</span>
+            <span>{pinnedReviews.length} Pinned Testimonial{pinnedReviews.length > 1 ? 's' : ''}</span>
           </div>
         )}
       </div>
 
-      {/* Empty State when no reviews submitted yet */}
-      {feedbackReviews.length === 0 ? (
+      {/* Empty State when no reviews pinned yet */}
+      {pinnedReviews.length === 0 ? (
         <div className="py-10 px-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center flex flex-col items-center justify-center">
-          <div className="w-10 h-10 rounded-full bg-sky-50 text-[#00adef] flex items-center justify-center mb-2">
-            <Inbox className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-full bg-amber-50 text-[#e38524] flex items-center justify-center mb-2">
+            <Pin className="w-5 h-5" />
           </div>
-          <p className="text-xs font-bold text-slate-700">No Visitor Feedback Submitted Yet</p>
+          <p className="text-xs font-bold text-slate-700">No Pinned Feedback on Executive Cockpit</p>
           <p className="text-[11px] text-slate-400 max-w-sm mt-0.5">
-            Completed visit surveys and post-visit ratings will automatically appear here.
+            System Administrators can pin customer reviews from the Visit, Individual Guest, or Organization drawers to feature them here.
           </p>
         </div>
       ) : (
-        /* Testimonials List */
+        /* Pinned Testimonials Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sortedReviews.slice(0, 4).map((review) => {
-            const isPinned = pinnedFeedbackIds.includes(review.id);
-            const stars = Array.from({ length: 5 }, (_, i) => i < (review.overallExperienceRating || 5));
+          {pinnedReviews.slice(0, 4).map((review) => {
+            const isPinned = true;
+            const starVal = review.overallRating || review.overallExperienceRating || 5.0;
+            const stars = Array.from({ length: 5 }, (_, i) => i < Math.floor(starVal));
 
             return (
               <div

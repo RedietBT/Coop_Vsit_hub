@@ -37,6 +37,7 @@ public class IndividualGuestDetailResponse {
     private String countryOfResidence;
     private VipTier vipTier;
     private int relationshipScore;
+    private Double starRating;
     private String notes;
     private long totalVisitsAttended;
     private long totalVisits;
@@ -44,6 +45,7 @@ public class IndividualGuestDetailResponse {
     private BigDecimal totalOpportunityPipelineValue;
     private String currency;
     private List<VisitSummaryResponse> recentVisits;
+    private List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -53,6 +55,17 @@ public class IndividualGuestDetailResponse {
             BigDecimal pipelineValue,
             List<VisitSummaryResponse> recentVisits
     ) {
+        return from(guest, totalVisits, pipelineValue, recentVisits, List.of());
+    }
+
+    public static IndividualGuestDetailResponse from(
+            IndividualGuest guest,
+            long totalVisits,
+            BigDecimal pipelineValue,
+            List<VisitSummaryResponse> recentVisits,
+            List<com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse> recentFeedbacks
+    ) {
+        double stars = Math.round((Math.max(20, guest.getRelationshipScore()) / 20.0) * 10.0) / 10.0;
         return IndividualGuestDetailResponse.builder()
                 .id(guest.getId())
                 .firstName(guest.getFirstName())
@@ -68,6 +81,7 @@ public class IndividualGuestDetailResponse {
                 .countryOfResidence(guest.getCountryOfResidence())
                 .vipTier(guest.getVipTier())
                 .relationshipScore(guest.getRelationshipScore())
+                .starRating(stars)
                 .notes(guest.getNotes())
                 .totalVisitsAttended(totalVisits)
                 .totalVisits(totalVisits)
@@ -75,6 +89,7 @@ public class IndividualGuestDetailResponse {
                 .totalOpportunityPipelineValue(pipelineValue != null ? pipelineValue : BigDecimal.ZERO)
                 .currency("USD")
                 .recentVisits(recentVisits)
+                .recentFeedbacks(recentFeedbacks)
                 .createdAt(guest.getCreatedAt())
                 .updatedAt(guest.getUpdatedAt())
                 .build();
