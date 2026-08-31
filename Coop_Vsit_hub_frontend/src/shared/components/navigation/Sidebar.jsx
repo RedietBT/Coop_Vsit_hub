@@ -62,7 +62,7 @@ const NAV_ITEMS = [
     roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER'],
   },
   {
-    name: 'VIP Individual Guests',
+    name: 'Individual Guests',
     path: '/guests',
     icon: Users2,
     roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER'],

@@ -16,7 +16,7 @@ const guestSchema = z.object({
   phone: z.string().optional(),
   titlePosition: z.string().optional(),
   affiliation: z.string().optional(),
-  vipTier: z.enum(['TIER_1', 'TIER_2', 'STANDARD']),
+  vipTier: z.enum(['VIP_TIER_1', 'VIP_TIER_2', 'STANDARD', 'DIPLOMAT', 'TIER_1', 'TIER_2']),
   identityDocumentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVER_LICENSE', 'DIPLOMATIC_ID']),
   identityDocumentNumber: z.string().optional(),
   nationalityCountry: z.string().min(1, 'Country is required'),
@@ -40,9 +40,9 @@ export const CreateGuestModal = () => {
       lastName: '',
       email: '',
       phone: '',
-      titlePosition: 'Senior Strategic Advisor',
-      affiliation: 'National Regulatory Commission',
-      vipTier: 'TIER_1',
+      titlePosition: '',
+      affiliation: '',
+      vipTier: 'VIP_TIER_1',
       identityDocumentType: 'PASSPORT',
       identityDocumentNumber: '',
       nationalityCountry: 'Ethiopia',
@@ -135,9 +135,10 @@ export const CreateGuestModal = () => {
               className="w-full text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef]"
               {...register('vipTier')}
             >
-              <option value="TIER_1">👑 VIP Tier 1 (C-Level & Dignitaries)</option>
-              <option value="TIER_2">⭐ VIP Tier 2 (Directors & Advisors)</option>
+              <option value="VIP_TIER_1">👑 Tier 1 (C-Level & Dignitaries)</option>
+              <option value="VIP_TIER_2">⭐ Tier 2 (Directors & Advisors)</option>
               <option value="STANDARD">Standard Individual Guest</option>
+              <option value="DIPLOMAT">Diplomat</option>
             </select>
           </div>
 

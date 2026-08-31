@@ -9,10 +9,11 @@ import CreateVisitModal from '@/modules/visits/components/CreateVisitModal';
 import Button from '@/shared/components/ui/Button';
 
 const VIP_TIERS = [
-  { label: 'All VIP Tiers', value: '' },
-  { label: '👑 VIP Tier 1 (C-Level)', value: 'TIER_1' },
-  { label: '⭐ VIP Tier 2 (Directors)', value: 'TIER_2' },
+  { label: 'All Guest Tiers', value: '' },
+  { label: '👑 Tier 1 (C-Level / Ministers)', value: 'VIP_TIER_1' },
+  { label: '⭐ Tier 2 (Directors / Senior)', value: 'VIP_TIER_2' },
   { label: 'Standard Guests', value: 'STANDARD' },
+  { label: 'Diplomats', value: 'DIPLOMAT' },
 ];
 
 export const GuestsPage = () => {
@@ -47,14 +48,14 @@ export const GuestsPage = () => {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-[#e38524] border border-amber-200 text-xs font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>VIP Individual Intelligence</span>
+            <span>Individual Guest Directory</span>
           </div>
 
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#000000] tracking-tight">
-            VIP Individual Guests Roster
+            Individual Guests
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Catalog of executive guests, government dignitaries, consultants, and VIP security protocols.
+            Directory of individual visitors, dignitaries, consultants, and scheduled delegations.
           </p>
         </div>
 
@@ -78,7 +79,7 @@ export const GuestsPage = () => {
             onClick={openCreateModal}
             icon={Plus}
           >
-            Register VIP Guest
+            + Register Individual Guest
           </Button>
         </div>
       </div>

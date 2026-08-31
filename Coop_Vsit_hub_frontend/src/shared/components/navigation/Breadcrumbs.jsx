@@ -8,7 +8,7 @@ const ROUTE_LABELS = {
   calendar: 'Booking Calendar',
   'security-desk': 'Security Front Desk',
   organizations: 'Partner Organizations',
-  guests: 'VIP Individual Guests',
+  guests: 'Individual Guests',
   'feedback-analytics': 'Customer Feedback',
   users: 'Staff User Management',
   notifications: 'Notification Center',
