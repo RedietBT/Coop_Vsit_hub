@@ -23,6 +23,9 @@ export const useGuestStore = create((set, get) => ({
   isCreateModalOpen: false,
   isProfileDrawerOpen: false,
 
+  editTarget: null,
+  isEditModalOpen: false,
+
   setFilters: (newFilters) => {
     set((state) => ({
       filters: { ...state.filters, ...newFilters },
@@ -46,6 +49,9 @@ export const useGuestStore = create((set, get) => ({
 
   openCreateModal: () => set({ isCreateModalOpen: true }),
   closeCreateModal: () => set({ isCreateModalOpen: false }),
+
+  openEditModal: (guest) => set({ editTarget: guest, isEditModalOpen: true }),
+  closeEditModal: () => set({ editTarget: null, isEditModalOpen: false }),
 
   openProfileDrawer: (guest) => set({ selectedGuest: guest, isProfileDrawerOpen: true }),
   closeProfileDrawer: () => set({ selectedGuest: null, isProfileDrawerOpen: false }),
@@ -72,7 +78,7 @@ export const useGuestStore = create((set, get) => ({
       });
     } catch (err) {
       const errorMsg =
-        err.response?.data?.message || 'Failed to fetch VIP guests directory.';
+        err.response?.data?.message || 'Failed to fetch individual guests directory.';
       set({ isLoading: false, error: errorMsg });
     }
   },
@@ -90,7 +96,7 @@ export const useGuestStore = create((set, get) => ({
     try {
       const newGuest = await guestApi.createGuest(payload);
       soundPlayer.playNotificationChime();
-      toast.success(`VIP Guest "${newGuest.fullName}" registered successfully.`);
+      toast.success(`Guest "${newGuest.fullName}" registered successfully.`);
       get().closeCreateModal();
       get().fetchGuests();
       get().fetchStats();
@@ -99,7 +105,29 @@ export const useGuestStore = create((set, get) => ({
       const errorMsg =
         err.response?.data?.message ||
         err.response?.data?.error ||
-        'Failed to register VIP guest.';
+        'Failed to register guest.';
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  },
+
+  updateGuest: async (id, payload) => {
+    try {
+      const updated = await guestApi.updateGuest(id, payload);
+      soundPlayer.playNotificationChime();
+      toast.success(`Guest "${updated.fullName}" updated successfully.`);
+      get().closeEditModal();
+      get().fetchGuests();
+      get().fetchStats();
+      if (get().selectedGuest?.id === id) {
+        set({ selectedGuest: updated });
+      }
+      return { success: true, guest: updated };
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Failed to update guest.';
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     }
@@ -108,13 +136,13 @@ export const useGuestStore = create((set, get) => ({
   deleteGuest: async (id, name) => {
     try {
       await guestApi.deleteGuest(id);
-      toast.success(`VIP Guest "${name}" removed.`);
+      toast.success(`Guest "${name}" removed.`);
       get().fetchGuests();
       get().fetchStats();
       get().closeProfileDrawer();
     } catch (err) {
       toast.error(
-        err.response?.data?.message || 'Failed to delete VIP guest (visit history exists).'
+        err.response?.data?.message || 'Failed to delete guest (visit history exists).'
       );
     }
   },

@@ -4,6 +4,7 @@ import useGuestStore from '../store/guestStore';
 import GuestKpiBanner from '../components/GuestKpiBanner';
 import GuestTable from '../components/GuestTable';
 import CreateGuestModal from '../components/CreateGuestModal';
+import EditGuestModal from '../components/EditGuestModal';
 import GuestProfileDrawer from '../components/GuestProfileDrawer';
 import CreateVisitModal from '@/modules/visits/components/CreateVisitModal';
 import Button from '@/shared/components/ui/Button';
@@ -97,7 +98,7 @@ export const GuestsPage = () => {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by VIP guest name, affiliation, title..."
+            placeholder="Search by guest name, email, phone, country..."
             className="w-full pl-10 pr-20 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 shadow-xs placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef]"
           />
           <button
@@ -142,6 +143,7 @@ export const GuestsPage = () => {
 
       {/* Modals & Drawers */}
       <CreateGuestModal />
+      <EditGuestModal />
       <GuestProfileDrawer />
       <CreateVisitModal />
     </div>

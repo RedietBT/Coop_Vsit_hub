@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,22 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
         );
 
         Page<IndividualGuest> guestPage = guestRepository.findAll(spec, pageable);
-        Page<IndividualGuestSummaryResponse> dtoPage = guestPage.map(IndividualGuestSummaryResponse::from);
+        List<UUID> guestIds = guestPage.getContent().stream().map(IndividualGuest::getId).toList();
+
+        Map<UUID, Long> visitCountMap = new HashMap<>();
+        if (!guestIds.isEmpty()) {
+            List<Object[]> counts = visitRepository.countVisitsGroupedByMasterIndividualGuestIds(guestIds);
+            for (Object[] row : counts) {
+                if (row != null && row.length >= 2 && row[0] instanceof UUID gId && row[1] instanceof Long cnt) {
+                    visitCountMap.put(gId, cnt);
+                }
+            }
+        }
+
+        Page<IndividualGuestSummaryResponse> dtoPage = guestPage.map(guest -> {
+            long totalVisits = visitCountMap.getOrDefault(guest.getId(), 0L);
+            return IndividualGuestSummaryResponse.from(guest, totalVisits);
+        });
 
         return PageResponse.from(dtoPage);
     }
@@ -133,9 +149,14 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
     public IndividualGuestDetailResponse createIndividualGuest(CreateIndividualGuestRequest request, String createdBy) {
         log.info("Registering individual guest: '{} {}' by user '{}'", request.getFirstName(), request.getLastName(), createdBy);
 
-        String email = request.getEmail().trim().toLowerCase();
-        if (guestRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("An individual guest with email '" + email + "' already exists.");
+        String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim().toLowerCase() : null;
+        if (email != null && guestRepository.existsByEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("An individual guest with email '" + email + "' is already registered.");
+        }
+
+        String phone = StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null;
+        if (phone != null && guestRepository.existsByPhoneNumber(phone)) {
+            throw new IllegalArgumentException("An individual guest with phone number '" + phone + "' is already registered.");
         }
 
         IndividualGuest guest = IndividualGuest.builder()
@@ -143,7 +164,7 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
                 .middleName(StringUtils.hasText(request.getMiddleName()) ? request.getMiddleName().trim() : null)
                 .lastName(request.getLastName().trim())
                 .email(email)
-                .phoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null)
+                .phoneNumber(phone)
                 .idNumber(StringUtils.hasText(request.getIdNumber()) ? request.getIdNumber().trim() : null)
                 .idType(request.getIdType() != null ? request.getIdType() : IdentityDocumentType.NATIONAL_ID)
                 .guestTitle(StringUtils.hasText(request.getGuestTitle()) ? request.getGuestTitle().trim() : null)
@@ -177,16 +198,21 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
         IndividualGuest guest = guestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Individual guest not found with ID: " + id));
 
-        String email = request.getEmail().trim().toLowerCase();
-        if (guestRepository.existsByEmailAndIdNot(email, id)) {
+        String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim().toLowerCase() : null;
+        if (email != null && guestRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
             throw new IllegalArgumentException("Another individual guest with email '" + email + "' already exists.");
+        }
+
+        String phone = StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null;
+        if (phone != null && guestRepository.existsByPhoneNumberAndIdNot(phone, id)) {
+            throw new IllegalArgumentException("Another individual guest with phone number '" + phone + "' already exists.");
         }
 
         guest.setFirstName(request.getFirstName().trim());
         guest.setMiddleName(StringUtils.hasText(request.getMiddleName()) ? request.getMiddleName().trim() : null);
         guest.setLastName(request.getLastName().trim());
         guest.setEmail(email);
-        guest.setPhoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null);
+        guest.setPhoneNumber(phone);
         guest.setIdNumber(StringUtils.hasText(request.getIdNumber()) ? request.getIdNumber().trim() : null);
         guest.setIdType(request.getIdType() != null ? request.getIdType() : IdentityDocumentType.NATIONAL_ID);
         guest.setGuestTitle(StringUtils.hasText(request.getGuestTitle()) ? request.getGuestTitle().trim() : null);

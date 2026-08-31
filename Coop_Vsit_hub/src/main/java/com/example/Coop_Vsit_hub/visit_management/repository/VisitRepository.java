@@ -46,6 +46,9 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
 
     long countByMasterIndividualGuestId(UUID individualGuestId);
 
+    @Query("SELECT v.masterIndividualGuest.id, COUNT(v) FROM Visit v WHERE v.masterIndividualGuest.id IN :guestIds GROUP BY v.masterIndividualGuest.id")
+    List<Object[]> countVisitsGroupedByMasterIndividualGuestIds(@Param("guestIds") List<UUID> guestIds);
+
     List<Visit> findTop10ByMasterIndividualGuestIdOrderByScheduledStartTimeDesc(UUID individualGuestId);
 
     @Query("SELECT COALESCE(SUM(v.opportunityValue), 0) FROM Visit v WHERE v.masterIndividualGuest.id = :guestId")

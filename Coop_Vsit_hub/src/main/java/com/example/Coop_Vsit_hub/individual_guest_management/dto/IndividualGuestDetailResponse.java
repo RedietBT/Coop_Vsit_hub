@@ -39,6 +39,8 @@ public class IndividualGuestDetailResponse {
     private int relationshipScore;
     private String notes;
     private long totalVisitsAttended;
+    private long totalVisits;
+    private long totalVisitsCompleted;
     private BigDecimal totalOpportunityPipelineValue;
     private String currency;
     private List<VisitSummaryResponse> recentVisits;
@@ -68,6 +70,8 @@ public class IndividualGuestDetailResponse {
                 .relationshipScore(guest.getRelationshipScore())
                 .notes(guest.getNotes())
                 .totalVisitsAttended(totalVisits)
+                .totalVisits(totalVisits)
+                .totalVisitsCompleted(totalVisits)
                 .totalOpportunityPipelineValue(pipelineValue != null ? pipelineValue : BigDecimal.ZERO)
                 .currency("USD")
                 .recentVisits(recentVisits)

@@ -16,7 +16,13 @@ public interface IndividualGuestRepository extends JpaRepository<IndividualGuest
 
     Optional<IndividualGuest> findByEmail(String email);
 
+    Optional<IndividualGuest> findByEmailIgnoreCase(String email);
+
     boolean existsByEmail(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, UUID id);
 
     boolean existsByEmailAndIdNot(String email, UUID id);
 
@@ -25,6 +31,12 @@ public interface IndividualGuestRepository extends JpaRepository<IndividualGuest
     Optional<IndividualGuest> findByFirstNameIgnoreCaseAndLastNameIgnoreCaseAndPhoneNumber(String firstName, String lastName, String phoneNumber);
 
     List<IndividualGuest> findByPhoneNumber(String phoneNumber);
+
+    Optional<IndividualGuest> findFirstByPhoneNumber(String phoneNumber);
+
+    boolean existsByPhoneNumber(String phoneNumber);
+
+    boolean existsByPhoneNumberAndIdNot(String phoneNumber, UUID id);
 
     long countByVipTier(VipTier vipTier);
 

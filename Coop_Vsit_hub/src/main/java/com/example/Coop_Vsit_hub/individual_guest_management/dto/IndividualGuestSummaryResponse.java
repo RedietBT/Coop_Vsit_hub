@@ -34,9 +34,14 @@ public class IndividualGuestSummaryResponse {
     private String countryOfResidence;
     private VipTier vipTier;
     private int relationshipScore;
+    private long totalVisits;
     private Instant createdAt;
 
     public static IndividualGuestSummaryResponse from(IndividualGuest guest) {
+        return from(guest, 0);
+    }
+
+    public static IndividualGuestSummaryResponse from(IndividualGuest guest, long totalVisits) {
         return IndividualGuestSummaryResponse.builder()
                 .id(guest.getId())
                 .firstName(guest.getFirstName())
@@ -52,6 +57,7 @@ public class IndividualGuestSummaryResponse {
                 .countryOfResidence(guest.getCountryOfResidence())
                 .vipTier(guest.getVipTier())
                 .relationshipScore(guest.getRelationshipScore())
+                .totalVisits(totalVisits)
                 .createdAt(guest.getCreatedAt())
                 .build();
     }

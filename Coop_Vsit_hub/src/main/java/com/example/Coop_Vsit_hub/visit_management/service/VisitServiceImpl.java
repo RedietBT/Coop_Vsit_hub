@@ -248,18 +248,32 @@ public class VisitServiceImpl implements VisitService {
                     });
         } else if (StringUtils.hasText(fName)) {
             String searchLast = StringUtils.hasText(lName) ? lName : (StringUtils.hasText(mName) ? mName : fName);
+            
+            // 1. Check existing guest by Phone
             if (StringUtils.hasText(phone)) {
+                indGuest = individualGuestRepository.findFirstByPhoneNumber(phone.trim()).orElse(null);
+            }
+            // 2. Check existing guest by Email
+            if (indGuest == null && StringUtils.hasText(email)) {
+                indGuest = individualGuestRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+            }
+            // 3. Check existing guest by Name + Phone
+            if (indGuest == null && StringUtils.hasText(phone)) {
                 indGuest = individualGuestRepository
                         .findByFirstNameIgnoreCaseAndLastNameIgnoreCaseAndPhoneNumber(fName, searchLast, phone)
                         .orElse(null);
             }
-            // If not found in individual guests register, auto-create new IndividualGuest
+
+            // 4. If not found in individual guests register, auto-create new IndividualGuest
             if (indGuest == null) {
-                String safeEmail = StringUtils.hasText(email) ? email : null;
-                if (safeEmail == null || individualGuestRepository.existsByEmail(safeEmail)) {
+                String safeEmail = StringUtils.hasText(email) ? email.trim().toLowerCase() : null;
+                if (safeEmail != null && individualGuestRepository.existsByEmailIgnoreCase(safeEmail)) {
+                    safeEmail = null;
+                }
+                if (safeEmail == null) {
                     String cleanPhone = StringUtils.hasText(phone) ? phone.replaceAll("[^0-9]", "") : "";
                     String candidateEmail = (cleanPhone.length() >= 6 ? cleanPhone : UUID.randomUUID().toString().substring(0, 8)) + "@guest.coopbank.com.et";
-                    if (individualGuestRepository.existsByEmail(candidateEmail)) {
+                    if (individualGuestRepository.existsByEmailIgnoreCase(candidateEmail)) {
                         candidateEmail = UUID.randomUUID().toString().substring(0, 8) + "." + candidateEmail;
                     }
                     safeEmail = candidateEmail;

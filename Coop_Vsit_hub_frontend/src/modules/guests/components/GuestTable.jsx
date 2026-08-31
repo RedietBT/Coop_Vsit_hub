@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Edit2,
 } from 'lucide-react';
 import useGuestStore from '../store/guestStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
@@ -27,6 +28,7 @@ export const GuestTable = () => {
     isLoading,
     setPage,
     openProfileDrawer,
+    openEditModal,
     deleteGuest,
   } = useGuestStore();
 
@@ -230,20 +232,37 @@ export const GuestTable = () => {
                               className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
                               <Eye className="w-4 h-4 text-slate-400" />
-                              <span>View VIP Dossier</span>
+                              <span>View Profile Dossier</span>
                             </button>
 
-                            {/* 2. Book Visit */}
+                            {/* 2. Edit Guest */}
                             <button
                               type="button"
                               onClick={() => {
                                 setOpenDropdownId(null);
-                                openVisitModal();
+                                openEditModal(g);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4 text-slate-400" />
+                              <span>Edit Guest Details</span>
+                            </button>
+
+                            {/* 3. Book Visit */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openVisitModal({
+                                  guestCategory: 'INDIVIDUAL',
+                                  individualGuestId: g.id,
+                                  guestDisplayName: g.fullName,
+                                });
                               }}
                               className="w-full px-3.5 py-2 text-xs font-semibold text-[#e38524] hover:bg-orange-50 flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
                               <CalendarPlus className="w-4 h-4 text-[#e38524]" />
-                              <span>Book Visit for VIP</span>
+                              <span>Schedule Visit</span>
                             </button>
 
                             {/* 3. Delete Record */}
