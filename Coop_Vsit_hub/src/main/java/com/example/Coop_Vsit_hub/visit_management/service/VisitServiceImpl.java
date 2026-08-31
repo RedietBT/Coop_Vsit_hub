@@ -411,8 +411,8 @@ public class VisitServiceImpl implements VisitService {
             }
         }
 
-        // If SCHEDULED room reservation, instantly notify Super Admins via email & in-app
-        if (notificationService != null && saved.getStatus() == VisitStatus.SCHEDULED && StringUtils.hasText(saved.getLocationRoom())) {
+        // If a meeting room is reserved for this visit, instantly notify Super Admins via email & in-app
+        if (StringUtils.hasText(saved.getLocationRoom())) {
             try {
                 String dateStr = saved.getScheduledStartTime() != null 
                         ? DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(saved.getScheduledStartTime())
@@ -435,15 +435,17 @@ public class VisitServiceImpl implements VisitService {
                         saved.getVisitCode()
                 );
 
-                notificationService.notifyRoles(
-                        List.of(com.example.coop_vsit_hub.user_and_auth.enums.RoleName.ROLE_ADMIN),
-                        "Room Booking Confirmed: " + saved.getLocationRoom(),
-                        adminMessage,
-                        com.example.coop_vsit_hub.notification_management.enums.NotificationType.VISIT_APPROVED,
-                        saved.getId(),
-                        saved.getVisitCode(),
-                        true // send email via SMTP/MailHog
-                );
+                if (notificationService != null) {
+                    notificationService.notifyRoles(
+                            List.of(com.example.coop_vsit_hub.user_and_auth.enums.RoleName.ROLE_ADMIN),
+                            "Room Booking Confirmed: " + saved.getLocationRoom(),
+                            adminMessage,
+                            com.example.coop_vsit_hub.notification_management.enums.NotificationType.VISIT_APPROVED,
+                            saved.getId(),
+                            saved.getVisitCode(),
+                            true // send email via SMTP/MailHog
+                    );
+                }
 
                 if (emailService != null) {
                     List<String> adminEmails = new ArrayList<>(userRepository.findAll().stream()
@@ -456,6 +458,15 @@ public class VisitServiceImpl implements VisitService {
                     if (adminEmails.isEmpty() && StringUtils.hasText(configuredAdminEmail)) {
                         adminEmails.add(configuredAdminEmail.trim());
                     }
+
+                    if (adminEmails.isEmpty()) {
+                        userRepository.findByUsername("admin")
+                                .filter(u -> StringUtils.hasText(u.getEmail()))
+                                .ifPresent(u -> adminEmails.add(u.getEmail()));
+                    }
+
+                    log.info("Sending room booking email notification for room '{}' to {} admin(s): {}",
+                            saved.getLocationRoom(), adminEmails.size(), adminEmails);
 
                     for (String aEmail : adminEmails) {
                         emailService.sendRoomBookingAdminNotification(
@@ -475,7 +486,7 @@ public class VisitServiceImpl implements VisitService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Failed to dispatch admin notification for room booking: {}", e.getMessage());
+                log.warn("Failed to dispatch admin notification for room reservation: {}", e.getMessage());
             }
         }
 

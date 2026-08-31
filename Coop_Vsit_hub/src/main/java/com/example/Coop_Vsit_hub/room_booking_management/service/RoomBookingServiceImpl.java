@@ -118,6 +118,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         adminEmails.add(configuredAdminEmail.trim());
                     }
 
+                    if (adminEmails.isEmpty()) {
+                        userRepository.findByUsername("admin")
+                                .filter(u -> StringUtils.hasText(u.getEmail()))
+                                .ifPresent(u -> adminEmails.add(u.getEmail()));
+                    }
+
+                    log.info("Sending room booking email notification for room '{}' to {} admin(s): {}",
+                            saved.getRoomName(), adminEmails.size(), adminEmails);
+
                     for (String aEmail : adminEmails) {
                         emailService.sendRoomBookingAdminNotification(
                                 aEmail,
