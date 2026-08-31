@@ -102,7 +102,7 @@ public class VisitServiceImpl implements VisitService {
                     com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fb = feedbackService.getFeedbackByVisitId(v.getId());
                     if (fb != null && fb.isSubmitted()) {
                         dto.setFeedbackSubmitted(true);
-                        dto.setGuestRating(fb.getOverallScore());
+                        dto.setGuestRating(fb.getOverallRating());
                         dto.setFeedbackComments(fb.getComments());
                     } else {
                         dto.setFeedbackSubmitted(false);
