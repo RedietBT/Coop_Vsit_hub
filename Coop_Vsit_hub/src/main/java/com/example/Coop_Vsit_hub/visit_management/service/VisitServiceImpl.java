@@ -46,6 +46,7 @@ public class VisitServiceImpl implements VisitService {
     private final IndividualGuestRepository individualGuestRepository;
     private final UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
+    private final com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRepository feedbackRepository;
 
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -97,17 +98,25 @@ public class VisitServiceImpl implements VisitService {
         Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
         Page<VisitSummaryResponse> dtoPage = visitPage.map(v -> {
             VisitSummaryResponse dto = VisitSummaryResponse.from(v);
-            if (feedbackService != null) {
-                try {
-                    com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fb = feedbackService.getFeedbackByVisitId(v.getId());
-                    if (fb != null && fb.isSubmitted()) {
+            if (feedbackRepository != null) {
+                feedbackRepository.findByVisitId(v.getId()).ifPresent(fb -> {
+                    if (fb.isSubmitted()) {
                         dto.setFeedbackSubmitted(true);
-                        dto.setGuestRating(fb.getOverallRating());
+                        int count = 0;
+                        int sum = 0;
+                        if (fb.getHospitalityRating() != null && fb.getHospitalityRating() > 0) { sum += fb.getHospitalityRating(); count++; }
+                        if (fb.getFacilityRating() != null && fb.getFacilityRating() > 0) { sum += fb.getFacilityRating(); count++; }
+                        if (fb.getObjectiveRating() != null && fb.getObjectiveRating() > 0) { sum += fb.getObjectiveRating(); count++; }
+                        double avg = count > 0 ? Math.round((sum / (double) count) * 10.0) / 10.0 : 5.0;
+                        dto.setGuestRating(avg);
                         dto.setFeedbackComments(fb.getComments());
                     } else {
                         dto.setFeedbackSubmitted(false);
                     }
-                } catch (Exception ignored) {}
+                });
+            }
+            if (dto.getFeedbackSubmitted() == null) {
+                dto.setFeedbackSubmitted(false);
             }
             return dto;
         });
@@ -123,10 +132,10 @@ public class VisitServiceImpl implements VisitService {
                 .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
 
         com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse fbDto = null;
-        if (feedbackService != null) {
-            try {
-                fbDto = feedbackService.getFeedbackByVisitId(id);
-            } catch (Exception ignored) {}
+        if (feedbackRepository != null) {
+            fbDto = feedbackRepository.findByVisitId(id)
+                    .map(com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse::from)
+                    .orElse(null);
         }
         return VisitDetailResponse.from(visit, fbDto);
     }
