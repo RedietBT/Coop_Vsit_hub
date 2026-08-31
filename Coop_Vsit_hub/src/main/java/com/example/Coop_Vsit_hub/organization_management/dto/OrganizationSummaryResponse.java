@@ -28,9 +28,14 @@ public class OrganizationSummaryResponse {
     private String contactPhone;
     private String website;
     private String industrySector;
+    private long totalVisits;
     private Instant createdAt;
 
     public static OrganizationSummaryResponse from(Organization org) {
+        return from(org, 0);
+    }
+
+    public static OrganizationSummaryResponse from(Organization org, long totalVisits) {
         return OrganizationSummaryResponse.builder()
                 .id(org.getId())
                 .name(org.getName())
@@ -42,6 +47,7 @@ public class OrganizationSummaryResponse {
                 .contactPhone(org.getContactPhone())
                 .website(org.getWebsite())
                 .industrySector(org.getIndustrySector())
+                .totalVisits(totalVisits)
                 .createdAt(org.getCreatedAt())
                 .build();
     }

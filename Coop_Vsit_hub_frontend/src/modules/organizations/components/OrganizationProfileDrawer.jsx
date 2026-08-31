@@ -189,9 +189,9 @@ export const OrganizationProfileDrawer = () => {
                 {/* 2. Portfolio Stats Card */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs text-center">
-                    <p className="text-slate-400 text-[10px] uppercase font-bold">Total Delegations</p>
+                    <p className="text-slate-400 text-[10px] uppercase font-bold">Total Visits</p>
                     <p className="font-heading font-black text-xl text-[#000000] mt-1">
-                      {selectedOrg.totalVisitsCompleted ?? selectedOrg.totalVisits ?? orgVisits.length}
+                      {selectedOrg.totalVisitsHosted ?? selectedOrg.totalVisits ?? orgVisits.length}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">Completed & Scheduled</p>
                   </div>
@@ -217,12 +217,12 @@ export const OrganizationProfileDrawer = () => {
                   </div>
                 )}
 
-                {/* 4. Recent Delegations List */}
+                {/* 4. Recent Visits List */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-[#e38524]" />
-                      <span>Recent Visit Delegations ({orgVisits.length})</span>
+                      <span>Recent Visits ({orgVisits.length})</span>
                     </span>
                   </div>
 

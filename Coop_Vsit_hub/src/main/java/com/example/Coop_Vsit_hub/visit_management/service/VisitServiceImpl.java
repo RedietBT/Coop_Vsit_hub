@@ -218,15 +218,34 @@ public class VisitServiceImpl implements VisitService {
             final String visitorEmail = email;
 
             guestOrg = organizationRepository.findByNameIgnoreCase(orgName)
-                    .orElseGet(() -> organizationRepository.save(Organization.builder()
-                            .name(orgName)
-                            .category("Partner Organization")
-                            .marketCountry("Ethiopia")
-                            .relationshipScore(85)
-                            .contactPersonName(StringUtils.hasText(visitorContact.trim()) ? visitorContact.trim() : null)
-                            .contactPhone(StringUtils.hasText(visitorPhone) ? visitorPhone : null)
-                            .contactEmail(StringUtils.hasText(visitorEmail) ? visitorEmail : null)
-                            .build()));
+                    .orElseGet(() -> {
+                        String orgContact = StringUtils.hasText(request.getOrganizationContactPerson())
+                                ? request.getOrganizationContactPerson().trim()
+                                : (StringUtils.hasText(visitorContact.trim()) ? visitorContact.trim() : null);
+
+                        String orgPhone = StringUtils.hasText(request.getOrganizationPhone())
+                                ? request.getOrganizationPhone().trim()
+                                : (StringUtils.hasText(visitorPhone) ? visitorPhone.trim() : null);
+
+                        String orgEmail = StringUtils.hasText(request.getOrganizationEmail())
+                                ? request.getOrganizationEmail().trim().toLowerCase()
+                                : (StringUtils.hasText(visitorEmail) ? visitorEmail.trim().toLowerCase() : null);
+
+                        String orgSector = StringUtils.hasText(request.getOrganizationSector())
+                                ? request.getOrganizationSector().trim()
+                                : null;
+
+                        return organizationRepository.save(Organization.builder()
+                                .name(orgName)
+                                .category("Partner Organization")
+                                .marketCountry("Ethiopia")
+                                .relationshipScore(85)
+                                .contactPersonName(orgContact)
+                                .contactPhone(orgPhone)
+                                .contactEmail(orgEmail)
+                                .industrySector(orgSector)
+                                .build());
+                    });
         } else if (StringUtils.hasText(fName)) {
             String searchLast = StringUtils.hasText(lName) ? lName : (StringUtils.hasText(mName) ? mName : fName);
             if (StringUtils.hasText(phone)) {

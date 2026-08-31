@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,22 @@ public class OrganizationServiceImpl implements OrganizationService {
         );
 
         Page<Organization> orgPage = organizationRepository.findAll(spec, pageable);
-        Page<OrganizationSummaryResponse> dtoPage = orgPage.map(OrganizationSummaryResponse::from);
+        List<UUID> orgIds = orgPage.getContent().stream().map(Organization::getId).toList();
+
+        Map<UUID, Long> visitCountMap = new HashMap<>();
+        if (!orgIds.isEmpty()) {
+            List<Object[]> counts = visitRepository.countVisitsGroupedByGuestOrganizationIds(orgIds);
+            for (Object[] row : counts) {
+                if (row != null && row.length >= 2 && row[0] instanceof UUID orgId && row[1] instanceof Long cnt) {
+                    visitCountMap.put(orgId, cnt);
+                }
+            }
+        }
+
+        Page<OrganizationSummaryResponse> dtoPage = orgPage.map(org -> {
+            long totalVisits = visitCountMap.getOrDefault(org.getId(), 0L);
+            return OrganizationSummaryResponse.from(org, totalVisits);
+        });
 
         return PageResponse.from(dtoPage);
     }

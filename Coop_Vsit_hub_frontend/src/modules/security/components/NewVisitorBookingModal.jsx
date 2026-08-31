@@ -33,12 +33,17 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useAuthStore();
   const { departments, meetingRooms, fetchAllMasterData } = useMasterDataStore();
 
-  // Organizations lookup for autocomplete
   const [existingOrgs, setExistingOrgs] = useState([]);
   const [isAffiliatedOrg, setIsAffiliatedOrg] = useState(false);
   const [orgSearchInput, setOrgSearchInput] = useState('');
   const [selectedOrgId, setSelectedOrgId] = useState(null);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [orgDetails, setOrgDetails] = useState({
+    contactPerson: '',
+    phone: '',
+    email: '',
+    sector: '',
+  });
   const orgDropdownRef = useRef(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -158,6 +163,12 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const handleSelectOrg = (org) => {
     setSelectedOrgId(org.id);
     setOrgSearchInput(org.name);
+    setOrgDetails({
+      contactPerson: org.contactPersonName || '',
+      phone: org.contactPhone || '',
+      email: org.contactEmail || '',
+      sector: org.industrySector || '',
+    });
     setShowOrgDropdown(false);
   };
 
@@ -181,10 +192,14 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
         guestTier: !isAffiliatedOrg ? (formData.guestTier || 'Normal Guest') : null,
         linkedBookingId: formData.linkedBookingId || null,
 
-        // Organization link
+        // Organization link & details (priority given to explicit org fields, fallbacks to visitor details in backend)
         guestCategory: isAffiliatedOrg ? 'ORGANIZATION' : 'INDIVIDUAL',
         guestOrganizationId: isAffiliatedOrg && selectedOrgId ? selectedOrgId : null,
         organizationName: isAffiliatedOrg && orgSearchInput.trim() ? orgSearchInput.trim() : null,
+        organizationContactPerson: isAffiliatedOrg && orgDetails.contactPerson.trim() ? orgDetails.contactPerson.trim() : null,
+        organizationPhone: isAffiliatedOrg && orgDetails.phone.trim() ? orgDetails.phone.trim() : null,
+        organizationEmail: isAffiliatedOrg && orgDetails.email.trim() ? orgDetails.email.trim() : null,
+        organizationSector: isAffiliatedOrg && orgDetails.sector.trim() ? orgDetails.sector.trim() : null,
 
         // Visitor Demographics (All Optional)
         individualGuestFirstName: formData.firstName.trim() || null,
@@ -355,6 +370,73 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 <p className="text-[10px] text-slate-500 mt-1">
                   💡 If this organization is new, simply type its name and it will be automatically saved to your Partner Organizations registry.
                 </p>
+
+                {/* Optional Company Details Block */}
+                <div className="mt-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-[#00adef]" />
+                      Company Contact Information (Optional)
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Auto-fallbacks to visitor info if left blank
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Primary Contact Person
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Martha Haile (Executive Contact)"
+                        value={orgDetails.contactPerson}
+                        onChange={(e) => setOrgDetails((prev) => ({ ...prev, contactPerson: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Industry Sector
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Telecommunications, Banking, Agro"
+                        value={orgDetails.sector}
+                        onChange={(e) => setOrgDetails((prev) => ({ ...prev, sector: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Company Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="e.g. +251115510000"
+                        value={orgDetails.phone}
+                        onChange={(e) => setOrgDetails((prev) => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Company Email Address
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="e.g. corporate@partner.et"
+                        value={orgDetails.email}
+                        onChange={(e) => setOrgDetails((prev) => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -176,7 +176,7 @@ export const OrganizationTable = () => {
                     {/* Total Visits Completed */}
                     <td className="py-4 px-4 text-center">
                       <span className="font-heading font-black text-sm text-[#000000]">
-                        {org.totalVisitsCompleted || org.totalVisits || 1}
+                        {org.totalVisits ?? org.totalVisitsCompleted ?? 0}
                       </span>
                     </td>
 

@@ -69,6 +69,18 @@ public class CreateVisitRequest {
     @Schema(description = "Direct or newly typed organization name (auto-saved to organizations table)", example = "Safaricom Telecommunications")
     private String organizationName;
 
+    @Schema(description = "Optional company primary contact person", example = "Anwar Soussa")
+    private String organizationContactPerson;
+
+    @Schema(description = "Optional company phone number", example = "+251970000000")
+    private String organizationPhone;
+
+    @Schema(description = "Optional company email address", example = "corporate@partner.et")
+    private String organizationEmail;
+
+    @Schema(description = "Optional company industry sector", example = "Telecommunications")
+    private String organizationSector;
+
     @Schema(description = "Optional UUID of registered Individual VIP Guest")
     private UUID individualGuestId;
 
