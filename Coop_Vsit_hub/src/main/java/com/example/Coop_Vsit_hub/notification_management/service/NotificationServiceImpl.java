@@ -212,11 +212,11 @@ public class NotificationServiceImpl implements NotificationService {
                 visit.getLocationRoom() != null ? visit.getLocationRoom() : "Main Reception");
 
         if (visit.getRequester() != null) {
-            notifyUser(visit.getRequester(), title, message, NotificationType.VISITOR_CHECKED_IN, visit.getId(), visit.getVisitCode(), true);
+            notifyUser(visit.getRequester(), title, message, NotificationType.VISITOR_CHECKED_IN, visit.getId(), visit.getVisitCode(), false);
         }
 
         if (visit.getSponsor() != null && (visit.getRequester() == null || !visit.getSponsor().getId().equals(visit.getRequester().getId()))) {
-            notifyUser(visit.getSponsor(), title, message, NotificationType.VISITOR_CHECKED_IN, visit.getId(), visit.getVisitCode(), true);
+            notifyUser(visit.getSponsor(), title, message, NotificationType.VISITOR_CHECKED_IN, visit.getId(), visit.getVisitCode(), false);
         }
     }
 

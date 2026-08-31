@@ -30,7 +30,7 @@ public class FeedbackController {
 
     private final FeedbackService feedbackService;
 
-    @org.springframework.beans.factory.annotation.Value("${coopbank.app.frontend-url:${app.frontend.url:http://localhost:5173}}")
+    @org.springframework.beans.factory.annotation.Value("${coopbank.app.frontend-url:${app.frontend.url:http://localhost:3000}}")
     private String frontendUrl;
 
     @GetMapping("/verify/{token}")
@@ -41,7 +41,7 @@ public class FeedbackController {
     ) {
         FeedbackVerifyResponse response = feedbackService.verifyFeedbackToken(token);
         if (acceptHeader != null && acceptHeader.contains("text/html")) {
-            String target = (org.springframework.util.StringUtils.hasText(frontendUrl) ? frontendUrl.trim() : "http://localhost:5173") + "/feedback/" + token;
+            String target = (org.springframework.util.StringUtils.hasText(frontendUrl) ? frontendUrl.trim() : "http://localhost:3000") + "/feedback/" + token;
             return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                     .location(java.net.URI.create(target))
                     .build();

@@ -43,7 +43,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     @org.springframework.beans.factory.annotation.Autowired
     private com.example.coop_vsit_hub.notification_management.service.NotificationService notificationService;
 
-    @Value("${coopbank.app.frontend-url:${app.frontend.url:http://localhost:5173}}")
+    @Value("${coopbank.app.frontend-url:${app.frontend.url:http://localhost:3000}}")
     private String frontendUrl;
 
     @Value("${spring.mail.from:feedback@coopbank.com.et}")
@@ -316,7 +316,7 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     private void sendSurveyEmail(String recipientEmail, Visit visit, String token) {
         try {
-            String base = StringUtils.hasText(frontendUrl) ? frontendUrl.trim() : "http://localhost:5173";
+            String base = StringUtils.hasText(frontendUrl) ? frontendUrl.trim() : "http://localhost:3000";
             String surveyUrl = base + "/feedback/" + token;
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
