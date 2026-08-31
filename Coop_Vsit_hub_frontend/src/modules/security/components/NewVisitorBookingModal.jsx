@@ -371,32 +371,19 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                   💡 If this organization is new, simply type its name and it will be automatically saved to your Partner Organizations registry.
                 </p>
 
-                {/* Optional Company Details Block */}
+                {/* Optional Organization Contact & Sector Details Block */}
                 <div className="mt-3 p-3.5 rounded-2xl bg-white border border-slate-200/90 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                     <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-[#00adef]" />
-                      Company Contact Information (Optional)
+                      Organization Contact & Sector Information (Optional)
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      Auto-fallbacks to visitor info if left blank
+                      Falls back to visitor info if left blank
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                        Primary Contact Person
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Martha Haile (Executive Contact)"
-                        value={orgDetails.contactPerson}
-                        onChange={(e) => setOrgDetails((prev) => ({ ...prev, contactPerson: e.target.value }))}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                         Industry Sector
@@ -412,7 +399,7 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                        Company Phone Number
+                        Organization Phone Number
                       </label>
                       <input
                         type="tel"
@@ -425,16 +412,21 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                        Company Email Address
+                        Organization Email Address
                       </label>
                       <input
                         type="email"
-                        placeholder="e.g. corporate@partner.et"
+                        placeholder="e.g. info@organization.et"
                         value={orgDetails.email}
                         onChange={(e) => setOrgDetails((prev) => ({ ...prev, email: e.target.value }))}
                         className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#00adef]"
                       />
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium border-t border-slate-100">
+                    <User className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
+                    <span>Contact person for this organization will automatically be set as the visitor registered below.</span>
                   </div>
                 </div>
               </div>
