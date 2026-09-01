@@ -161,11 +161,11 @@ public class ActiveDirectoryAuthService {
                 .orElse(null);
 
         if (user == null) {
-            // Auto-provision new staff user
-            Role staffRole = roleRepository.findByName(RoleName.ROLE_RELATIONSHIP_MANAGER)
+            // Auto-provision new standard staff employee
+            Role staffRole = roleRepository.findByName(RoleName.ROLE_EMPLOYEE)
                     .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name(RoleName.ROLE_RELATIONSHIP_MANAGER)
-                            .description("CoopBank Staff Relationship Manager")
+                            .name(RoleName.ROLE_EMPLOYEE)
+                            .description("CoopBank Staff Employee")
                             .build()));
 
             Set<Role> roles = new HashSet<>();

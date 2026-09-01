@@ -79,7 +79,7 @@ export const AppRoutes = () => {
         path="/visits/calendar"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitCalendarPage />
               </DashboardLayout>
@@ -92,7 +92,7 @@ export const AppRoutes = () => {
         path="/bookings"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK', 'ROLE_APPROVER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <BookingManagementPage />
               </DashboardLayout>
@@ -105,7 +105,7 @@ export const AppRoutes = () => {
         path="/visits"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <VisitsListPage />
               </DashboardLayout>
@@ -131,7 +131,7 @@ export const AppRoutes = () => {
         path="/reports"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_SECURITY_DESK']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <ReportsAnalyticsPage />
               </DashboardLayout>
@@ -144,7 +144,7 @@ export const AppRoutes = () => {
         path="/organizations"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <OrganizationsPage />
               </DashboardLayout>
@@ -157,7 +157,7 @@ export const AppRoutes = () => {
         path="/guests"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
               <DashboardLayout>
                 <GuestsPage />
               </DashboardLayout>
