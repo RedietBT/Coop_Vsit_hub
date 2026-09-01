@@ -67,4 +67,8 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
             @Param("status") RoomBookingStatus status,
             Pageable pageable
     );
+
+    List<RoomBooking> findByBookedByUserId(UUID bookedByUserId);
+
+    List<RoomBooking> findByBookedByUsernameIgnoreCaseOrBookedByEmailIgnoreCase(String username, String email);
 }

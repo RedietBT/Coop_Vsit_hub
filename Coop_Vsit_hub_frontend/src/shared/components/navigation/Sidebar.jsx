@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Database,
   FileSpreadsheet,
+  Sparkles,
 } from 'lucide-react';
 import CoopLogo from '@/core/assets/CoopLogo';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -24,6 +25,12 @@ const NAV_ITEMS = [
     path: '/dashboard',
     icon: LayoutDashboard,
     roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER'],
+  },
+  {
+    name: 'My Meetings & Guests',
+    path: '/my-tracking',
+    icon: Sparkles,
+    roles: ['ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_HOST', 'ROLE_EMPLOYEE', 'ROLE_USER', 'ROLE_SECURITY_DESK'],
   },
   {
     name: 'Visits Management',

@@ -18,6 +18,7 @@ import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
 import AuditLogsPage from '@/modules/audit/pages/AuditLogsPage';
 import PublicSurveyPage from '@/modules/feedback/pages/PublicSurveyPage';
+import StaffTrackerPage from '@/modules/staff/pages/StaffTrackerPage';
 
 import useAuthStore from '@/modules/auth/store/authStore';
 
@@ -26,7 +27,7 @@ const RootRedirect = () => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (hasRole('ROLE_ADMIN')) return <Navigate to="/dashboard" replace />;
   if (hasRole('ROLE_SECURITY_DESK')) return <Navigate to="/security-desk" replace />;
-  return <Navigate to="/visits/calendar" replace />;
+  return <Navigate to="/my-tracking" replace />;
 };
 
 export const AppRoutes = () => {
@@ -45,6 +46,17 @@ export const AppRoutes = () => {
       <Route path="/survey/:token" element={<PublicSurveyPage />} />
 
       {/* Protected Routes inside Global DashboardLayout Shell */}
+      <Route
+        path="/my-tracking"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <StaffTrackerPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/dashboard"
         element={

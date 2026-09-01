@@ -131,4 +131,11 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
     );
+
+    @Query("SELECT v FROM Visit v WHERE v.scheduledStartTime >= :fromDate AND v.scheduledStartTime <= :toDate")
+    List<Visit> findVisitsInTimeWindow(@Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate);
+
+    List<Visit> findByRequester_UsernameIgnoreCaseOrSponsor_UsernameIgnoreCase(String requesterUsername, String sponsorUsername);
+
+    List<Visit> findByRequester_IdOrSponsor_Id(UUID requesterId, UUID sponsorId);
 }
