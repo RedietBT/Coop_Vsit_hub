@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import AppRoutes from '@/app/routes/AppRoutes';
 import useAuthStore from '@/modules/auth/store/authStore';
+import CookieConsentBanner from '@/shared/components/ui/CookieConsentBanner';
 
 export function App() {
   const { accessToken, isAuthenticated, fetchCurrentUser, setAuthSession } = useAuthStore();
@@ -26,6 +27,17 @@ export function App() {
 
   return (
     <BrowserRouter>
+      {/* Slide-up animation for cookie banner */}
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+      `}</style>
+
+      {/* Cookie Consent Banner — shown once per browser session */}
+      <CookieConsentBanner />
+
       {/* Toast Notification Container */}
       <Toaster
         position="top-right"

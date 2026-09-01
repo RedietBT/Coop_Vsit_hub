@@ -17,7 +17,7 @@ public interface AuthService {
     );
 
     AuthResponse refreshToken(
-            RefreshTokenRequest request,
+            String rawRefreshToken,
             String ipAddress,
             String userAgent
     );

@@ -260,11 +260,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse refreshToken(RefreshTokenRequest request, String ipAddress, String userAgent) {
-        String rawRefreshToken = request.getRefreshToken().trim();
+    public AuthResponse refreshToken(String rawRefreshToken, String ipAddress, String userAgent) {
         log.info("Processing token refresh request.");
 
-        String username = redisTokenService.getUsernameFromRefreshToken(rawRefreshToken);
+        String username = redisTokenService.getUsernameFromRefreshToken(rawRefreshToken.trim());
         if (username == null) {
             log.warn("Invalid or expired refresh token provided.");
             throw new IllegalArgumentException("Invalid or expired refresh token. Please sign in again.");
@@ -459,11 +458,12 @@ public class AuthServiceImpl implements AuthService {
         // Store refresh token in Redis with 7-day TTL
         redisTokenService.storeRefreshToken(user.getUsername(), refreshToken, refreshTokenExpirationMs);
 
+        // refreshToken is NOT returned in the JSON body — it is set as HttpOnly cookie by AuthController
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
                 .expiresInMs(jwtUtils.getJwtExpirationMs())
-                .refreshToken(refreshToken)
+                .rawRefreshToken(refreshToken)   // temporary carrier: controller reads this and sets the cookie
                 .isEmailVerified(user.isEmailVerified())
                 .mustChangePassword(user.isMustChangePassword())
                 .user(buildUserProfileResponse(user))

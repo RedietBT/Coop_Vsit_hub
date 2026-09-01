@@ -7,7 +7,8 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
+  // Required so the browser sends the HttpOnly refresh-token cookie automatically
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -24,7 +25,9 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor: Attach Access Token
+// ─────────────────────────────────────────────────────────────────────────────
+// Request Interceptor: Attach Access Token from Zustand / localStorage
+// ─────────────────────────────────────────────────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
     const authData = localStorage.getItem('coop_auth_state');
@@ -43,7 +46,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Silent Token Refresh
+// ─────────────────────────────────────────────────────────────────────────────
+// Response Interceptor: Silent Token Refresh via HttpOnly Cookie
+// When the access token expires (401), the browser automatically sends the
+// HttpOnly refresh cookie — no JavaScript needs to handle it.
+// ─────────────────────────────────────────────────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -71,26 +78,18 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const authData = localStorage.getItem('coop_auth_state');
-        let refreshToken = null;
+        // POST /refresh with empty body — browser sends HttpOnly cookie automatically
+        const response = await axios.post(
+          `${BASE_URL}/api/v1/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
-        if (authData) {
-          const parsed = JSON.parse(authData);
-          refreshToken = parsed?.state?.refreshToken;
-        }
+        const { accessToken, user } = response.data;
 
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        const response = await axios.post(`${BASE_URL}/api/v1/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken, user } = response.data;
-
-        // Preserve existing user state if not returned by refresh endpoint
+        // Preserve existing user state if profile not in refresh response
         let effectiveUser = user;
+        const authData = localStorage.getItem('coop_auth_state');
         if (!effectiveUser && authData) {
           try {
             const parsed = JSON.parse(authData);
@@ -98,11 +97,10 @@ apiClient.interceptors.response.use(
           } catch (_) {}
         }
 
-        // Update localStorage
+        // Update localStorage — no refreshToken stored here anymore
         const updatedState = {
           state: {
             accessToken,
-            refreshToken: newRefreshToken,
             user: effectiveUser,
             isAuthenticated: true,
           },
@@ -110,11 +108,11 @@ apiClient.interceptors.response.use(
         };
         localStorage.setItem('coop_auth_state', JSON.stringify(updatedState));
 
-        // Dispatch window event to sync in-memory stores
+        // Sync in-memory Zustand store
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('coop_auth_refreshed', {
-              detail: { accessToken, refreshToken: newRefreshToken, user: effectiveUser },
+              detail: { accessToken, user: effectiveUser },
             })
           );
         }

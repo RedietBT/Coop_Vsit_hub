@@ -37,7 +37,7 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final SwaggerBasicAuthFilter swaggerBasicAuthFilter;
 
-    @Value("${coopbank.security.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    @Value("${coopbank.security.cors.allowed-origins}")
     private String allowedOriginsConfig;
 
     @Bean

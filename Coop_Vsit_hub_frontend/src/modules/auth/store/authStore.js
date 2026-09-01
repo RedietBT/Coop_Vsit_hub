@@ -7,7 +7,8 @@ export const useAuthStore = create(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
+      // NOTE: refreshToken is intentionally NOT stored here.
+      // It lives in an HttpOnly cookie managed by the browser and server.
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -22,12 +23,12 @@ export const useAuthStore = create(
             loginType,
           });
 
-          const { accessToken, refreshToken, user } = response.data;
+          // Only store accessToken and user — refreshToken is in HttpOnly cookie
+          const { accessToken, user } = response.data;
 
           set({
             user,
             accessToken,
-            refreshToken,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -41,7 +42,6 @@ export const useAuthStore = create(
             err.response?.data?.error ||
             'Authentication failed. Please check your credentials.';
 
-          // Check if status is 429 (Locked)
           let lockoutTime = null;
           if (err.response?.status === 429) {
             lockoutTime = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
@@ -62,10 +62,9 @@ export const useAuthStore = create(
         }
       },
 
-      setAuthSession: ({ accessToken, refreshToken, user }) => {
+      setAuthSession: ({ accessToken, user }) => {
         set((state) => ({
           accessToken: accessToken || state.accessToken,
-          refreshToken: refreshToken || state.refreshToken,
           user: user || state.user,
           isAuthenticated: true,
         }));
@@ -90,6 +89,7 @@ export const useAuthStore = create(
         try {
           const token = get().accessToken;
           if (token) {
+            // Server will blacklist JWT and clear the HttpOnly cookie
             await apiClient.post('/api/v1/auth/logout', {});
           }
         } catch (e) {
@@ -98,7 +98,6 @@ export const useAuthStore = create(
           set({
             user: null,
             accessToken: null,
-            refreshToken: null,
             isAuthenticated: false,
             error: null,
             lockoutUntil: null,
@@ -140,6 +139,12 @@ export const useAuthStore = create(
     }),
     {
       name: 'coop_auth_state',
+      // Explicitly whitelist only safe, non-sensitive fields for localStorage
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

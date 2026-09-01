@@ -5,15 +5,21 @@ import com.example.coop_vsit_hub.user_and_auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,7 +30,22 @@ import java.util.Map;
 @Tag(name = "1. Authentication & User Management")
 public class AuthController {
 
+    private static final String REFRESH_COOKIE_NAME = "coop_refresh_token";
+
     private final AuthService authService;
+
+    @Value("${coopbank.security.cookie.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${coopbank.security.cookie.same-site:Strict}")
+    private String cookieSameSite;
+
+    @Value("${coopbank.security.cookie.max-age-seconds:604800}")
+    private long cookieMaxAgeSeconds;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // REGISTER
+    // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping("/register")
     @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
@@ -35,13 +56,19 @@ public class AuthController {
     )
     public ResponseEntity<AuthResponse> register(
             @Valid @RequestBody RegisterRequest request,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthResponse response = authService.register(request, ipAddress, userAgent);
+        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // EMAIL VERIFICATION
+    // ─────────────────────────────────────────────────────────────────────────
 
     @GetMapping("/verify-email")
     @Operation(
@@ -67,49 +94,97 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // LOGIN — sets HttpOnly refresh-token cookie
+    // ─────────────────────────────────────────────────────────────────────────
+
     @PostMapping("/login")
-    @Operation(summary = "Authenticate & Obtain JWT", description = "Authenticates bank staff with username/email and password. Returns JWT access token and refresh token.")
+    @Operation(summary = "Authenticate & Obtain JWT",
+            description = "Authenticates bank staff with username/email and password. "
+                    + "Returns JWT access token in JSON body. Refresh token is stored in an "
+                    + "HttpOnly secure cookie (never exposed to JavaScript).")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthResponse response = authService.login(request, ipAddress, userAgent);
+
+        // Write refresh token to HttpOnly cookie — never in the response body
+        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
+
         return ResponseEntity.ok(response);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // REFRESH — reads cookie, issues new access token + rotates cookie
+    // ─────────────────────────────────────────────────────────────────────────
+
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh JWT Access Token", description = "Rotates access token using active Redis-backed refresh token.")
+    @Operation(summary = "Refresh JWT Access Token",
+            description = "Rotates access token using the HttpOnly refresh cookie. "
+                    + "No request body needed — the browser sends the cookie automatically.")
     public ResponseEntity<AuthResponse> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
-        AuthResponse response = authService.refreshToken(request, ipAddress, userAgent);
+
+        // Extract refresh token from HttpOnly cookie
+        String rawRefreshToken = extractRefreshCookie(httpRequest);
+        if (rawRefreshToken == null) {
+            log.warn("Refresh attempt with no cookie present from IP: {}", ipAddress);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(AuthResponse.builder()
+                            .message("Session expired. Please sign in again.")
+                            .build());
+        }
+
+        AuthResponse response = authService.refreshToken(rawRefreshToken, ipAddress, userAgent);
+
+        // Rotate refresh token cookie (old one replaced by new one)
+        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
+
         return ResponseEntity.ok(response);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // LOGOUT — blacklists JWT + clears cookie
+    // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping("/logout")
     @Operation(
             summary = "Logout & Revoke Token Session",
-            description = "Blacklists access token in Redis and revokes active refresh token session.",
+            description = "Blacklists access token in Redis, revokes active refresh token session, "
+                    + "and clears the HttpOnly refresh cookie from the browser.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     public ResponseEntity<Void> logout(
             @RequestHeader(value = "Authorization", required = false) String accessToken,
             Authentication authentication,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         String username = authentication != null ? authentication.getName() : null;
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         authService.logout(accessToken, username, ipAddress, userAgent);
+
+        // Clear the refresh token cookie from the browser
+        clearRefreshTokenCookie(httpResponse);
+
         return ResponseEntity.noContent().build();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PROFILE
+    // ─────────────────────────────────────────────────────────────────────────
+
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
             summary = "Get Authenticated Staff Profile",
             description = "Retrieves profile and active roles for currently logged-in user.",
@@ -121,6 +196,10 @@ public class AuthController {
         return ResponseEntity.ok(profile);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHANGE PASSWORD
+    // ─────────────────────────────────────────────────────────────────────────
+
     @PostMapping("/change-password")
     @PreAuthorize("isAuthenticated()")
     @Operation(
@@ -131,17 +210,25 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
             Authentication authentication,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         String username = authentication.getName();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         authService.changePassword(username, request, ipAddress, userAgent);
 
+        // Clear refresh cookie since sessions are invalidated on password change
+        clearRefreshTokenCookie(httpResponse);
+
         Map<String, String> response = new HashMap<>();
         response.put("message", "Password changed successfully. Active sessions have been invalidated for security.");
         return ResponseEntity.ok(response);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FORGOT / RESET PASSWORD
+    // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping("/forgot-password")
     @Operation(
@@ -177,6 +264,55 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Password reset successfully. You may now sign in with your new password.");
         return ResponseEntity.ok(response);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // COOKIE HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Writes the refresh token as an HttpOnly, SameSite cookie to the response.
+     * The cookie path is restricted to /api/v1/auth so it is only sent on auth requests.
+     */
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        if (refreshToken == null) return;
+
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/api/v1/auth")
+                .maxAge(cookieMaxAgeSeconds)
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    /**
+     * Clears (expires) the refresh token cookie by setting MaxAge=0.
+     */
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/api/v1/auth")
+                .maxAge(0)
+                .build();
+
+        response.addHeader("Set-Cookie", expiredCookie.toString());
+    }
+
+    /**
+     * Extracts the refresh token value from the incoming request's cookie jar.
+     */
+    private String extractRefreshCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        return Arrays.stream(request.getCookies())
+                .filter(c -> REFRESH_COOKIE_NAME.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
     private String getClientIp(HttpServletRequest request) {
