@@ -2,6 +2,7 @@ package com.example.coop_vsit_hub.config;
 
 import com.example.coop_vsit_hub.user_and_auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,7 +28,13 @@ import java.util.List;
 
 /**
  * Global Spring Security & Access Control Configuration.
- * Fully allows CORS preflight (OPTIONS), Swagger UI, MailHog, and public auth endpoints.
+ * Implements:
+ *  - CORS restricted to env-configured origins (NFR: wildcard removed)
+ *  - X-Frame-Options: SAMEORIGIN (Swagger UI served via same origin)
+ *  - Content-Security-Policy header (NFR: XSS Defence in Depth)
+ *  - HSTS header (NFR: HTTPS enforcement — also enforce at nginx level)
+ *  - Referrer-Policy: strict-origin-when-cross-origin
+ *  - Stateless JWT sessions, no form login, no HTTP Basic
  */
 @Configuration
 @EnableWebSecurity
@@ -40,6 +49,13 @@ public class SecurityConfig {
     @Value("${coopbank.security.cors.allowed-origins}")
     private String allowedOriginsConfig;
 
+    /** Set HSTS_ENABLED=true in production (HTTPS). Keep false for local HTTP dev. */
+    @Value("${coopbank.security.hsts.enabled:false}")
+    private boolean hstsEnabled;
+
+    @Value("${coopbank.security.hsts.max-age-seconds:31536000}")
+    private long hstsMaxAgeSeconds;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -49,11 +65,48 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.disable()) // Allow Swagger UI embedded frames
-                .contentTypeOptions(Customizer.withDefaults())
-                .xssProtection(Customizer.withDefaults())
-            )
+            .headers(headers -> {
+                // ── X-Frame-Options: SAMEORIGIN ───────────────────────────────────────
+                // Prevents clickjacking from external sites while allowing same-domain iframes
+                // (Swagger UI is on the same origin so it still works)
+                headers.frameOptions(frame -> frame.sameOrigin());
+
+                // ── X-Content-Type-Options: nosniff ──────────────────────────────────
+                headers.contentTypeOptions(Customizer.withDefaults());
+
+                // ── X-XSS-Protection: 1; mode=block ──────────────────────────────────
+                headers.xssProtection(Customizer.withDefaults());
+
+                // ── Content-Security-Policy ───────────────────────────────────────────
+                // Restricts script, style and connection sources to same-origin + known CDNs.
+                // Google Fonts is allowed for the app's typography. Adjust as needed.
+                headers.addHeaderWriter(new StaticHeadersWriter(
+                    "Content-Security-Policy",
+                    "default-src 'self'; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +  // unsafe-eval needed for Vite dev / swagger-ui
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com; " +
+                    "img-src 'self' data: blob:; " +
+                    "connect-src 'self'; " +
+                    "frame-ancestors 'self'; " +
+                    "object-src 'none'; " +
+                    "base-uri 'self';"
+                ));
+
+                // ── Referrer-Policy ────────────────────────────────────────────────────
+                headers.referrerPolicy(referrer ->
+                    referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+
+                // ── HSTS (HTTP Strict Transport Security) ────────────────────────────
+                // Only effective over HTTPS. Enable in production via HSTS_ENABLED=true.
+                // Also configure in nginx: add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+                if (hstsEnabled) {
+                    headers.httpStrictTransportSecurity(hsts -> hsts
+                        .maxAgeInSeconds(hstsMaxAgeSeconds)
+                        .includeSubDomains(true)
+                        .preload(true));
+                }
+            })
             .authorizeHttpRequests(auth -> auth
                 // Allow all CORS OPTIONS preflight requests globally
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

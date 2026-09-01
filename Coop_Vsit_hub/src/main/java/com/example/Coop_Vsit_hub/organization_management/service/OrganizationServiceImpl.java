@@ -11,6 +11,7 @@ import com.example.coop_vsit_hub.visit_management.model.Visit;
 import com.example.coop_vsit_hub.visit_management.repository.OrganizationRepository;
 import com.example.coop_vsit_hub.visit_management.repository.OrganizationSpecification;
 import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
+import com.example.coop_vsit_hub.config.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final VisitRepository visitRepository;
     private final AuditLoggerService auditLoggerService;
+    private final HtmlSanitizer htmlSanitizer;
     private final com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRepository feedbackRepository;
 
     @Override
@@ -170,20 +172,20 @@ public class OrganizationServiceImpl implements OrganizationService {
         }
 
         String contactPerson = StringUtils.hasText(request.getContactPersonName())
-                ? request.getContactPersonName().trim()
-                : (StringUtils.hasText(request.getPrimaryContactPerson()) ? request.getPrimaryContactPerson().trim() : null);
+                ? htmlSanitizer.sanitize(request.getContactPersonName())
+                : (StringUtils.hasText(request.getPrimaryContactPerson()) ? htmlSanitizer.sanitize(request.getPrimaryContactPerson()) : null);
 
         Organization org = Organization.builder()
-                .name(trimmedName)
-                .category(StringUtils.hasText(request.getCategory()) ? request.getCategory().trim() : "Partner Organization")
-                .marketCountry(StringUtils.hasText(request.getMarketCountry()) ? request.getMarketCountry().trim() : "Ethiopia")
+                .name(htmlSanitizer.sanitize(trimmedName))
+                .category(htmlSanitizer.sanitize(StringUtils.hasText(request.getCategory()) ? request.getCategory().trim() : "Partner Organization"))
+                .marketCountry(htmlSanitizer.sanitize(StringUtils.hasText(request.getMarketCountry()) ? request.getMarketCountry().trim() : "Ethiopia"))
                 .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 85)
                 .contactPersonName(contactPerson)
                 .contactEmail(email)
                 .contactPhone(phone)
-                .website(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null)
-                .industrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null)
-                .notes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null)
+                .website(htmlSanitizer.sanitize(request.getWebsite()))
+                .industrySector(htmlSanitizer.sanitize(request.getIndustrySector()))
+                .notes(htmlSanitizer.sanitize(request.getNotes()))
                 .build();
 
         Organization saved = organizationRepository.save(org);

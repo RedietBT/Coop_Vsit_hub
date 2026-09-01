@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import AuthLayout from '@/core/layouts/AuthLayout';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
+import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
 import { resetPasswordSchema } from '../schemas/authSchemas';
 import authApi from '../api/authApi';
 import soundPlayer from '@/core/utils/soundPlayer';
@@ -108,6 +109,9 @@ export const ResetPasswordPage = () => {
             {...register('newPassword')}
           />
 
+          {/* Live password strength meter */}
+          <PasswordStrengthMeter password={newPasswordValue} />
+
           <Input
             label="Confirm New Password"
             name="confirmPassword"
@@ -118,32 +122,6 @@ export const ResetPasswordPage = () => {
             required
             {...register('confirmPassword')}
           />
-
-          {/* Password Security Rules Checklist */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-left">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <ShieldCheck className="w-4 h-4 text-[#00adef]" />
-              <span>Password Security Standards:</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600">
-              <span className={hasMinLength ? 'text-emerald-600 font-semibold' : ''}>
-                {hasMinLength ? '✓' : '•'} At least 8 chars
-              </span>
-              <span className={hasUppercase ? 'text-emerald-600 font-semibold' : ''}>
-                {hasUppercase ? '✓' : '•'} 1 Uppercase letter
-              </span>
-              <span className={hasLowercase ? 'text-emerald-600 font-semibold' : ''}>
-                {hasLowercase ? '✓' : '•'} 1 Lowercase letter
-              </span>
-              <span className={hasDigit ? 'text-emerald-600 font-semibold' : ''}>
-                {hasDigit ? '✓' : '•'} 1 Number
-              </span>
-              <span className={hasSpecial ? 'text-emerald-600 font-semibold' : ''}>
-                {hasSpecial ? '✓' : '•'} 1 Special symbol
-              </span>
-            </div>
-          </div>
 
           <Button
             type="submit"

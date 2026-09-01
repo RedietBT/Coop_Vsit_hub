@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
+import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
 import authApi from '../api/authApi';
 import useAuthStore from '../store/authStore';
 import soundPlayer from '@/core/utils/soundPlayer';
@@ -122,6 +123,9 @@ export const FirstTimeChangePasswordModal = ({ isOpen, onSuccess, tempPassword =
           {...register('newPassword')}
         />
 
+        {/* Live password strength meter */}
+        <PasswordStrengthMeter password={newPasswordValue} />
+
         <Input
           label="Confirm New Password"
           type="password"
@@ -131,32 +135,6 @@ export const FirstTimeChangePasswordModal = ({ isOpen, onSuccess, tempPassword =
           required
           {...register('confirmPassword')}
         />
-
-        {/* Security Checklist */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
-          <p className="font-bold text-slate-800 flex items-center gap-1.5 text-[11px]">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#00adef]" />
-            <span>Password Complexity Requirements:</span>
-          </p>
-
-          <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-600">
-            <span className={hasMinLength ? 'text-emerald-600 font-bold' : ''}>
-              {hasMinLength ? '✓' : '•'} 8+ characters
-            </span>
-            <span className={hasUppercase ? 'text-emerald-600 font-bold' : ''}>
-              {hasUppercase ? '✓' : '•'} 1 Uppercase letter
-            </span>
-            <span className={hasLowercase ? 'text-emerald-600 font-bold' : ''}>
-              {hasLowercase ? '✓' : '•'} 1 Lowercase letter
-            </span>
-            <span className={hasDigit ? 'text-emerald-600 font-bold' : ''}>
-              {hasDigit ? '✓' : '•'} 1 Number
-            </span>
-            <span className={hasSpecial ? 'text-emerald-600 font-bold' : ''}>
-              {hasSpecial ? '✓' : '•'} 1 Special char (@$!%*?&#)
-            </span>
-          </div>
-        </div>
 
         <div className="pt-2">
           <Button

@@ -19,6 +19,7 @@ import com.example.coop_vsit_hub.visit_management.repository.VisitSpecification;
 import com.example.coop_vsit_hub.feedback_management.service.FeedbackService;
 import com.example.coop_vsit_hub.feedback_management.service.FeedbackServiceImpl;
 import com.example.coop_vsit_hub.individual_guest_management.repository.IndividualGuestRepository;
+import com.example.coop_vsit_hub.config.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public class VisitServiceImpl implements VisitService {
     private final IndividualGuestRepository individualGuestRepository;
     private final UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
+    private final HtmlSanitizer htmlSanitizer;
     private final com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRepository feedbackRepository;
 
     @org.springframework.context.annotation.Lazy
@@ -357,15 +359,15 @@ public class VisitServiceImpl implements VisitService {
         }
 
         String visitTitle = StringUtils.hasText(request.getTitle()) 
-                ? request.getTitle().trim() 
+                ? htmlSanitizer.sanitize(request.getTitle()) 
                 : (guestOrg != null ? "Executive Visit - " + guestOrg.getName() : "Guest Delegation Visit");
 
         String department = StringUtils.hasText(request.getRequestingDepartment()) 
-                ? request.getRequestingDepartment().trim() 
+                ? htmlSanitizer.sanitize(request.getRequestingDepartment()) 
                 : (requester.getDepartment() != null ? requester.getDepartment() : "General Reception");
 
         String objective = StringUtils.hasText(request.getVisitObjective()) 
-                ? request.getVisitObjective().trim() 
+                ? htmlSanitizer.sanitize(request.getVisitObjective()) 
                 : "Executive meeting and facilities tour";
 
         Instant startTime = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : Instant.now();
@@ -381,47 +383,47 @@ public class VisitServiceImpl implements VisitService {
                 .requestingDepartment(department)
                 .visitType(request.getVisitType() != null ? request.getVisitType() : VisitType.EXTERNAL)
                 .visitObjective(objective)
-                .expectedOutcome(request.getExpectedOutcome() != null ? request.getExpectedOutcome().trim() : null)
+                .expectedOutcome(htmlSanitizer.sanitize(request.getExpectedOutcome()))
                 .priorityLevel(request.getPriorityLevel() != null ? request.getPriorityLevel() : VisitPriority.MEDIUM)
                 .status(initialStatus)
                 .opportunityValue(request.getOpportunityValue() != null ? request.getOpportunityValue() : BigDecimal.ZERO)
                 .currency(StringUtils.hasText(request.getCurrency()) ? request.getCurrency().trim().toUpperCase() : "USD")
-                .presentationTheme(request.getPresentationTheme() != null ? request.getPresentationTheme().trim() : null)
-                .sensitiveTopics(request.getSensitiveTopics() != null ? request.getSensitiveTopics().trim() : null)
-                .locationRoom(request.getLocationRoom() != null ? request.getLocationRoom().trim() : null)
+                .presentationTheme(htmlSanitizer.sanitize(request.getPresentationTheme()))
+                .sensitiveTopics(htmlSanitizer.sanitize(request.getSensitiveTopics()))
+                .locationRoom(htmlSanitizer.sanitize(request.getLocationRoom()))
                 .visitorCount(request.getVisitorCount() != null && request.getVisitorCount() > 0 ? request.getVisitorCount() : 1)
                 .guestCategory(category)
                 .guestOrganization(guestOrg)
                 .masterIndividualGuest(indGuest)
-                .individualGuestFirstName(fName)
-                .individualGuestMiddleName(mName)
-                .individualGuestLastName(lName)
+                .individualGuestFirstName(htmlSanitizer.sanitize(fName))
+                .individualGuestMiddleName(htmlSanitizer.sanitize(mName))
+                .individualGuestLastName(htmlSanitizer.sanitize(lName))
                 .individualGuestEmail(email)
                 .individualGuestPhone(phone)
-                .individualGuestTitle(title)
-                .individualGuestIdNumber(idNum)
+                .individualGuestTitle(htmlSanitizer.sanitize(title))
+                .individualGuestIdNumber(htmlSanitizer.sanitize(idNum))
                 // Front Desk Visitor Demographics matching Reference Image
-                .visitorFirstName(fName)
-                .visitorMiddleName(mName)
-                .visitorSurname(lName)
-                .visitorIdNumber(idNum)
+                .visitorFirstName(htmlSanitizer.sanitize(fName))
+                .visitorMiddleName(htmlSanitizer.sanitize(mName))
+                .visitorSurname(htmlSanitizer.sanitize(lName))
+                .visitorIdNumber(htmlSanitizer.sanitize(idNum))
                 .visitorPhone(phone)
                 .visitorEmail(email)
                 .visitorDateOfBirth(request.getDateOfBirth())
                 .visitorIssuedDate(request.getIssuedDate())
                 .visitorExpiredDate(request.getExpiredDate())
-                .visitorGender(request.getGender() != null ? request.getGender().trim() : "Male")
-                .visitorCitizenship(StringUtils.hasText(request.getCitizenship()) ? request.getCitizenship().trim() : "Ethiopian")
-                .visitorRegion(request.getRegion())
-                .visitorZone(request.getZone())
-                .visitorWoreda(request.getWoreda())
-                .visitorIdType(StringUtils.hasText(request.getIdType()) ? request.getIdType().trim() : "National ID")
+                .visitorGender(htmlSanitizer.sanitize(request.getGender() != null ? request.getGender().trim() : "Male"))
+                .visitorCitizenship(htmlSanitizer.sanitize(StringUtils.hasText(request.getCitizenship()) ? request.getCitizenship().trim() : "Ethiopian"))
+                .visitorRegion(htmlSanitizer.sanitize(request.getRegion()))
+                .visitorZone(htmlSanitizer.sanitize(request.getZone()))
+                .visitorWoreda(htmlSanitizer.sanitize(request.getWoreda()))
+                .visitorIdType(htmlSanitizer.sanitize(StringUtils.hasText(request.getIdType()) ? request.getIdType().trim() : "National ID"))
                 .requester(requester)
                 .sponsor(sponsor)
                 .scheduledStartTime(startTime)
                 .scheduledEndTime(endTime)
                 .linkedBookingId(request.getLinkedBookingId())
-                .guestTier(StringUtils.hasText(request.getGuestTier()) ? request.getGuestTier().trim() : "NORMAL_GUEST")
+                .guestTier(htmlSanitizer.sanitize(StringUtils.hasText(request.getGuestTier()) ? request.getGuestTier().trim() : "NORMAL_GUEST"))
                 .build();
 
         Visit saved = visitRepository.save(visit);

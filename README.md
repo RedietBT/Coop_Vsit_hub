@@ -68,13 +68,22 @@ Tracks visiting corporate clients, regulators, strategic partners, and fintech e
 * **Relationship Scoring:** Dynamic scoring algorithm based on past visit outcomes, transaction volume, and engagement frequency.
 * **Key Entities Tracked:** Ethio Telecom, National Bank of Ethiopia (NBE), Visa Inc., Safaricom Ethiopia, Chapa Financial Technologies, WFP, Bloomberg Media, etc.
 
-### 3. 🔐 Bank Staff Access & Security (RBAC)
-Role-based access control ensuring high privacy for sensitive financial and strategy meetings:
-* `ROLE_ADMIN`: System configuration, user management, audit log access.
-* `ROLE_RELATIONSHIP_MANAGER`: Create visit requests, manage guest orgs, view relationship pipelines.
-* `ROLE_BUSINESS_SPONSOR`: Executive oversight, request approvals, high-level analytics.
-* `ROLE_APPROVER`: Departmental/Executive sign-off authority for incoming visits.
-* `ROLE_SECURITY_DESK`: Check-in / check-out visitor management, badge issuance, security logs.
+### 3. 🔐 Bank Staff Access & Security (RBAC) Architecture
+
+The platform enforces a granular, five-role Role-Based Access Control model backed by Spring Security `@PreAuthorize` method-level SpEL checks and frontend route guarding:
+
+| Role Name | Authority String | Target Users & Persona | Accessible Views & Features | Key Restrictions |
+| :--- | :--- | :--- | :--- | :--- |
+| **System Administrator** | `ROLE_ADMIN` | IT Security, DevOps, System Administrators | • System Dashboard & Full Pipeline Analytics<br>• User Management & Onboarding (`/users`)<br>• System Security Audit Trail (`/audit-logs`)<br>• Meeting Room Master Configuration (`/meeting-rooms`)<br>• Visits Register (`/visits`) & Bookings (`/bookings`)<br>• Partner Organizations (`/organizations`) & Individual Guests (`/guests`)<br>• Reports & PDF/Excel Exports (`/reports`) | Restricted from personal employee tracking view (`/my-tracking`) |
+| **Relationship Manager** | `ROLE_RELATIONSHIP_MANAGER` | Relationship Managers, Corporate Officers | • RM Dashboard & Portfolio Pipelines<br>• Partner Organization Portfolio (`/organizations`)<br>• Individual Guests Intelligence (`/guests`)<br>• Schedule New Executive Visits & Delegations (`/visits/new`)<br>• Visits Register (`/visits`) & Bookings (`/bookings`)<br>• Reports & PDF/Excel Exports (`/reports`) | Cannot manage system users, access raw security audit logs, or edit room inventory |
+| **Visit Approver** | `ROLE_APPROVER` | Executive Committee, Department Directors, Branch Heads | • Approver Dashboard & Decision Pipeline<br>• Incoming Visit Review & Approval/Rejection Workflow<br>• Visits Register (`/visits`) & Bookings (`/bookings`)<br>• Guest Feedback CSAT & NPS Analytics<br>• Reports & Portfolio Analytics (`/reports`) | Cannot create/edit guest organizations or configure meeting rooms |
+| **Security & Front Desk** | `ROLE_SECURITY_DESK` | Headquarters Reception, Lobby Security Officers | • Front Desk Operations Dashboard<br>• Fast Visitor Check-In & Physical Badge Issuance (`/visits`)<br>• Visitor Check-Out & Time Tracking<br>• Real-Time Expected Visitors List & Demographics Verification | Strictly limited to reception check-in/out workflows; cannot approve visits, see opportunity financials, or export executive reports |
+| **Active Directory Staff** | `ROLE_EMPLOYEE` | All Bank Employees (Synced via LDAP / AD) | • Internal Meeting Room Calendar & Booking Reservation<br>• **My Meetings & Guests** (`/my-tracking`) — track status of personal visitors & linked boardroom meetings | **Strictly partitioned**: No access to executive dashboards, system users, global visit registers, partner organizations, or administrative reports |
+
+#### 🔑 Active Directory (LDAP / LDAPS) Integration & Auto-Sync
+* Bank staff authenticate using standard corporate Windows/AD credentials (`username@coopbank.local`).
+* On initial login, accounts are provisioned just-in-time with `ROLE_EMPLOYEE`.
+* Staff only see their booked boardrooms and guests linked by their name, phone, or corporate email on the visit date.
 
 ### 4. 💬 Customer & Visitor Feedback Section (New Feature)
 To ensure continuous improvement in host hospitality and partnership outcomes, a full feedback loop is included:

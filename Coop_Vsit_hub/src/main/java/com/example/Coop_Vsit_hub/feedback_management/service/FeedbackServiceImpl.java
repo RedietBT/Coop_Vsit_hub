@@ -11,6 +11,7 @@ import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
 import com.example.coop_vsit_hub.user_and_auth.service.AuditLoggerService;
 import com.example.coop_vsit_hub.visit_management.model.Visit;
 import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
+import com.example.coop_vsit_hub.config.HtmlSanitizer;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final VisitFeedbackRepository feedbackRepository;
     private final VisitRepository visitRepository;
     private final AuditLoggerService auditLoggerService;
+    private final HtmlSanitizer htmlSanitizer;
     private final JavaMailSender mailSender;
 
     @org.springframework.context.annotation.Lazy
@@ -128,7 +130,7 @@ public class FeedbackServiceImpl implements FeedbackService {
         feedback.setFacilityRating(request.getFacilityRating());
         feedback.setObjectiveRating(request.getObjectiveRating());
         feedback.setNpsScore(request.getNpsScore());
-        feedback.setComments(StringUtils.hasText(request.getComments()) ? request.getComments().trim() : null);
+        feedback.setComments(StringUtils.hasText(request.getComments()) ? htmlSanitizer.sanitize(request.getComments()) : null);
         feedback.setSubmitted(true);
         feedback.setSubmittedAt(Instant.now());
 
