@@ -30,7 +30,7 @@ const NAV_ITEMS = [
     name: 'My Meetings & Guests',
     path: '/my-tracking',
     icon: Sparkles,
-    roles: ['ROLE_EMPLOYEE', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_SECURITY_DESK'],
+    roles: ['ROLE_EMPLOYEE'],
   },
   {
     name: 'Booking Calendar',

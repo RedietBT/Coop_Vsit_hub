@@ -202,6 +202,20 @@ public class ActiveDirectoryAuthService {
             user.setEmailVerified(true);
             user.setMustChangePassword(false);
             user.setFailedLoginAttempts(0);
+
+            // Ensure AD synced users strictly hold ROLE_EMPLOYEE if not a system admin
+            boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+            if (!hasAdmin) {
+                Role staffRole = roleRepository.findByName(RoleName.ROLE_EMPLOYEE)
+                        .orElseGet(() -> roleRepository.save(Role.builder()
+                                .name(RoleName.ROLE_EMPLOYEE)
+                                .description("CoopBank Staff Employee")
+                                .build()));
+                Set<Role> roles = new HashSet<>();
+                roles.add(staffRole);
+                user.setRoles(roles);
+            }
         }
 
         return userRepository.save(user);
