@@ -25,6 +25,7 @@ import useVisitStore from '@/modules/visits/store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
 import feedbackApi from '@/modules/feedback/api/feedbackApi';
 import Button from '@/shared/components/ui/Button';
+import EditGuestModal from './EditGuestModal';
 
 export const GuestProfileDrawer = () => {
   const { selectedGuest, isProfileDrawerOpen, closeProfileDrawer, openEditModal, deleteGuest } =
@@ -425,16 +426,6 @@ export const GuestProfileDrawer = () => {
               {/* Bottom Footer Actions */}
               <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditModal(selectedGuest)}
-                    icon={Edit2}
-                    className="font-bold text-xs"
-                  >
-                    Edit Guest Details
-                  </Button>
-
                   {isAdmin && (
                     <Button
                       variant="ghost"
@@ -469,6 +460,9 @@ export const GuestProfileDrawer = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Guest Modal */}
+      <EditGuestModal />
     </AnimatePresence>
   );
 };

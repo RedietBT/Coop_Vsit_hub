@@ -24,6 +24,7 @@ import useVisitStore from '@/modules/visits/store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
 import feedbackApi from '@/modules/feedback/api/feedbackApi';
 import Button from '@/shared/components/ui/Button';
+import EditOrganizationModal from './EditOrganizationModal';
 
 export const OrganizationProfileDrawer = () => {
   const { selectedOrg, isProfileDrawerOpen, closeProfileDrawer, openEditModal, deleteOrganization } =
@@ -403,16 +404,6 @@ export const OrganizationProfileDrawer = () => {
               {/* Footer Actions */}
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(selectedOrg)}
-                    className="p-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:text-[#00adef] hover:border-sky-300 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-xs"
-                    title="Edit Partner Information"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Edit Details</span>
-                  </button>
-
                   {isAdmin && (
                     <button
                       type="button"
@@ -446,6 +437,9 @@ export const OrganizationProfileDrawer = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Organization Modal */}
+      <EditOrganizationModal />
     </AnimatePresence>
   );
 };
