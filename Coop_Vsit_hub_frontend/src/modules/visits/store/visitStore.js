@@ -137,9 +137,6 @@ export const useVisitStore = create((set, get) => ({
     try {
       const newVisit = await visitApi.createVisit(payload);
       soundPlayer.playNotificationChime();
-      toast.success(
-        `Visit ${newVisit.visitCode || ''} created successfully (${newVisit.status}).`
-      );
       get().closeCreateModal();
       get().fetchVisits();
       return { success: true, visit: newVisit };
@@ -160,7 +157,6 @@ export const useVisitStore = create((set, get) => ({
         approverComments,
       });
       soundPlayer.playNotificationChime();
-      toast.success(`Visit status updated to ${targetStatus}.`);
       get().closeStatusModal();
       if (get().selectedVisit?.id === visitId) {
         set({ selectedVisit: updated });

@@ -19,7 +19,7 @@ import Spinner from '@/shared/components/ui/Spinner';
 
 export const NotificationDrawer = () => {
   const navigate = useNavigate();
-  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'unread'
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'unread' | 'requests' | 'status' | 'arrivals' | 'feedback' | 'bookings'
 
   const {
     notifications,
@@ -41,51 +41,65 @@ export const NotificationDrawer = () => {
 
   const filteredNotifications = notifications.filter((n) => {
     const isRead = n.read ?? n.isRead ?? false;
+    const type = String(n.notificationType || n.type || '').toUpperCase();
+
     if (filterTab === 'unread') return !isRead;
+    if (filterTab === 'requests') return type.includes('REQUEST') || type.includes('SUBMIT');
+    if (filterTab === 'status') return type.includes('APPROV') || type.includes('REJECT');
+    if (filterTab === 'arrivals') return type.includes('CHECK') || type.includes('ARRIV');
+    if (filterTab === 'feedback') return type.includes('FEEDBACK') || type.includes('SURVEY');
+    if (filterTab === 'bookings') return type.includes('BOOKING') || type.includes('ROOM');
     return true;
   });
 
   const getNotificationConfig = (type) => {
-    switch (type) {
-      case 'VISIT_REQUEST':
-      case 'VISIT_SUBMITTED':
-        return {
-          icon: Calendar,
-          iconBg: 'bg-sky-50 text-[#00adef] border-sky-200',
-          badgeText: 'Visit Request',
-          badgeBg: 'bg-sky-50 text-[#00adef] border-sky-200',
-        };
-      case 'VISIT_APPROVED':
-        return {
-          icon: Sparkles,
-          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-          badgeText: 'Approved',
-          badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        };
-      case 'VIP_CHECK_IN':
-      case 'CHECK_IN':
-        return {
-          icon: Building2,
-          iconBg: 'bg-orange-50 text-[#e38524] border-orange-200',
-          badgeText: 'Front Desk Arrival',
-          badgeBg: 'bg-orange-50 text-[#e38524] border-orange-200',
-        };
-      case 'SECURITY_ALERT':
-      case 'VISIT_REJECTED':
-        return {
-          icon: ShieldAlert,
-          iconBg: 'bg-rose-50 text-rose-600 border-rose-200',
-          badgeText: 'Security Alert',
-          badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
-        };
-      default:
-        return {
-          icon: Bell,
-          iconBg: 'bg-slate-100 text-slate-700 border-slate-200',
-          badgeText: 'Notice',
-          badgeBg: 'bg-slate-100 text-slate-700 border-slate-200',
-        };
+    const t = String(type || '').toUpperCase();
+    if (t.includes('REQUEST') || t.includes('SUBMIT')) {
+      return {
+        icon: Calendar,
+        iconBg: 'bg-sky-50 text-[#00adef] border-sky-200',
+        badgeText: 'Visit Request',
+        badgeBg: 'bg-sky-50 text-[#00adef] border-sky-200',
+      };
     }
+    if (t.includes('APPROV')) {
+      return {
+        icon: Sparkles,
+        iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+        badgeText: 'Approved',
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      };
+    }
+    if (t.includes('CHECK') || t.includes('ARRIV')) {
+      return {
+        icon: Building2,
+        iconBg: 'bg-orange-50 text-[#e38524] border-orange-200',
+        badgeText: 'Arrival Check-In',
+        badgeBg: 'bg-orange-50 text-[#e38524] border-orange-200',
+      };
+    }
+    if (t.includes('FEEDBACK') || t.includes('SURVEY')) {
+      return {
+        icon: Sparkles,
+        iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
+        badgeText: 'Guest Survey',
+        badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
+      };
+    }
+    if (t.includes('REJECT') || t.includes('ALERT')) {
+      return {
+        icon: ShieldAlert,
+        iconBg: 'bg-rose-50 text-rose-600 border-rose-200',
+        badgeText: 'Notice / Alert',
+        badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
+      };
+    }
+    return {
+      icon: Bell,
+      iconBg: 'bg-slate-100 text-slate-700 border-slate-200',
+      badgeText: 'Notification',
+      badgeBg: 'bg-slate-100 text-slate-700 border-slate-200',
+    };
   };
 
   const formatTimeAgo = (dateStr) => {
@@ -102,9 +116,13 @@ export const NotificationDrawer = () => {
     if (!isRead) {
       markAsRead(item.id);
     }
-    if (item.referenceId) {
-      closeDrawer();
-      navigate(`/visits/${item.referenceId}`);
+    closeDrawer();
+
+    const type = String(item.notificationType || item.type || '').toUpperCase();
+    if (type.includes('BOOKING') || type.includes('ROOM')) {
+      navigate('/visits/calendar');
+    } else {
+      navigate('/my-tracking');
     }
   };
 
@@ -165,28 +183,9 @@ export const NotificationDrawer = () => {
 
                 {/* Filter Switcher & Mark All as Read */}
                 <div className="mt-4 pt-3 border-t border-slate-100/80 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-2xl">
-                    <button
-                      onClick={() => setFilterTab('all')}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                        filterTab === 'all'
-                          ? 'bg-white text-[#000000] shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      All ({notifications.length})
-                    </button>
-                    <button
-                      onClick={() => setFilterTab('unread')}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                        filterTab === 'unread'
-                          ? 'bg-white text-[#000000] shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      Unread ({unreadCount})
-                    </button>
-                  </div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Filter Activity
+                  </span>
 
                   {unreadCount > 0 && (
                     <button
@@ -197,6 +196,31 @@ export const NotificationDrawer = () => {
                       <span>Mark all read</span>
                     </button>
                   )}
+                </div>
+
+                {/* Action Filter Pills */}
+                <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                  {[
+                    { key: 'all', label: `All (${notifications.length})` },
+                    { key: 'unread', label: `Unread (${unreadCount})` },
+                    { key: 'requests', label: 'Requests' },
+                    { key: 'status', label: 'Approvals' },
+                    { key: 'arrivals', label: 'Arrivals' },
+                    { key: 'feedback', label: 'Surveys' },
+                    { key: 'bookings', label: 'Bookings' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setFilterTab(tab.key)}
+                      className={`px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        filterTab === tab.key
+                          ? 'bg-[#00adef] text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 

@@ -169,7 +169,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         notifyRoles(
                 List.of(RoleName.ROLE_APPROVER, RoleName.ROLE_ADMIN),
-                title, message, NotificationType.VISIT_REQUESTED, visit.getId(), visit.getVisitCode(), true
+                title, message, NotificationType.VISIT_REQUESTED, visit.getId(), visit.getVisitCode(), false
         );
     }
 
@@ -190,13 +190,13 @@ public class NotificationServiceImpl implements NotificationService {
         if (visit.getRequester() != null) {
             notifyUser(visit.getRequester(), title, msg,
                     newStatus == VisitStatus.APPROVED ? NotificationType.VISIT_APPROVED : NotificationType.VISIT_REJECTED,
-                    visit.getId(), visit.getVisitCode(), true);
+                    visit.getId(), visit.getVisitCode(), false);
         }
 
         if (visit.getSponsor() != null && (visit.getRequester() == null || !visit.getSponsor().getId().equals(visit.getRequester().getId()))) {
             notifyUser(visit.getSponsor(), title, msg,
                     newStatus == VisitStatus.APPROVED ? NotificationType.VISIT_APPROVED : NotificationType.VISIT_REJECTED,
-                    visit.getId(), visit.getVisitCode(), true);
+                    visit.getId(), visit.getVisitCode(), false);
         }
     }
 
