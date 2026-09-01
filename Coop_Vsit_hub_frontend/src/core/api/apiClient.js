@@ -89,17 +89,35 @@ apiClient.interceptors.response.use(
 
         const { accessToken, refreshToken: newRefreshToken, user } = response.data;
 
+        // Preserve existing user state if not returned by refresh endpoint
+        let effectiveUser = user;
+        if (!effectiveUser && authData) {
+          try {
+            const parsed = JSON.parse(authData);
+            effectiveUser = parsed?.state?.user;
+          } catch (_) {}
+        }
+
         // Update localStorage
         const updatedState = {
           state: {
             accessToken,
             refreshToken: newRefreshToken,
-            user,
+            user: effectiveUser,
             isAuthenticated: true,
           },
           version: 0,
         };
         localStorage.setItem('coop_auth_state', JSON.stringify(updatedState));
+
+        // Dispatch window event to sync in-memory stores
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('coop_auth_refreshed', {
+              detail: { accessToken, refreshToken: newRefreshToken, user: effectiveUser },
+            })
+          );
+        }
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
         processQueue(null, accessToken);

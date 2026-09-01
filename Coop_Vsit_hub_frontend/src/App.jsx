@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import AppRoutes from '@/app/routes/AppRoutes';
+import useAuthStore from '@/modules/auth/store/authStore';
 
 export function App() {
+  const { accessToken, isAuthenticated, fetchCurrentUser, setAuthSession } = useAuthStore();
+
+  useEffect(() => {
+    // 1. Re-validate and refresh user profile if session exists
+    if (isAuthenticated && accessToken) {
+      fetchCurrentUser();
+    }
+
+    // 2. Listen to silent token refreshes dispatched by Axios interceptor
+    const handleAuthRefreshed = (event) => {
+      if (event.detail) {
+        setAuthSession(event.detail);
+      }
+    };
+
+    window.addEventListener('coop_auth_refreshed', handleAuthRefreshed);
+    return () => window.removeEventListener('coop_auth_refreshed', handleAuthRefreshed);
+  }, [isAuthenticated, accessToken, fetchCurrentUser, setAuthSession]);
+
   return (
     <BrowserRouter>
       {/* Toast Notification Container */}

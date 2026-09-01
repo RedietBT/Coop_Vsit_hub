@@ -62,6 +62,30 @@ export const useAuthStore = create(
         }
       },
 
+      setAuthSession: ({ accessToken, refreshToken, user }) => {
+        set((state) => ({
+          accessToken: accessToken || state.accessToken,
+          refreshToken: refreshToken || state.refreshToken,
+          user: user || state.user,
+          isAuthenticated: true,
+        }));
+      },
+
+      fetchCurrentUser: async () => {
+        try {
+          const token = get().accessToken;
+          if (!token) return null;
+          const response = await apiClient.get('/api/v1/auth/me');
+          if (response?.data) {
+            set({ user: response.data, isAuthenticated: true });
+            return response.data;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch current user profile:', e);
+          return null;
+        }
+      },
+
       logout: async () => {
         try {
           const token = get().accessToken;
