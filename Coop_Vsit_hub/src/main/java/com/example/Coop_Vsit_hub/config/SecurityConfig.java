@@ -25,7 +25,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -167,45 +166,26 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         // Parse comma-separated origins from environment / application.properties
-        List<String> allowedOrigins = new ArrayList<>();
-        if (allowedOriginsConfig != null && !allowedOriginsConfig.isBlank()) {
-            allowedOrigins.addAll(
-                Arrays.stream(allowedOriginsConfig.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isBlank())
-                    .map(origin -> {
-                        if (origin.startsWith("http://") || origin.startsWith("https://")) {
-                            try {
-                                java.net.URI uri = java.net.URI.create(origin);
-                                if (uri.getHost() != null) {
-                                    String scheme = uri.getScheme();
-                                    String host = uri.getHost();
-                                    int port = uri.getPort();
-                                    return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
-                                }
-                            } catch (Exception ignored) {
+        List<String> allowedOrigins = Arrays.stream(allowedOriginsConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(origin -> {
+                    if (origin.startsWith("http://") || origin.startsWith("https://")) {
+                        try {
+                            java.net.URI uri = java.net.URI.create(origin);
+                            if (uri.getHost() != null) {
+                                String scheme = uri.getScheme();
+                                String host = uri.getHost();
+                                int port = uri.getPort();
+                                return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
                             }
+                        } catch (Exception ignored) {
                         }
-                        return origin.replaceAll("/+$", "");
-                    })
-                    .distinct()
-                    .toList()
-            );
-        }
-
-        // Always ensure Vercel production & preview domains, and local origins are allowed
-        List<String> guaranteedPatterns = List.of(
-            "https://coop-vsit-hub.vercel.app",
-            "https://*.vercel.app",
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:4173"
-        );
-        for (String pattern : guaranteedPatterns) {
-            if (!allowedOrigins.contains(pattern)) {
-                allowedOrigins.add(pattern);
-            }
-        }
+                    }
+                    return origin.replaceAll("/+$", "");
+                })
+                .distinct()
+                .toList();
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(allowedOrigins);

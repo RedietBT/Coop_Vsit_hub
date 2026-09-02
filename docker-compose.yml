@@ -76,7 +76,7 @@ services:
       SPRING_MAIL_PORT: 1025
       COOPBANK_APP_FRONTEND_URL: ${FRONTEND_URL:-https://coop-vsit-hub.vercel.app}
       APP_FRONTEND_URL: ${FRONTEND_URL:-https://coop-vsit-hub.vercel.app}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app}
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     depends_on:
       db:
