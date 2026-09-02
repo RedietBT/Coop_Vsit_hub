@@ -62,7 +62,7 @@ public class AuthController {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthResponse response = authService.register(request, ipAddress, userAgent);
-        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
+        setRefreshTokenCookie(httpRequest, httpResponse, response.getRawRefreshToken());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -113,7 +113,7 @@ public class AuthController {
         AuthResponse response = authService.login(request, ipAddress, userAgent);
 
         // Write refresh token to HttpOnly cookie — never in the response body
-        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
+        setRefreshTokenCookie(httpRequest, httpResponse, response.getRawRefreshToken());
 
         return ResponseEntity.ok(response);
     }
@@ -146,7 +146,7 @@ public class AuthController {
         AuthResponse response = authService.refreshToken(rawRefreshToken, ipAddress, userAgent);
 
         // Rotate refresh token cookie (old one replaced by new one)
-        setRefreshTokenCookie(httpResponse, response.getRawRefreshToken());
+        setRefreshTokenCookie(httpRequest, httpResponse, response.getRawRefreshToken());
 
         return ResponseEntity.ok(response);
     }
@@ -174,7 +174,7 @@ public class AuthController {
         authService.logout(accessToken, username, ipAddress, userAgent);
 
         // Clear the refresh token cookie from the browser
-        clearRefreshTokenCookie(httpResponse);
+        clearRefreshTokenCookie(httpRequest, httpResponse);
 
         return ResponseEntity.noContent().build();
     }
@@ -219,7 +219,7 @@ public class AuthController {
         authService.changePassword(username, request, ipAddress, userAgent);
 
         // Clear refresh cookie since sessions are invalidated on password change
-        clearRefreshTokenCookie(httpResponse);
+        clearRefreshTokenCookie(httpRequest, httpResponse);
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "Password changed successfully. Active sessions have been invalidated for security.");
@@ -271,16 +271,24 @@ public class AuthController {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Writes the refresh token as an HttpOnly, SameSite cookie to the response.
-     * The cookie path is restricted to /api/v1/auth so it is only sent on auth requests.
+     * Writes the refresh token as an HttpOnly cookie to the response.
+     * Auto-detects HTTPS / reverse-proxy (e.g. Render/Cloudflare) and configures
+     * SameSite=None; Secure=true so cross-site frontend requests (e.g. Vercel)
+     * work seamlessly without dropping cookies, while remaining compatible with local HTTP dev.
      */
-    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+    private void setRefreshTokenCookie(HttpServletRequest request, HttpServletResponse response, String refreshToken) {
         if (refreshToken == null) return;
+
+        boolean isHttps = (request != null && (request.isSecure() || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"))))
+                || cookieSecure;
+
+        String effectiveSameSite = isHttps ? "None" : ("None".equalsIgnoreCase(cookieSameSite) ? "Lax" : cookieSameSite);
+        boolean effectiveSecure = isHttps;
 
         ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
                 .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
+                .secure(effectiveSecure)
+                .sameSite(effectiveSameSite)
                 .path("/api/v1/auth")
                 .maxAge(cookieMaxAgeSeconds)
                 .build();
@@ -288,19 +296,33 @@ public class AuthController {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        setRefreshTokenCookie(null, response, refreshToken);
+    }
+
     /**
      * Clears (expires) the refresh token cookie by setting MaxAge=0.
      */
-    private void clearRefreshTokenCookie(HttpServletResponse response) {
+    private void clearRefreshTokenCookie(HttpServletRequest request, HttpServletResponse response) {
+        boolean isHttps = (request != null && (request.isSecure() || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"))))
+                || cookieSecure;
+
+        String effectiveSameSite = isHttps ? "None" : ("None".equalsIgnoreCase(cookieSameSite) ? "Lax" : cookieSameSite);
+        boolean effectiveSecure = isHttps;
+
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_COOKIE_NAME, "")
                 .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
+                .secure(effectiveSecure)
+                .sameSite(effectiveSameSite)
                 .path("/api/v1/auth")
                 .maxAge(0)
                 .build();
 
         response.addHeader("Set-Cookie", expiredCookie.toString());
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        clearRefreshTokenCookie(null, response);
     }
 
     /**

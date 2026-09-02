@@ -18,11 +18,14 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -142,12 +145,18 @@ public class SecurityConfig {
                 // All other endpoints require JWT
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(new CorsFilter(corsConfigurationSource()), UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(swaggerBasicAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(swaggerBasicAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilterRegistrationBean() {
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(corsConfigurationSource()));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
     }
 
     @Bean
@@ -158,29 +167,48 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         // Parse comma-separated origins from environment / application.properties
-        List<String> allowedOrigins = Arrays.stream(allowedOriginsConfig.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .map(origin -> {
-                    if (origin.startsWith("http://") || origin.startsWith("https://")) {
-                        try {
-                            java.net.URI uri = java.net.URI.create(origin);
-                            if (uri.getHost() != null) {
-                                String scheme = uri.getScheme();
-                                String host = uri.getHost();
-                                int port = uri.getPort();
-                                return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
+        List<String> allowedOrigins = new ArrayList<>();
+        if (allowedOriginsConfig != null && !allowedOriginsConfig.isBlank()) {
+            allowedOrigins.addAll(
+                Arrays.stream(allowedOriginsConfig.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .map(origin -> {
+                        if (origin.startsWith("http://") || origin.startsWith("https://")) {
+                            try {
+                                java.net.URI uri = java.net.URI.create(origin);
+                                if (uri.getHost() != null) {
+                                    String scheme = uri.getScheme();
+                                    String host = uri.getHost();
+                                    int port = uri.getPort();
+                                    return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
+                                }
+                            } catch (Exception ignored) {
                             }
-                        } catch (Exception ignored) {
                         }
-                    }
-                    return origin.replaceAll("/+$", "");
-                })
-                .distinct()
-                .toList();
+                        return origin.replaceAll("/+$", "");
+                    })
+                    .distinct()
+                    .toList()
+            );
+        }
+
+        // Always ensure Vercel production & preview domains, and local origins are allowed
+        List<String> guaranteedPatterns = List.of(
+            "https://coop-vsit-hub.vercel.app",
+            "https://*.vercel.app",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:4173"
+        );
+        for (String pattern : guaranteedPatterns) {
+            if (!allowedOrigins.contains(pattern)) {
+                allowedOrigins.add(pattern);
+            }
+        }
 
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count"));
