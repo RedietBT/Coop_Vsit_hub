@@ -150,6 +150,98 @@ public class ActiveDirectoryAuthService {
         }
     }
 
+    /**
+     * Looks up a user in Active Directory by email (or sAMAccountName) using the service account bind.
+     * Does NOT require the user's password — safe for admin diagnostics.
+     *
+     * @param emailOrUsername the email address or sAMAccountName to search for
+     * @return map of AD attributes if found, or empty map if not found
+     */
+    public Map<String, Object> lookupByEmail(String emailOrUsername) {
+        String clean = emailOrUsername != null ? emailOrUsername.trim() : "";
+        String samName = clean.contains("@") ? clean.substring(0, clean.indexOf("@")) : clean;
+
+        if (!adEnabled) {
+            return Map.of("error", "Active Directory is disabled in configuration.");
+        }
+
+        try {
+            LdapContextSource contextSource = new LdapContextSource();
+            contextSource.setUrl(adUrl);
+            contextSource.setBase(adBaseDn);
+            contextSource.setUserDn(adUsername);
+            contextSource.setPassword(adPassword);
+            Map<String, Object> env = new HashMap<>();
+            env.put("java.naming.security.protocol", "ssl");
+            env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            contextSource.setBaseEnvironmentProperties(env);
+            contextSource.afterPropertiesSet();
+
+            LdapTemplate ldapTemplate = new LdapTemplate(contextSource);
+            ldapTemplate.setIgnorePartialResultException(true);
+
+            AndFilter filter = new AndFilter();
+            filter.and(new EqualsFilter("objectClass", "user"));
+            OrFilter orFilter = new OrFilter();
+            orFilter.or(new EqualsFilter("sAMAccountName", samName));
+            orFilter.or(new EqualsFilter("userPrincipalName", clean));
+            orFilter.or(new EqualsFilter("mail", clean));
+            filter.and(orFilter);
+
+            List<Map<String, Object>> results = ldapTemplate.search("", filter.encode(), (Attributes attrs) -> {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                String[] fields = {"sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
+                        "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName"};
+                for (String f : fields) {
+                    try {
+                        if (attrs.get(f) != null && attrs.get(f).get() != null) {
+                            entry.put(f, attrs.get(f).get().toString());
+                        }
+                    } catch (NamingException ignored) {}
+                }
+                return entry;
+            });
+
+            if (results == null || results.isEmpty()) {
+                log.warn("AD lookup: user '{}' not found in Active Directory.", clean);
+                return Map.of("found", false, "searchedFor", clean, "adUrl", adUrl, "baseDn", adBaseDn);
+            }
+
+            Map<String, Object> adAttrs = results.get(0);
+
+            // Decode userAccountControl flags for readability
+            String uac = (String) adAttrs.get("userAccountControl");
+            if (uac != null) {
+                try {
+                    int uacInt = Integer.parseInt(uac);
+                    boolean disabled  = (uacInt & 0x0002) != 0;
+                    boolean locked    = (uacInt & 0x0010) != 0;
+                    boolean pwdExpired = (uacInt & 0x800000) != 0;
+                    adAttrs = new LinkedHashMap<>(adAttrs);
+                    adAttrs.put("accountDisabled",  disabled);
+                    adAttrs.put("accountLocked",    locked);
+                    adAttrs.put("passwordExpired",  pwdExpired);
+                } catch (NumberFormatException ignored) {}
+            }
+
+            // Check if this user exists in the local DB
+            String email = (String) adAttrs.get("mail");
+            String sam   = (String) adAttrs.get("sAMAccountName");
+            boolean inDb = (email != null && userRepository.findByEmail(email.toLowerCase()).isPresent())
+                        || (sam   != null && userRepository.findByUsername(sam).isPresent());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("found", true);
+            result.put("adAttributes", adAttrs);
+            result.put("existsInLocalDb", inDb);
+            return result;
+
+        } catch (Exception e) {
+            log.error("AD lookup error for '{}': {}", clean, e.getMessage());
+            return Map.of("error", "AD lookup failed: " + e.getMessage(), "adUrl", adUrl);
+        }
+    }
+
     private User syncStaffUser(String username, String email, String firstName, String lastName, String department, String phone, String rawPassword) {
         String safeEmail = (email != null && !email.isBlank()) ? email.toLowerCase().trim() : (username + "@" + adDomain).toLowerCase();
         String safeFirst = (firstName != null && !firstName.isBlank()) ? firstName.trim() : username;
