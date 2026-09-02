@@ -161,6 +161,22 @@ public class SecurityConfig {
         List<String> allowedOrigins = Arrays.stream(allowedOriginsConfig.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
+                .map(origin -> {
+                    if (origin.startsWith("http://") || origin.startsWith("https://")) {
+                        try {
+                            java.net.URI uri = java.net.URI.create(origin);
+                            if (uri.getHost() != null) {
+                                String scheme = uri.getScheme();
+                                String host = uri.getHost();
+                                int port = uri.getPort();
+                                return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    return origin.replaceAll("/+$", "");
+                })
+                .distinct()
                 .toList();
 
         CorsConfiguration configuration = new CorsConfiguration();
