@@ -118,6 +118,12 @@ export const visitApi = {
     const response = await apiClient.get('/api/v1/visits/room-bookings', { params });
     return response.data || [];
   },
+
+  submitDirectorReview: async (id, payload) => {
+    // payload: { rating: number (1-5), outcome: string, reviewNotes?: string }
+    const response = await apiClient.post(`/api/v1/visits/${id}/director-review`, payload);
+    return response.data;
+  },
 };
 
 export default visitApi;

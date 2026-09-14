@@ -1016,4 +1016,43 @@ public class VisitServiceImpl implements VisitService {
                     .build();
         }).toList();
     }
+
+    @Override
+    @Transactional
+    public VisitDetailResponse submitDirectorReview(UUID id, SubmitDirectorReviewRequest request, String reviewerUsername) {
+        log.info("Submitting director review for visit ID: {} by reviewer: {}", id, reviewerUsername);
+
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+
+        if (visit.getStatus() != VisitStatus.COMPLETED) {
+            throw new IllegalStateException("Executive reviews can only be submitted for completed visits. Current visit status: " + visit.getStatus());
+        }
+
+        User reviewer = userRepository.findByUsername(reviewerUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Reviewer user not found: " + reviewerUsername));
+
+        visit.setDirectorRating(request.getRating());
+        visit.setDirectorOutcome(request.getOutcome().trim().toUpperCase());
+        if (StringUtils.hasText(request.getReviewNotes())) {
+            visit.setDirectorReviewNotes(htmlSanitizer.sanitize(request.getReviewNotes().trim()));
+        }
+        visit.setDirectorReviewedAt(Instant.now());
+        visit.setDirectorReviewer(reviewer);
+
+        Visit saved = visitRepository.save(visit);
+
+        auditLoggerService.logEvent(
+                reviewer,
+                reviewerUsername,
+                AuditEventType.VISIT_STATUS_CHANGED,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "DIRECTOR_REVIEW",
+                String.format("Executive review submitted for visit '%s' with rating %d/5 and outcome '%s' by '%s'",
+                        saved.getVisitCode(), request.getRating(), saved.getDirectorOutcome(), reviewerUsername)
+        );
+
+        return VisitDetailResponse.from(saved);
+    }
 }

@@ -209,6 +209,23 @@ public class Visit {
     @Builder.Default
     private String guestTier = "NORMAL_GUEST";
 
+    // Executive Host / Director Review
+    @Column(name = "director_rating")
+    private Integer directorRating;
+
+    @Column(name = "director_outcome", length = 100)
+    private String directorOutcome;
+
+    @Column(name = "director_review_notes", columnDefinition = "TEXT")
+    private String directorReviewNotes;
+
+    @Column(name = "director_reviewed_at")
+    private Instant directorReviewedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "director_reviewer_id")
+    private User directorReviewer;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

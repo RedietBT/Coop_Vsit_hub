@@ -22,4 +22,21 @@ public interface EmailService {
             String purpose,
             int visitorCount
     );
+
+    void sendRoomBookingSecretaryNotification(
+            String secretaryEmail,
+            String secretaryName,
+            String departmentName,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String visitCode,
+            String visitTitle,
+            String guestName,
+            String organizationName,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int visitorCount
+    );
 }

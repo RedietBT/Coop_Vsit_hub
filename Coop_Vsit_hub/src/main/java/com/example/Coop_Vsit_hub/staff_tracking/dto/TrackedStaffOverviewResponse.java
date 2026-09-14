@@ -28,6 +28,12 @@ public class TrackedStaffOverviewResponse {
     private long totalTrackedGuests;
     private long activeReservationsCount;
 
+    // Executive Review Statistics (computed strictly from director evaluations)
+    private long totalCompletedVisits;
+    private long totalDirectorReviews;
+    private Double averageDirectorRating;
+    private long pendingDirectorReviewsCount;
+
     private List<VisitSummaryResponse> visits;
     private List<OrganizationSummaryResponse> organizations;
     private List<IndividualGuestSummaryResponse> individualGuests;

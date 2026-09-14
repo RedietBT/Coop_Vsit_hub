@@ -161,9 +161,64 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 saved.getExpectedAttendees()
                         );
                     }
+
+                    // Dispatch notifications to the registered secretaries of this specific department
+                    String roomDept = saved.getHostDepartment();
+                    var roomOpt = meetingRoomRepository.findByNameIgnoreCase(saved.getRoomName());
+                    if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getDepartment())) {
+                        roomDept = roomOpt.get().getDepartment().trim();
+                    }
+
+                    if (StringUtils.hasText(roomDept)) {
+                        final String finalDept = roomDept;
+                        List<User> deptSecretaries = userRepository.findAll().stream()
+                                .filter(u -> u.isEnabled() && u.isAccountNonLocked())
+                                .filter(u -> u.getRoles() != null && u.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_SECRETARY))
+                                .filter(u -> StringUtils.hasText(u.getDepartment()) && u.getDepartment().trim().equalsIgnoreCase(finalDept))
+                                .filter(u -> StringUtils.hasText(u.getEmail()))
+                                .toList();
+
+                        log.info("Dispatching room booking notification for room '{}' to {} department secretary(ies) in '{}'",
+                                saved.getRoomName(), deptSecretaries.size(), finalDept);
+
+                        for (User secretary : deptSecretaries) {
+                            emailService.sendRoomBookingSecretaryNotification(
+                                    secretary.getEmail(),
+                                    secretary.getFullName(),
+                                    finalDept,
+                                    saved.getRoomName(),
+                                    saved.getBookedByName(),
+                                    saved.getHostDepartment(),
+                                    saved.getBookingCode(),
+                                    saved.getMeetingTitle(),
+                                    saved.getGuestName(),
+                                    saved.getGuestOrganizationName(),
+                                    saved.getScheduledStartTime(),
+                                    saved.getScheduledEndTime(),
+                                    saved.getMeetingAgenda(),
+                                    saved.getExpectedAttendees()
+                            );
+
+                            if (notificationService != null) {
+                                String secMessage = String.format(
+                                        "Meeting room '%s' under your department (%s) has been reserved for '%s' by %s. Ref: %s.",
+                                        saved.getRoomName(), finalDept, saved.getMeetingTitle(), saved.getBookedByName(), saved.getBookingCode()
+                                );
+                                notificationService.notifyUser(
+                                        secretary,
+                                        "Department Room Reserved: " + saved.getRoomName(),
+                                        secMessage,
+                                        NotificationType.VISIT_APPROVED,
+                                        saved.getId(),
+                                        saved.getBookingCode(),
+                                        false
+                                );
+                            }
+                        }
+                    }
                 }
             } catch (Exception e) {
-                log.warn("Failed to dispatch admin notification for room booking: {}", e.getMessage());
+                log.warn("Failed to dispatch booking notification: {}", e.getMessage(), e);
             }
         }
 

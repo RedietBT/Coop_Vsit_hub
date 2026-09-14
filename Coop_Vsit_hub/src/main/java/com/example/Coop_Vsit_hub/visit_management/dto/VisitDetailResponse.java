@@ -86,7 +86,16 @@ public class VisitDetailResponse {
     private Instant scheduledEndTime;
     private Instant actualCheckInTime;
     private Instant actualCheckOutTime;
+    // Executive Host / Director Review
+    private Boolean directorReviewSubmitted;
+    private Integer directorRating;
+    private String directorOutcome;
+    private String directorReviewNotes;
+    private Instant directorReviewedAt;
+    private UserDetailResponse directorReviewer;
+
     private com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse feedback;
+
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -148,6 +157,12 @@ public class VisitDetailResponse {
                 .scheduledEndTime(visit.getScheduledEndTime())
                 .actualCheckInTime(visit.getActualCheckInTime())
                 .actualCheckOutTime(visit.getActualCheckOutTime())
+                .directorReviewSubmitted(visit.getDirectorRating() != null)
+                .directorRating(visit.getDirectorRating())
+                .directorOutcome(visit.getDirectorOutcome())
+                .directorReviewNotes(visit.getDirectorReviewNotes())
+                .directorReviewedAt(visit.getDirectorReviewedAt())
+                .directorReviewer(visit.getDirectorReviewer() != null ? UserDetailResponse.from(visit.getDirectorReviewer()) : null)
                 .feedback(feedback)
                 .createdAt(visit.getCreatedAt())
                 .updatedAt(visit.getUpdatedAt())

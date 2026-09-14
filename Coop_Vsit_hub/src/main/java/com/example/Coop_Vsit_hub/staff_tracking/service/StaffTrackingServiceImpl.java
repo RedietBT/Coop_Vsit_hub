@@ -11,6 +11,7 @@ import com.example.coop_vsit_hub.staff_tracking.dto.TrackedStaffOverviewResponse
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
 import com.example.coop_vsit_hub.visit_management.dto.VisitSummaryResponse;
+import com.example.coop_vsit_hub.visit_management.enums.VisitStatus;
 import com.example.coop_vsit_hub.visit_management.model.Organization;
 import com.example.coop_vsit_hub.visit_management.model.Visit;
 import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
@@ -50,6 +51,22 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
 
         List<RoomBooking> bookings = resolveStaffBookings(staffUser, staffIdentifier);
 
+        long totalCompletedVisits = matchedVisits.stream()
+                .filter(v -> v.getStatus() == VisitStatus.COMPLETED)
+                .count();
+
+        List<Integer> ratings = matchedVisits.stream()
+                .filter(v -> v.getStatus() == VisitStatus.COMPLETED)
+                .map(Visit::getDirectorRating)
+                .filter(r -> r != null && r > 0)
+                .toList();
+
+        long totalDirectorReviews = ratings.size();
+        Double averageDirectorRating = totalDirectorReviews > 0
+                ? Math.round(ratings.stream().mapToInt(Integer::intValue).average().orElse(0.0) * 10.0) / 10.0
+                : null;
+        long pendingDirectorReviewsCount = Math.max(0, totalCompletedVisits - totalDirectorReviews);
+
         return TrackedStaffOverviewResponse.builder()
                 .staffUsername(staffUser != null ? staffUser.getUsername() : staffIdentifier)
                 .staffFullName(staffUser != null ? staffUser.getFullName() : staffIdentifier)
@@ -58,6 +75,10 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
                 .totalTrackedOrganizations(orgDtos.size())
                 .totalTrackedGuests(guestDtos.size())
                 .activeReservationsCount(bookings.size())
+                .totalCompletedVisits(totalCompletedVisits)
+                .totalDirectorReviews(totalDirectorReviews)
+                .averageDirectorRating(averageDirectorRating)
+                .pendingDirectorReviewsCount(pendingDirectorReviewsCount)
                 .visits(visitDtos)
                 .organizations(orgDtos)
                 .individualGuests(guestDtos)

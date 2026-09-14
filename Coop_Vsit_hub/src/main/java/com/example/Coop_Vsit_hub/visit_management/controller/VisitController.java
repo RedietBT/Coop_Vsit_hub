@@ -210,4 +210,16 @@ public class VisitController {
     ) {
         return ResponseEntity.ok(visitService.getAdminRoomBookings(roomName, fromDate, toDate));
     }
+
+    @PostMapping("/{id}/director-review")
+    @PreAuthorize("hasAnyAuthority('ROLE_DIRECTOR', 'ROLE_ADMIN')")
+    @Operation(summary = "Submit Executive Visit Review", description = "Host Director or Admin submits evaluation rating, meeting outcome, and executive notes.")
+    public ResponseEntity<VisitDetailResponse> submitDirectorReview(
+            @PathVariable UUID id,
+            @Valid @RequestBody SubmitDirectorReviewRequest request,
+            Principal principal
+    ) {
+        String username = principal != null ? principal.getName() : "director";
+        return ResponseEntity.ok(visitService.submitDirectorReview(id, request, username));
+    }
 }

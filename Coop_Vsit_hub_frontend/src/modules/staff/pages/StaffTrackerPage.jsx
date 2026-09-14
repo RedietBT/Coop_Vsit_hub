@@ -25,6 +25,7 @@ import GuestProfileDrawer from '@/modules/guests/components/GuestProfileDrawer';
 import useOrganizationStore from '@/modules/organizations/store/organizationStore';
 import useGuestStore from '@/modules/guests/store/guestStore';
 import Badge from '@/shared/components/ui/Badge';
+import DirectorReviewModal from '@/modules/visits/components/DirectorReviewModal';
 
 export const StaffTrackerPage = () => {
   const { user } = useAuthStore();
@@ -42,6 +43,7 @@ export const StaffTrackerPage = () => {
 
   const [activeTab, setActiveTab] = useState('visits'); // 'visits' | 'organizations' | 'guests'
   const [searchTerm, setSearchTerm] = useState('');
+  const [reviewModalVisit, setReviewModalVisit] = useState(null);
 
   useEffect(() => {
     fetchOverview();
@@ -169,6 +171,45 @@ export const StaffTrackerPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Executive Director Review KPI Card */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
+            overview?.averageDirectorRating != null
+              ? 'bg-amber-50 border-amber-100 text-[#e38524]'
+              : 'bg-slate-50 border-slate-100 text-slate-400'
+          }`}>
+            <Star className={`w-6 h-6 ${overview?.averageDirectorRating != null ? 'fill-amber-400 text-amber-400' : ''}`} />
+          </div>
+          <div>
+            {overview?.averageDirectorRating != null ? (
+              <>
+                <div className="text-2xl font-black text-slate-900 flex items-baseline gap-1">
+                  {Number(overview.averageDirectorRating).toFixed(1)}
+                  <span className="text-xs font-semibold text-slate-400">/ 5.0</span>
+                </div>
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Executive Review
+                </div>
+                <div className="text-[10px] text-amber-700 font-medium">
+                  {overview.totalDirectorReviews} reviewed ({overview.pendingDirectorReviewsCount || 0} pending)
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-slate-300">
+                  —
+                </div>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Executive Review
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium">
+                  No Reviews Yet ({overview?.pendingDirectorReviewsCount || 0} Pending)
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Navigation Tabs & Search */}
@@ -229,13 +270,15 @@ export const StaffTrackerPage = () => {
                   <th className="py-3.5 px-4">Meeting Room</th>
                   <th className="py-3.5 px-4">Scheduled Date</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Feedback Rating</th>
+                  <th className="py-3.5 px-4">Visitor Feedback</th>
+                  <th className="py-3.5 px-4">Director Review</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredVisits.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-400">
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
                       No tracked visits matching your room bookings found.
                     </td>
                   </tr>
@@ -271,16 +314,58 @@ export const StaffTrackerPage = () => {
                           {v.status}
                         </span>
                       </td>
+                      {/* Visitor Feedback */}
                       <td className="py-3.5 px-4">
-                        {v.feedbackSubmitted ? (
+                        {v.feedbackSubmitted && v.guestRating ? (
                           <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs">
                             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span>{v.guestRating ? Number(v.guestRating).toFixed(1) : '5.0'} / 5.0</span>
+                            <span>{Number(v.guestRating).toFixed(1)} / 5.0</span>
                           </div>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium text-xs">
-                            In Progress
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 border border-slate-200 font-medium text-[11px]">
+                            {v.status === 'COMPLETED' ? 'No Feedback' : 'Pending'}
                           </span>
+                        )}
+                      </td>
+                      {/* Director Review */}
+                      <td className="py-3.5 px-4">
+                        {v.directorRating ? (
+                          <div className="space-y-1">
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 border border-sky-200 font-bold text-xs">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              <span>{v.directorRating}.0 / 5.0</span>
+                            </div>
+                            {v.directorOutcome && (
+                              <div className="text-[10px] font-semibold text-slate-500">
+                                {v.directorOutcome.replace(/_/g, ' ')}
+                              </div>
+                            )}
+                          </div>
+                        ) : v.status === 'COMPLETED' ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                              Review Pending
+                            </span>
+                            <div className="text-[10px] text-slate-400">Host review not done</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">—</span>
+                        )}
+                      </td>
+                      {/* Action */}
+                      <td className="py-3.5 px-4 text-right">
+                        {v.status === 'COMPLETED' ? (
+                          <Button
+                            variant={v.directorRating ? 'ghost' : 'cyan'}
+                            size="sm"
+                            onClick={() => setReviewModalVisit(v)}
+                            className={v.directorRating ? 'border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs' : 'text-xs'}
+                          >
+                            <Star className={`w-3.5 h-3.5 mr-1 ${v.directorRating ? 'text-amber-500 fill-amber-400' : 'text-white'}`} />
+                            {v.directorRating ? 'Edit Review' : 'Review Visit'}
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">In Progress</span>
                         )}
                       </td>
                     </tr>
@@ -486,6 +571,14 @@ export const StaffTrackerPage = () => {
       {/* Reusable Profile Drawers */}
       <OrganizationProfileDrawer />
       <GuestProfileDrawer />
+
+      {/* Director Executive Review Modal */}
+      <DirectorReviewModal
+        isOpen={!!reviewModalVisit}
+        onClose={() => setReviewModalVisit(null)}
+        visit={reviewModalVisit}
+        onSuccess={fetchOverview}
+      />
     </div>
   );
 };

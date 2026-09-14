@@ -101,4 +101,9 @@ public interface VisitService {
      * Retrieve comprehensive room booking audit roster for Super Admin dashboard.
      */
     java.util.List<AdminRoomBookingResponse> getAdminRoomBookings(String roomName, Instant fromDate, Instant toDate);
+
+    /**
+     * Submit an executive evaluation / review for a completed visit by Director or Admin.
+     */
+    VisitDetailResponse submitDirectorReview(UUID id, SubmitDirectorReviewRequest request, String reviewerUsername);
 }

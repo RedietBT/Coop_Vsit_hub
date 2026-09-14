@@ -56,8 +56,27 @@ public class ActiveDirectoryAuthService {
     @Value("${coopbank.ad.ssl.trust-all:false}")
     private boolean trustAllSsl;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        if (trustAllSsl) {
+            System.setProperty("com.sun.jndi.ldap.object.disableEndpointIdentification", "true");
+            log.warn("LDAP endpoint identification disabled for internal bank LDAPS compatibility.");
+        }
+    }
+
     public boolean isAdEnabled() {
         return adEnabled;
+    }
+
+    private String resolveBindUser(String rawUser) {
+        if (!org.springframework.util.StringUtils.hasText(rawUser)) {
+            return rawUser;
+        }
+        String trimmed = rawUser.trim();
+        if (trimmed.contains("@") || trimmed.contains("=")) {
+            return trimmed;
+        }
+        return trimmed + "@" + (org.springframework.util.StringUtils.hasText(adDomain) ? adDomain : "coopbank.local");
     }
 
     /**
@@ -84,13 +103,15 @@ public class ActiveDirectoryAuthService {
             LdapContextSource contextSource = new LdapContextSource();
             contextSource.setUrl(adUrl);
             contextSource.setBase(adBaseDn);
-            contextSource.setUserDn(adUsername);
-            contextSource.setPassword(adPassword);
+            String bindUser = resolveBindUser(org.springframework.util.StringUtils.hasText(adUsername) ? adUsername : cleanIdentifier);
+            String bindPass = org.springframework.util.StringUtils.hasText(adUsername) ? adPassword : password;
+            contextSource.setUserDn(bindUser);
+            contextSource.setPassword(bindPass);
             
             Map<String, Object> environment = new HashMap<>();
             environment.put("java.naming.security.protocol", "ssl");
-            environment.put("com.sun.jndi.ldap.connect.timeout", "3000");
-            environment.put("com.sun.jndi.ldap.read.timeout", "5000");
+            environment.put("com.sun.jndi.ldap.connect.timeout", "4000");
+            environment.put("com.sun.jndi.ldap.read.timeout", "6000");
             if (trustAllSsl) {
                 log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed via coopbank.ad.ssl.trust-all=true. Do not use in production!");
                 environment.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
@@ -175,7 +196,7 @@ public class ActiveDirectoryAuthService {
             LdapContextSource contextSource = new LdapContextSource();
             contextSource.setUrl(adUrl);
             contextSource.setBase(adBaseDn);
-            contextSource.setUserDn(adUsername);
+            contextSource.setUserDn(resolveBindUser(adUsername));
             contextSource.setPassword(adPassword);
             Map<String, Object> env = new HashMap<>();
             env.put("java.naming.security.protocol", "ssl");

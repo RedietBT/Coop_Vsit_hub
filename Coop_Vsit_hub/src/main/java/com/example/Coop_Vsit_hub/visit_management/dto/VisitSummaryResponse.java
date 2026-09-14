@@ -52,6 +52,14 @@ public class VisitSummaryResponse {
     private Double guestRating;
     private String feedbackComments;
 
+    // Executive Host / Director Review
+    private Boolean directorReviewSubmitted;
+    private Integer directorRating;
+    private String directorOutcome;
+    private String directorReviewNotes;
+    private Instant directorReviewedAt;
+    private String directorReviewerName;
+
     public static VisitSummaryResponse from(Visit visit) {
         String phone = visit.getVisitorPhone();
         if (phone == null || phone.isBlank()) {
@@ -85,6 +93,12 @@ public class VisitSummaryResponse {
                 .scheduledEndTime(visit.getScheduledEndTime())
                 .actualCheckInTime(visit.getActualCheckInTime())
                 .actualCheckOutTime(visit.getActualCheckOutTime())
+                .directorReviewSubmitted(visit.getDirectorRating() != null)
+                .directorRating(visit.getDirectorRating())
+                .directorOutcome(visit.getDirectorOutcome())
+                .directorReviewNotes(visit.getDirectorReviewNotes())
+                .directorReviewedAt(visit.getDirectorReviewedAt())
+                .directorReviewerName(visit.getDirectorReviewer() != null ? visit.getDirectorReviewer().getFullName() : null)
                 .createdAt(visit.getCreatedAt())
                 .build();
     }
