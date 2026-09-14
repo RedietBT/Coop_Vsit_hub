@@ -9,15 +9,21 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Upload,
+  Lock,
 } from 'lucide-react';
 import Modal from '@/shared/components/ui/Modal';
 import Button from '@/shared/components/ui/Button';
 import Input from '@/shared/components/ui/Input';
+import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '../store/masterDataStore';
 import masterDataApi from '../api/masterDataApi';
 import { toast } from 'sonner';
 
 export const MasterDataManagementModal = () => {
+  const { user, hasRole } = useAuthStore();
+  const isSecretary = hasRole('ROLE_SECRETARY');
+  const userDept = user?.department || '';
+
   const {
     isMasterModalOpen,
     activeTab,
@@ -41,17 +47,27 @@ export const MasterDataManagementModal = () => {
   const [deptForm, setDeptForm] = useState({ name: '', code: '', description: '' });
   const [roomForm, setRoomForm] = useState({
     name: '',
-    department: '',
+    department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
   });
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  useEffect(() => {
+    if (isMasterModalOpen && isSecretary) {
+      setActiveTab('rooms');
+      setRoomForm((prev) => ({
+        ...prev,
+        department: userDept,
+      }));
+    }
+  }, [isMasterModalOpen, isSecretary, userDept, setActiveTab]);
+
   const handleClose = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
     closeMasterModal();
   };
 
@@ -74,13 +90,18 @@ export const MasterDataManagementModal = () => {
     e.preventDefault();
     if (!roomForm.name.trim()) return;
 
+    const payload = {
+      ...roomForm,
+      department: isSecretary ? userDept : roomForm.department,
+    };
+
     if (editingId) {
-      await updateMeetingRoom(editingId, roomForm);
+      await updateMeetingRoom(editingId, payload);
       setEditingId(null);
     } else {
-      await createMeetingRoom(roomForm);
+      await createMeetingRoom(payload);
     }
-    setRoomForm({ name: '', department: '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -121,45 +142,47 @@ export const MasterDataManagementModal = () => {
     <Modal
       isOpen={isMasterModalOpen}
       onClose={handleClose}
-      title="Master Data & Facility Management"
-      subtitle="Configure bank departments and meeting room facilities."
+      title={isSecretary ? `Department Meeting Rooms — ${userDept || 'Department'}` : "Master Data & Facility Management"}
+      subtitle={isSecretary ? "Register and manage executive meeting spaces for your department." : "Configure bank departments and meeting room facilities."}
       maxWidth="max-w-4xl"
     >
       <div className="space-y-6 text-left">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('departments');
-              setEditingId(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'departments'
-                ? 'bg-white text-[#00adef] shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Bank Departments ({departments.length})</span>
-          </button>
+        {/* Navigation Tabs (Only shown to full Admin) */}
+        {!isSecretary && (
+          <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('departments');
+                setEditingId(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'departments'
+                  ? 'bg-white text-[#00adef] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Bank Departments ({departments.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('rooms');
-              setEditingId(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'rooms'
-                ? 'bg-white text-emerald-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <DoorOpen className="w-4 h-4" />
-            <span>Meeting Rooms & Spaces ({meetingRooms.length})</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('rooms');
+                setEditingId(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'rooms'
+                  ? 'bg-white text-emerald-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <DoorOpen className="w-4 h-4" />
+              <span>Meeting Rooms & Spaces ({meetingRooms.length})</span>
+            </button>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: DEPARTMENTS */}
@@ -309,23 +332,36 @@ export const MasterDataManagementModal = () => {
                   />
                 </div>
 
-                {/* 2. Department (Dynamically populated from Master Data) */}
+                {/* 2. Department */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Managing Department
                   </label>
-                  <select
-                    value={roomForm.department}
-                    onChange={(e) => setRoomForm({ ...roomForm, department: e.target.value })}
-                    className="w-full h-[42px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
-                  >
-                    <option value="">-- Select Department --</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.name}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                  {isSecretary ? (
+                    <div className="w-full h-[42px] px-3 rounded-xl border border-emerald-200 bg-emerald-50/80 flex items-center justify-between text-xs font-bold text-emerald-950">
+                      <div className="flex items-center gap-2 truncate">
+                        <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="truncate">{userDept || 'Assigned Department'}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold px-2 py-0.5 rounded-full bg-emerald-100/90 shrink-0">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Department Scoped</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <select
+                      value={roomForm.department}
+                      onChange={(e) => setRoomForm({ ...roomForm, department: e.target.value })}
+                      className="w-full h-[42px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
+                    >
+                      <option value="">-- Select Department --</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* 3. Seating Capacity */}

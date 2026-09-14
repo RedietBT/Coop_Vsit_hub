@@ -1,7 +1,7 @@
 package com.example.coop_vsit_hub.config;
 
+import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
-import org.owasp.html.Sanitizers;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -26,10 +26,7 @@ public class HtmlSanitizer {
      * Equivalent to OWASP's "no-HTML" policy — the safest option for a bank system
      * where user inputs (visitor names, remarks, objectives) should never contain HTML.
      */
-    private static final PolicyFactory PLAIN_TEXT_POLICY = Sanitizers.FORMATTING
-            .and(Sanitizers.LINKS)
-            .and(Sanitizers.BLOCKS)
-            .and(Sanitizers.TABLES);
+    private static final PolicyFactory PLAIN_TEXT_POLICY = new HtmlPolicyBuilder().toFactory();
 
     /**
      * Sanitizes a user-submitted string, stripping all HTML and script content.

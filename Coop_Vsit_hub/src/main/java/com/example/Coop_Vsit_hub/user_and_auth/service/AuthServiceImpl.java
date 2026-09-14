@@ -159,103 +159,104 @@ public class AuthServiceImpl implements AuthService {
         String loginType = request.getLoginType() != null ? request.getLoginType().trim().toUpperCase() : "";
         log.info("Processing authentication request for identifier: {} (type: {})", identifier, loginType);
 
-        User user = null;
+        String cleanUsername = identifier.contains("@") ? identifier.substring(0, identifier.indexOf("@")).trim() : identifier;
 
-        // Route 1: Active Directory Mode (explicit or if staff username/email provided)
-        if ("ACTIVE_DIRECTORY".equals(loginType) || identifier.toLowerCase().endsWith("@coopbank.local") || identifier.equalsIgnoreCase("staff_test")) {
-            user = activeDirectoryAuthService.authenticateStaff(identifier, request.getPassword());
+        // Step 1: Check Local Database (System Admins & local/test credentials)
+        User localUser = userRepository.findByUsernameOrEmail(identifier)
+                .or(() -> userRepository.findByUsernameOrEmail(cleanUsername))
+                .orElse(null);
+
+        // If local user exists and password matches local BCrypt hash, authenticate locally
+        if (localUser != null && passwordEncoder.matches(request.getPassword(), localUser.getPasswordHash())) {
+            // Security Check 1: Brute Force Account Lockout
+            if (bruteForceProtectionService.isAccountLocked(localUser)) {
+                auditLoggerService.logEvent(
+                        localUser,
+                        identifier,
+                        AuditEventType.LOGIN_FAILED,
+                        AuditStatus.BLOCKED,
+                        ipAddress,
+                        userAgent,
+                        "Locked account attempted login."
+                );
+                throw new IllegalStateException(String.format("Account is temporarily locked due to %d consecutive failed login attempts. Please try again after %d minutes.",
+                        bruteForceProtectionService.getMaxAttempts(), bruteForceProtectionService.getLockDurationMinutes()));
+            }
+
+            // Security Check 2: Account Enabled Check
+            if (!localUser.isEnabled()) {
+                auditLoggerService.logEvent(localUser, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Disabled account attempted login.");
+                throw new IllegalStateException("User account is disabled. Please contact CoopBank system administrator.");
+            }
+
+            // Security Check 3: Email Verification Check
+            if (!localUser.isEmailVerified()) {
+                auditLoggerService.logEvent(localUser, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Unverified email account attempted login.");
+                throw new IllegalStateException("Your email address is not verified. Please verify your email via the link sent to your inbox before signing in.");
+            }
+
+            // Successful Authentication: Reset counters
+            bruteForceProtectionService.recordSuccess(localUser, identifier);
+
+            // Security Check 4: Mandatory Initial Password Change Check
+            if (localUser.isMustChangePassword()) {
+                auditLoggerService.logEvent(localUser, localUser.getUsername(), AuditEventType.LOGIN_SUCCESS, AuditStatus.SUCCESS, ipAddress, userAgent, "Authenticated with temporary password. First-time password change required.");
+                return AuthResponse.builder()
+                        .isEmailVerified(true)
+                        .mustChangePassword(true)
+                        .message("Temporary password recognized. Please change your initial password before accessing system features.")
+                        .user(buildUserProfileResponse(localUser))
+                        .build();
+            }
+
             auditLoggerService.logEvent(
-                    user,
-                    user.getUsername(),
+                    localUser,
+                    localUser.getUsername(),
                     AuditEventType.LOGIN_SUCCESS,
                     AuditStatus.SUCCESS,
                     ipAddress,
                     userAgent,
-                    "Staff authenticated via CoopBank Active Directory (LDAPS)."
+                    "User authenticated successfully via credentials."
             );
-            return buildAuthResponse(user);
+
+            return buildAuthResponse(localUser);
         }
 
-        // Route 2: Local Database Mode (System Admins & local credentials)
-        user = userRepository.findByUsernameOrEmail(identifier).orElse(null);
-
-        // If local user not found, attempt Active Directory fallback
-        if (user == null && !"LOCAL".equals(loginType)) {
+        // Step 2: If local credentials did not match or user is not local, attempt Active Directory
+        if (activeDirectoryAuthService.isAdEnabled()) {
             try {
-                user = activeDirectoryAuthService.authenticateStaff(identifier, request.getPassword());
+                User adUser = activeDirectoryAuthService.authenticateStaff(identifier, request.getPassword());
                 auditLoggerService.logEvent(
-                        user,
-                        user.getUsername(),
+                        adUser,
+                        adUser.getUsername(),
                         AuditEventType.LOGIN_SUCCESS,
                         AuditStatus.SUCCESS,
                         ipAddress,
                         userAgent,
-                        "Staff authenticated via CoopBank Active Directory."
+                        "Staff authenticated via CoopBank Active Directory (LDAPS)."
                 );
-                return buildAuthResponse(user);
+                return buildAuthResponse(adUser);
+            } catch (IllegalArgumentException e) {
+                // AD rejected credentials or staff role is restricted
+                if (localUser != null) {
+                    bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
+                }
+                throw e;
             } catch (Exception e) {
-                log.debug("Active Directory fallback attempt failed: {}", e.getMessage());
+                log.warn("Active Directory authentication could not be completed for {}: {}", identifier, e.getMessage());
+                if (localUser != null) {
+                    bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
+                    throw new IllegalArgumentException("Invalid username/email or password.");
+                }
+                throw new IllegalStateException("Active Directory service is currently unreachable (verify network/VPN connectivity) and user does not exist locally.");
             }
         }
 
-        // Security Check 1: Brute Force Account Lockout
-        if (user != null && bruteForceProtectionService.isAccountLocked(user)) {
-            auditLoggerService.logEvent(
-                    user,
-                    identifier,
-                    AuditEventType.LOGIN_FAILED,
-                    AuditStatus.BLOCKED,
-                    ipAddress,
-                    userAgent,
-                    "Locked account attempted login."
-            );
-            throw new IllegalStateException(String.format("Account is temporarily locked due to %d consecutive failed login attempts. Please try again after %d minutes.",
-                    bruteForceProtectionService.getMaxAttempts(), bruteForceProtectionService.getLockDurationMinutes()));
+        // Step 3: If AD is disabled and local authentication failed
+        if (localUser != null) {
+            bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
         }
-
-        // Security Check 2: Password Verification
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            bruteForceProtectionService.recordFailedAttempt(user, identifier);
-            throw new IllegalArgumentException("Invalid username/email or password.");
-        }
-
-        // Security Check 3: Account Enabled Check
-        if (!user.isEnabled()) {
-            auditLoggerService.logEvent(user, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Disabled account attempted login.");
-            throw new IllegalStateException("User account is disabled. Please contact CoopBank system administrator.");
-        }
-
-        // Security Check 4: Email Verification Check
-        if (!user.isEmailVerified()) {
-            auditLoggerService.logEvent(user, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Unverified email account attempted login.");
-            throw new IllegalStateException("Your email address is not verified. Please verify your email via the link sent to your inbox before signing in.");
-        }
-
-        // Successful Authentication: Reset counters
-        bruteForceProtectionService.recordSuccess(user, identifier);
-
-        // Security Check 5: Mandatory Initial Password Change Check
-        if (user.isMustChangePassword()) {
-            auditLoggerService.logEvent(user, user.getUsername(), AuditEventType.LOGIN_SUCCESS, AuditStatus.SUCCESS, ipAddress, userAgent, "Authenticated with temporary password. First-time password change required.");
-            return AuthResponse.builder()
-                    .isEmailVerified(true)
-                    .mustChangePassword(true)
-                    .message("Temporary password recognized. Please change your initial password before accessing system features.")
-                    .user(buildUserProfileResponse(user))
-                    .build();
-        }
-
-        auditLoggerService.logEvent(
-                user,
-                user.getUsername(),
-                AuditEventType.LOGIN_SUCCESS,
-                AuditStatus.SUCCESS,
-                ipAddress,
-                userAgent,
-                "User authenticated successfully."
-        );
-
-        return buildAuthResponse(user);
+        throw new IllegalArgumentException("Invalid username/email or password.");
     }
 
     @Override

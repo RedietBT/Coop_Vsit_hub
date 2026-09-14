@@ -5,6 +5,8 @@ import com.example.coop_vsit_hub.master_data.entity.Department;
 import com.example.coop_vsit_hub.master_data.entity.MeetingRoom;
 import com.example.coop_vsit_hub.master_data.repository.DepartmentRepository;
 import com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository;
+import com.example.coop_vsit_hub.user_and_auth.model.User;
+import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -126,6 +128,22 @@ public class MasterDataServiceImpl implements MasterDataService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MeetingRoomDto> getMeetingRoomsForUser(boolean activeOnly, User currentUser) {
+        if (currentUser != null && isSecretary(currentUser)) {
+            String dept = currentUser.getDepartment();
+            if (dept != null && !dept.isBlank()) {
+                log.info("Filtering meeting rooms for Secretary in department '{}'", dept);
+                List<MeetingRoom> list = activeOnly
+                        ? meetingRoomRepository.findByDepartmentIgnoreCaseAndIsActiveTrueOrderByNameAsc(dept.trim())
+                        : meetingRoomRepository.findByDepartmentIgnoreCaseOrderByNameAsc(dept.trim());
+                return list.stream().map(MeetingRoomDto::from).collect(Collectors.toList());
+            }
+        }
+        return getAllMeetingRooms(activeOnly);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MeetingRoomDto getMeetingRoomById(UUID id) {
         MeetingRoom room = meetingRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
@@ -136,7 +154,22 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Transactional
     @CacheEvict(value = "meeting_rooms", allEntries = true)
     public MeetingRoomDto createMeetingRoom(CreateMeetingRoomRequest request) {
-        log.info("Creating meeting room: '{}'", request.getName());
+        return createMeetingRoom(request, null);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "meeting_rooms", allEntries = true)
+    public MeetingRoomDto createMeetingRoom(CreateMeetingRoomRequest request, User currentUser) {
+        log.info("Creating meeting room: '{}' (by user: {})", request.getName(), currentUser != null ? currentUser.getUsername() : "system");
+
+        if (currentUser != null && isSecretary(currentUser)) {
+            String dept = currentUser.getDepartment();
+            if (dept == null || dept.isBlank()) {
+                throw new IllegalArgumentException("Secretary user does not have an assigned department.");
+            }
+            request.setDepartment(dept.trim());
+        }
 
         if (meetingRoomRepository.existsByNameIgnoreCase(request.getName().trim())) {
             throw new IllegalArgumentException("A meeting room with name '" + request.getName() + "' already exists.");
@@ -160,10 +193,26 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Transactional
     @CacheEvict(value = "meeting_rooms", allEntries = true)
     public MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request) {
-        log.info("Updating meeting room ID: {}", id);
+        return updateMeetingRoom(id, request, null);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "meeting_rooms", allEntries = true)
+    public MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request, User currentUser) {
+        log.info("Updating meeting room ID: {} (by user: {})", id, currentUser != null ? currentUser.getUsername() : "system");
 
         MeetingRoom room = meetingRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
+
+        if (currentUser != null && isSecretary(currentUser)) {
+            String dept = currentUser.getDepartment();
+            if (dept == null || !dept.equalsIgnoreCase(room.getDepartment())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Access Denied: Secretaries can only update meeting rooms assigned to their department.");
+            }
+            request.setDepartment(dept.trim());
+        }
 
         if (meetingRoomRepository.existsByNameIgnoreCaseAndIdNot(request.getName().trim(), id)) {
             throw new IllegalArgumentException("Another meeting room with name '" + request.getName() + "' already exists.");
@@ -235,9 +284,29 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Transactional
     @CacheEvict(value = "meeting_rooms", allEntries = true)
     public void deleteMeetingRoom(UUID id) {
-        log.info("Deleting meeting room ID: {}", id);
+        deleteMeetingRoom(id, null);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "meeting_rooms", allEntries = true)
+    public void deleteMeetingRoom(UUID id, User currentUser) {
+        log.info("Deleting meeting room ID: {} (by user: {})", id, currentUser != null ? currentUser.getUsername() : "system");
         MeetingRoom room = meetingRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
+
+        if (currentUser != null && isSecretary(currentUser)) {
+            String dept = currentUser.getDepartment();
+            if (dept == null || !dept.equalsIgnoreCase(room.getDepartment())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Access Denied: Secretaries can only delete meeting rooms assigned to their department.");
+            }
+        }
         meetingRoomRepository.delete(room);
+    }
+
+    private boolean isSecretary(User user) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_SECRETARY);
     }
 }

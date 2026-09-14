@@ -24,11 +24,13 @@ import {
   CheckCircle,
   Check,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import roomBookingApi from '../api/roomBookingApi';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
+import { MasterDataManagementModal } from '@/modules/master_data/components/MasterDataManagementModal';
 import Badge from '@/shared/components/ui/Badge';
 import Button from '@/shared/components/ui/Button';
 import Spinner from '@/shared/components/ui/Spinner';
@@ -36,7 +38,7 @@ import Modal from '@/shared/components/ui/Modal';
 
 export const BookingManagementPage = () => {
   const { user, hasRole } = useAuthStore();
-  const { meetingRooms, fetchAllMasterData } = useMasterDataStore();
+  const { meetingRooms, fetchAllMasterData, openMasterModal } = useMasterDataStore();
 
   // Selected Room for detailed calendar schedule inspector
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -73,6 +75,7 @@ export const BookingManagementPage = () => {
   const [inspectingBooking, setInspectingBooking] = useState(null);
 
   const isAdmin = hasRole('ROLE_ADMIN');
+  const isSecretary = hasRole('ROLE_SECRETARY');
 
   // Fetch recent bookings ledger
   const fetchBookings = useCallback(async () => {
@@ -262,6 +265,11 @@ export const BookingManagementPage = () => {
                   <span className="px-2.5 py-0.5 rounded-full bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold">
                     {totalElements} Total Bookings
                   </span>
+                  {isSecretary && user?.department && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-[#e38524] border border-amber-200 text-xs font-bold">
+                      {user.department} Department
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Inspect meeting rooms, view detailed calendar schedules, and audit who booked each facility.
@@ -269,15 +277,29 @@ export const BookingManagementPage = () => {
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchBookings}
-              disabled={isLoadingBookings}
-              icon={RotateCcw}
-            >
-              Refresh Data
-            </Button>
+            <div className="flex items-center gap-2">
+              {(isAdmin || isSecretary) && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => openMasterModal('rooms')}
+                  icon={Plus}
+                  className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
+                >
+                  Create Meeting Room
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchBookings}
+                disabled={isLoadingBookings}
+                icon={RotateCcw}
+              >
+                Refresh Data
+              </Button>
+            </div>
           </div>
 
           {/* SECTION 1: MEETING ROOMS DIRECTORY */}
@@ -289,7 +311,9 @@ export const BookingManagementPage = () => {
                   <span>Meeting Rooms & Boardrooms</span>
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Click on any room to inspect its live booking calendar and see who booked it per date.
+                  {isSecretary && user?.department
+                    ? `Showing meeting spaces managed by ${user.department}. Click any room to view availability.`
+                    : 'Click on any room to inspect its live booking calendar and see who booked it per date.'}
                 </p>
               </div>
 
@@ -320,59 +344,82 @@ export const BookingManagementPage = () => {
             </div>
 
             {/* Room Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filteredRooms.map((room) => (
-                <div
-                  key={room.id}
-                  onClick={() => handleSelectRoom(room)}
-                  className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-full h-44 rounded-2xl overflow-hidden relative mb-3 bg-slate-100">
-                      <img
-                        src={
-                          room.imageUrl ||
-                          'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
-                        }
-                        alt={room.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {room.department && (
-                        <div className="absolute top-2.5 left-2.5">
-                          <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                            <Building2 className="w-3 h-3 text-[#e38524]" />
-                            <span>{room.department}</span>
+            {filteredRooms.length === 0 ? (
+              <div className="p-8 rounded-3xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                <DoorOpen className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-800">No Meeting Rooms Found</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  {isSecretary && user?.department
+                    ? `No meeting spaces currently registered for ${user.department}. Register your department's rooms to start managing bookings.`
+                    : 'No meeting rooms match your filter criteria or none have been registered.'}
+                </p>
+                {(isAdmin || isSecretary) && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => openMasterModal('rooms')}
+                    icon={Plus}
+                    className="mt-4 bg-[#00adef] hover:bg-[#0095cc] text-white"
+                  >
+                    Register Meeting Room
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {filteredRooms.map((room) => (
+                  <div
+                    key={room.id}
+                    onClick={() => handleSelectRoom(room)}
+                    className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-full h-44 rounded-2xl overflow-hidden relative mb-3 bg-slate-100">
+                        <img
+                          src={
+                            room.imageUrl ||
+                            'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
+                          }
+                          alt={room.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        {room.department && (
+                          <div className="absolute top-2.5 left-2.5">
+                            <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                              <Building2 className="w-3 h-3 text-[#e38524]" />
+                              <span>{room.department}</span>
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-slate-800 text-[10px] font-bold shadow-xs flex items-center gap-1">
+                            <Users className="w-3 h-3 text-[#00adef]" />
+                            <span>{room.capacity || 12} Seats</span>
                           </span>
                         </div>
-                      )}
-                      <div className="absolute top-2.5 right-2.5">
-                        <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-slate-800 text-[10px] font-bold shadow-xs flex items-center gap-1">
-                          <Users className="w-3 h-3 text-[#00adef]" />
-                          <span>{room.capacity || 12} Seats</span>
-                        </span>
                       </div>
+
+                      <h3 className="text-[#00adef] font-bold text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
+                        {room.name}
+                      </h3>
+                      <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">
+                        {room.department ? `Dept: ${room.department}` : (room.description || 'Executive boardroom & meeting suite')}
+                      </p>
                     </div>
 
-                    <h3 className="text-[#00adef] font-bold text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
-                      {room.name}
-                    </h3>
-                    <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">
-                      {room.department ? `Dept: ${room.department}` : (room.description || 'Executive boardroom & meeting suite')}
-                    </p>
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        Inspect Schedule
+                      </span>
+                      <span className="text-xs font-bold text-[#00adef] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                        <span>View Calendar</span>
+                        <span>→</span>
+                      </span>
+                    </div>
                   </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      Inspect Schedule
-                    </span>
-                    <span className="text-xs font-bold text-[#00adef] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-                      <span>View Calendar</span>
-                      <span>→</span>
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* SECTION 2: MOST RECENT BOOKINGS LEDGER */}
@@ -496,7 +543,7 @@ export const BookingManagementPage = () => {
                           : '';
 
                         const isConfirmed = booking.status === 'CONFIRMED';
-                        const canCancel = isConfirmed && (isAdmin || user?.id === booking.bookedByUserId);
+                        const canCancel = isConfirmed && (isAdmin || isSecretary || user?.id === booking.bookedByUserId);
 
                         return (
                           <tr
@@ -897,7 +944,7 @@ export const BookingManagementPage = () => {
 
                   <div className="space-y-3">
                     {selectedDateBookings.map((b) => {
-                      const canCancel = isAdmin || user?.id === b.bookedByUserId;
+                      const canCancel = isAdmin || isSecretary || user?.id === b.bookedByUserId;
 
                       return (
                         <div
@@ -1165,6 +1212,9 @@ export const BookingManagementPage = () => {
           </div>
         </Modal>
       )}
+
+      {/* Master Data / Room Management Modal */}
+      <MasterDataManagementModal />
     </div>
   );
 };

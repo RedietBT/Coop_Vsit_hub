@@ -44,14 +44,21 @@ public class ActiveDirectoryAuthService {
     @Value("${coopbank.ad.base-dn:DC=coopbank,DC=local}")
     private String adBaseDn;
 
-    @Value("${coopbank.ad.username:CN=Business Process Model,OU=Coopbank Application Users,DC=coopbank,DC=local}")
+    @Value("${coopbank.ad.username:}")
     private String adUsername;
 
-    @Value("${coopbank.ad.password:Lu01J3)£9R}~(rkv}")
+    @Value("${coopbank.ad.password:}")
     private String adPassword;
 
-    @Value("${coopbank.ad.enabled:true}")
+    @Value("${coopbank.ad.enabled:false}")
     private boolean adEnabled;
+
+    @Value("${coopbank.ad.ssl.trust-all:false}")
+    private boolean trustAllSsl;
+
+    public boolean isAdEnabled() {
+        return adEnabled;
+    }
 
     /**
      * Authenticates staff credentials against CoopBank Active Directory.
@@ -68,20 +75,6 @@ public class ActiveDirectoryAuthService {
             username = username.substring(0, username.indexOf("@"));
         }
 
-        // Test staff account fallback for offline local development
-        if ("staff_test".equalsIgnoreCase(username) && "CoopBankStaff2026!".equals(password)) {
-            log.info("Offline development test staff account matched: staff_test");
-            return syncStaffUser(
-                    "staff_test",
-                    "staff_test@coopbank.com.et",
-                    "Alemayehu",
-                    "Nigusu",
-                    "Growth and Operations",
-                    "+251967865704",
-                    password
-            );
-        }
-
         if (!adEnabled) {
             throw new IllegalStateException("Active Directory authentication is currently disabled in system configuration.");
         }
@@ -94,10 +87,14 @@ public class ActiveDirectoryAuthService {
             contextSource.setUserDn(adUsername);
             contextSource.setPassword(adPassword);
             
-            // Allow self-signed internal bank certificates for secure LDAPS (port 636)
             Map<String, Object> environment = new HashMap<>();
             environment.put("java.naming.security.protocol", "ssl");
-            environment.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            environment.put("com.sun.jndi.ldap.connect.timeout", "3000");
+            environment.put("com.sun.jndi.ldap.read.timeout", "5000");
+            if (trustAllSsl) {
+                log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed via coopbank.ad.ssl.trust-all=true. Do not use in production!");
+                environment.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            }
             contextSource.setBaseEnvironmentProperties(environment);
             contextSource.afterPropertiesSet();
 
@@ -132,6 +129,14 @@ public class ActiveDirectoryAuthService {
 
             log.info("Active Directory authentication successful for staff: {} ({})", staffProfile.getUsername(), staffProfile.getEmail());
 
+            // Determine Role based on AD Title or Group Membership
+            RoleName assignedRole = resolveRoleFromAdProfile(staffProfile);
+            if (assignedRole == null) {
+                log.warn("Access Denied: Staff user '{}' is neither a Director nor a Secretary (Title: {}, Dept: {})",
+                        staffProfile.getUsername(), staffProfile.getTitle(), staffProfile.getDepartment());
+                throw new IllegalArgumentException("Access Denied: CoopBank Visit Hub access is restricted to Directors and Department Secretaries.");
+            }
+
             return syncStaffUser(
                     staffProfile.getUsername(),
                     staffProfile.getEmail(),
@@ -139,7 +144,8 @@ public class ActiveDirectoryAuthService {
                     staffProfile.getLastName(),
                     staffProfile.getDepartment(),
                     staffProfile.getPhone(),
-                    password
+                    password,
+                    assignedRole
             );
 
         } catch (IllegalArgumentException e) {
@@ -173,7 +179,10 @@ public class ActiveDirectoryAuthService {
             contextSource.setPassword(adPassword);
             Map<String, Object> env = new HashMap<>();
             env.put("java.naming.security.protocol", "ssl");
-            env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            if (trustAllSsl) {
+                log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed in AD lookup.");
+                env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            }
             contextSource.setBaseEnvironmentProperties(env);
             contextSource.afterPropertiesSet();
 
@@ -243,25 +252,29 @@ public class ActiveDirectoryAuthService {
     }
 
     private User syncStaffUser(String username, String email, String firstName, String lastName, String department, String phone, String rawPassword) {
+        return syncStaffUser(username, email, firstName, lastName, department, phone, rawPassword, RoleName.ROLE_DIRECTOR);
+    }
+
+    private User syncStaffUser(String username, String email, String firstName, String lastName, String department, String phone, String rawPassword, RoleName targetRole) {
         String safeEmail = (email != null && !email.isBlank()) ? email.toLowerCase().trim() : (username + "@" + adDomain).toLowerCase();
         String safeFirst = (firstName != null && !firstName.isBlank()) ? firstName.trim() : username;
         String safeLast = (lastName != null && !lastName.isBlank()) ? lastName.trim() : "Staff";
         String safeDept = (department != null && !department.isBlank()) ? department.trim() : "Digital Banking & Payments";
+        RoleName effectiveRole = (targetRole != null) ? targetRole : RoleName.ROLE_DIRECTOR;
 
         User user = userRepository.findByUsername(username)
                 .or(() -> userRepository.findByEmail(safeEmail))
                 .orElse(null);
 
         if (user == null) {
-            // Auto-provision new standard staff employee
-            Role staffRole = roleRepository.findByName(RoleName.ROLE_EMPLOYEE)
+            Role assignedRole = roleRepository.findByName(effectiveRole)
                     .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name(RoleName.ROLE_EMPLOYEE)
-                            .description("CoopBank Staff Employee")
+                            .name(effectiveRole)
+                            .description("CoopBank " + effectiveRole.name())
                             .build()));
 
             Set<Role> roles = new HashSet<>();
-            roles.add(staffRole);
+            roles.add(assignedRole);
 
             user = User.builder()
                     .username(username)
@@ -279,7 +292,7 @@ public class ActiveDirectoryAuthService {
                     .roles(roles)
                     .build();
 
-            log.info("Auto-provisioned new staff profile in Hub for AD user: {}", username);
+            log.info("Auto-provisioned new user profile in Hub with role {}: {}", effectiveRole, username);
         } else {
             // Update staff metadata & synchronize password hash
             user.setFirstName(safeFirst);
@@ -295,22 +308,47 @@ public class ActiveDirectoryAuthService {
             user.setMustChangePassword(false);
             user.setFailedLoginAttempts(0);
 
-            // Ensure AD synced users strictly hold ROLE_EMPLOYEE if not a system admin
+            // If user is not admin, ensure they have the targeted role
             boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
                     .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
             if (!hasAdmin) {
-                Role staffRole = roleRepository.findByName(RoleName.ROLE_EMPLOYEE)
+                Role assignedRole = roleRepository.findByName(effectiveRole)
                         .orElseGet(() -> roleRepository.save(Role.builder()
-                                .name(RoleName.ROLE_EMPLOYEE)
-                                .description("CoopBank Staff Employee")
+                                .name(effectiveRole)
+                                .description("CoopBank " + effectiveRole.name())
                                 .build()));
                 Set<Role> roles = new HashSet<>();
-                roles.add(staffRole);
+                roles.add(assignedRole);
                 user.setRoles(roles);
             }
         }
 
         return userRepository.save(user);
+    }
+
+    /**
+     * Resolves appropriate Hub role from Active Directory job title or group membership.
+     * Restricts portal entry strictly to Directors and Department Secretaries.
+     */
+    private RoleName resolveRoleFromAdProfile(AdStaffProfile profile) {
+        String title = (profile.getTitle() != null) ? profile.getTitle().toLowerCase() : "";
+        String memberOf = (profile.getMemberOf() != null) ? profile.getMemberOf().toLowerCase() : "";
+
+        if (title.contains("director") || title.contains("chief") || title.contains("vice president")
+                || title.contains("vp") || title.contains("head") || memberOf.contains("director")) {
+            return RoleName.ROLE_DIRECTOR;
+        }
+
+        if (title.contains("secretary") || title.contains("assistant") || title.contains("admin")
+                || memberOf.contains("secretary")) {
+            return RoleName.ROLE_SECRETARY;
+        }
+
+        if (title.contains("security") || memberOf.contains("security")) {
+            return RoleName.ROLE_SECURITY_DESK;
+        }
+
+        return null;
     }
 
     private static class AdAttributesMapper implements AttributesMapper<AdStaffProfile> {
@@ -323,6 +361,8 @@ public class ActiveDirectoryAuthService {
             String displayName = getAttr(attrs, "displayName");
             String department = getAttr(attrs, "department");
             String telephoneNumber = getAttr(attrs, "telephoneNumber");
+            String title = getAttr(attrs, "title");
+            String memberOf = getAttr(attrs, "memberOf");
 
             if (givenName == null && displayName != null) {
                 String[] parts = displayName.split("\\s+");
@@ -339,6 +379,8 @@ public class ActiveDirectoryAuthService {
                     .lastName(sn != null ? sn : "Staff")
                     .department(department)
                     .phone(telephoneNumber)
+                    .title(title)
+                    .memberOf(memberOf)
                     .build();
         }
 
@@ -359,5 +401,7 @@ public class ActiveDirectoryAuthService {
         private String lastName;
         private String department;
         private String phone;
+        private String title;
+        private String memberOf;
     }
 }

@@ -71,10 +71,16 @@ export const LoginPage = () => {
         });
       const isAdmin = checkRole('ADMIN');
       const isSecurity = checkRole('SECURITY_DESK');
+      const isDirector = checkRole('DIRECTOR');
+      const isSecretary = checkRole('SECRETARY');
       
-      let defaultDestination = '/visits/calendar';
+      let defaultDestination = '/my-tracking';
       if (isAdmin) {
         defaultDestination = '/dashboard';
+      } else if (isDirector) {
+        defaultDestination = '/my-tracking';
+      } else if (isSecretary) {
+        defaultDestination = '/bookings';
       } else if (isSecurity) {
         defaultDestination = '/security-desk';
       }

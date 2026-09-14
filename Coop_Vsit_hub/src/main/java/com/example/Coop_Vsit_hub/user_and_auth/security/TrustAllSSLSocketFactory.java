@@ -9,8 +9,13 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 
 /**
- * SocketFactory that trusts all SSL certificates for internal bank Active Directory LDAPS (port 636).
+ * Development-only SocketFactory that bypasses SSL certificate validation for internal bank LDAPS.
+ *
+ * ⚠️ SECURITY WARNING: This class disables all SSL certificate validation (MITM vulnerability).
+ * It must NEVER be used in production environments.
+ * It is only engaged when 'coopbank.ad.ssl.trust-all=true' is explicitly configured for offline/dev testing.
  */
+@Deprecated
 public class TrustAllSSLSocketFactory extends SSLSocketFactory {
 
     private SSLSocketFactory factory;

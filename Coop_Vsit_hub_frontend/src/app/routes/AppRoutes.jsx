@@ -25,8 +25,10 @@ import useAuthStore from '@/modules/auth/store/authStore';
 const RootRedirect = () => {
   const { isAuthenticated, hasRole } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (hasRole('ROLE_ADMIN')) return <Navigate to="/dashboard" replace />;
+  if (hasRole('ROLE_DIRECTOR')) return <Navigate to="/my-tracking" replace />;
+  if (hasRole('ROLE_ADMIN') || hasRole('ROLE_APPROVER')) return <Navigate to="/dashboard" replace />;
   if (hasRole('ROLE_SECURITY_DESK')) return <Navigate to="/security-desk" replace />;
+  if (hasRole('ROLE_SECRETARY')) return <Navigate to="/bookings" replace />;
   return <Navigate to="/my-tracking" replace />;
 };
 
@@ -79,7 +81,7 @@ export const AppRoutes = () => {
         path="/visits/calendar"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_EMPLOYEE', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_DIRECTOR', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitCalendarPage />
               </DashboardLayout>
@@ -92,7 +94,7 @@ export const AppRoutes = () => {
         path="/bookings"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY']}>
               <DashboardLayout>
                 <BookingManagementPage />
               </DashboardLayout>
@@ -105,7 +107,7 @@ export const AppRoutes = () => {
         path="/visits"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER']}>
               <DashboardLayout>
                 <VisitsListPage />
               </DashboardLayout>
@@ -144,7 +146,7 @@ export const AppRoutes = () => {
         path="/organizations"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_DIRECTOR', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER']}>
               <DashboardLayout>
                 <OrganizationsPage />
               </DashboardLayout>
@@ -157,7 +159,7 @@ export const AppRoutes = () => {
         path="/guests"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_DIRECTOR', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER']}>
               <DashboardLayout>
                 <GuestsPage />
               </DashboardLayout>

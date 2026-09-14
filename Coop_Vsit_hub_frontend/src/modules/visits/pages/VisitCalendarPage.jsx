@@ -36,6 +36,7 @@ export const VisitCalendarPage = () => {
   const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
   const isAdmin = hasRole('ROLE_ADMIN');
+  const isSecretary = hasRole('ROLE_SECRETARY');
 
   const { meetingRooms, fetchMeetingRooms, fetchAllMasterData, openMasterModal } =
     useMasterDataStore();
@@ -286,26 +287,26 @@ export const VisitCalendarPage = () => {
 
             <div className="flex items-center gap-2.5">
               {isAdmin && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsAdminRosterOpen(true)}
-                    icon={ShieldCheck}
-                    className="border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  >
-                    Super Admin Room Audit
-                  </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAdminRosterOpen(true)}
+                  icon={ShieldCheck}
+                  className="border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                >
+                  Super Admin Room Audit
+                </Button>
+              )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openMasterModal('rooms')}
-                    icon={SlidersHorizontal}
-                  >
-                    Manage Rooms
-                  </Button>
-                </>
+              {(isAdmin || isSecretary) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openMasterModal('rooms')}
+                  icon={SlidersHorizontal}
+                >
+                  Manage Rooms
+                </Button>
               )}
 
               <Button

@@ -11,6 +11,16 @@ const AVAILABLE_ROLES = [
     desc: 'Full system configuration, master data & staff user control',
   },
   {
+    id: 'ROLE_DIRECTOR',
+    label: 'Executive Director',
+    desc: 'Department or Executive Director with visit hosting, sign-off, and analytics oversight',
+  },
+  {
+    id: 'ROLE_SECRETARY',
+    label: 'Department Secretary',
+    desc: 'Manages department meeting rooms, reservations, and visitor coordination',
+  },
+  {
     id: 'ROLE_RELATIONSHIP_MANAGER',
     label: 'Relationship Manager',
     desc: 'Can submit, manage, and host delegations & corporate partners',

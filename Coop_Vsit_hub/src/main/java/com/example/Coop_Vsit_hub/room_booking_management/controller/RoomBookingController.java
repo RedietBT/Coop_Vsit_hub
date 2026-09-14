@@ -58,10 +58,15 @@ public class RoomBookingController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size,
             @RequestParam(defaultValue = "scheduledStartTime") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Principal principal
     ) {
+        User currentUser = null;
+        if (principal != null) {
+            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+        }
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Page<RoomBookingResponse> result = roomBookingService.getBookings(roomName, search, status, PageRequest.of(page, size, sort));
+        Page<RoomBookingResponse> result = roomBookingService.getBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
         return ResponseEntity.ok(result);
     }
 

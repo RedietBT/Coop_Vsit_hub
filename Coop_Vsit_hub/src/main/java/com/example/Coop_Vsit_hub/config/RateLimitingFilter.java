@@ -19,14 +19,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Two-tier In-Memory Rate Limiting Filter.
+ * Two-tier In-Memory Rate Limiting Filter with Automatic Eviction.
  *
  * Tier 1 — Global: Max 60 requests/minute per IP across all endpoints.
  * Tier 2 — Login: Max 5 login attempts/minute per IP on /api/v1/auth/login.
  *
  * Both limits are configurable via application.properties / environment variables.
+ * Stale IP tracking windows are actively purged every minute to prevent memory exhaustion.
  */
 @Component
 @RequiredArgsConstructor
@@ -42,6 +44,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private int maxLoginAttemptsPerMinute;
 
     private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final int MAX_TRACKED_ENTRIES = 10_000;
 
     // ── Window Tracking ───────────────────────────────────────────────────────
 
@@ -59,6 +62,29 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     /** Login-specific per-IP request windows */
     private final Map<String, RequestWindow> loginRateLimits = new ConcurrentHashMap<>();
+
+    /** Epoch minute of the last executed cache cleanup */
+    private final AtomicLong lastCleanupMinute = new AtomicLong(0);
+
+    /**
+     * Purges expired rate-limit windows to prevent unbounded memory growth.
+     * Executes at most once per minute in a non-blocking, thread-safe manner.
+     */
+    private void cleanupStaleWindows(long currentEpochMinute) {
+        long last = lastCleanupMinute.get();
+        if (currentEpochMinute > last && lastCleanupMinute.compareAndSet(last, currentEpochMinute)) {
+            globalRateLimits.entrySet().removeIf(e -> e.getValue().windowStartEpochMinute < currentEpochMinute);
+            loginRateLimits.entrySet().removeIf(e -> e.getValue().windowStartEpochMinute < currentEpochMinute);
+        } else if (globalRateLimits.size() > MAX_TRACKED_ENTRIES) {
+            // Safety emergency pruning under distributed IP burst
+            globalRateLimits.entrySet().removeIf(e -> e.getValue().windowStartEpochMinute < currentEpochMinute);
+            loginRateLimits.entrySet().removeIf(e -> e.getValue().windowStartEpochMinute < currentEpochMinute);
+            if (globalRateLimits.size() > MAX_TRACKED_ENTRIES) {
+                globalRateLimits.clear();
+                log.warn("RateLimitingFilter global map cleared due to exceeding threshold of {} entries", MAX_TRACKED_ENTRIES);
+            }
+        }
+    }
 
     // ── Filter Logic ──────────────────────────────────────────────────────────
 
@@ -84,6 +110,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String clientIp = getClientIp(request);
         long currentEpochMinute = Instant.now().getEpochSecond() / 60;
+
+        // Perform time-based cleanup of expired IP tracking windows
+        cleanupStaleWindows(currentEpochMinute);
 
         // ── Tier 2: Login-specific strict limit ──────────────────────────────
         if (LOGIN_PATH.equals(path) && "POST".equalsIgnoreCase(request.getMethod())) {

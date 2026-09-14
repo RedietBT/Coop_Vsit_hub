@@ -35,6 +35,7 @@ import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
 public class RoomBookingServiceImpl implements RoomBookingService {
 
     private final RoomBookingRepository roomBookingRepository;
+    private final com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository meetingRoomRepository;
     private final NotificationService notificationService;
     private final com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
     private final com.example.coop_vsit_hub.user_and_auth.repository.UserRepository userRepository;
@@ -53,6 +54,23 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         String department = StringUtils.hasText(request.getHostDepartment()) 
                 ? request.getHostDepartment().trim() 
                 : (currentUser != null && currentUser.getDepartment() != null ? currentUser.getDepartment() : "General Management");
+
+        // Departmental Multi-Tenancy: Secretaries may only reserve rooms assigned to their department
+        if (currentUser != null && isSecretary(currentUser)) {
+            String secretaryDept = currentUser.getDepartment();
+            if (secretaryDept == null || secretaryDept.isBlank()) {
+                throw new IllegalArgumentException("Secretary user does not have an assigned department.");
+            }
+            meetingRoomRepository.findByNameIgnoreCase(roomName).ifPresent(room -> {
+                if (room.getDepartment() != null && !room.getDepartment().isBlank()
+                        && !room.getDepartment().equalsIgnoreCase(secretaryDept)) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            String.format("Access Denied: Secretaries can only book rooms assigned to their department ('%s'). Target room belongs to '%s'.",
+                                    secretaryDept, room.getDepartment()));
+                }
+            });
+            department = secretaryDept.trim();
+        }
 
         Instant startTime = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : Instant.now();
         Instant endTime = request.getScheduledEndTime() != null ? request.getScheduledEndTime() : startTime.plusSeconds(3600);
@@ -168,13 +186,29 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @Transactional(readOnly = true)
     public Page<RoomBookingResponse> getBookings(String roomName, String search, RoomBookingStatus status, Pageable pageable) {
+        return getBookings(roomName, search, status, pageable, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RoomBookingResponse> getBookings(String roomName, String search, RoomBookingStatus status, Pageable pageable, User currentUser) {
         String cleanRoom = StringUtils.hasText(roomName) ? roomName.trim() : null;
         String cleanSearch = StringUtils.hasText(search) ? search.trim() : null;
+
+        // Departmental Multi-Tenancy: Secretaries only view reservations for their department
+        if (currentUser != null && isSecretary(currentUser) && StringUtils.hasText(currentUser.getDepartment())) {
+            cleanSearch = currentUser.getDepartment().trim();
+        }
 
         return roomBookingRepository.findAll(
                 com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingSpecification.filterBookings(cleanRoom, cleanSearch, status),
                 pageable
         ).map(this::mapToResponse);
+    }
+
+    private boolean isSecretary(User user) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_SECRETARY);
     }
 
     @Override
