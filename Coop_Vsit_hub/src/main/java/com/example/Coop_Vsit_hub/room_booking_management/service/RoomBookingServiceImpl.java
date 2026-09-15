@@ -101,7 +101,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         RoomBooking saved = roomBookingRepository.save(booking);
 
-        // Notify System Admins via MailHog / In-App Notification
+        // Notify System Admins via SMTP / In-App Notification
         if (notificationService != null) {
             try {
                 String dateStr = DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(startTime);

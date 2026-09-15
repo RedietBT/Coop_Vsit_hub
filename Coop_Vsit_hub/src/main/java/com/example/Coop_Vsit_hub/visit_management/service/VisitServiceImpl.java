@@ -471,7 +471,7 @@ public class VisitServiceImpl implements VisitService {
                             com.example.coop_vsit_hub.notification_management.enums.NotificationType.VISIT_APPROVED,
                             saved.getId(),
                             saved.getVisitCode(),
-                            true // send email via SMTP/MailHog
+                            true // send email via SMTP
                     );
                 }
 
