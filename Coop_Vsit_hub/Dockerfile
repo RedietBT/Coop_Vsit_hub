@@ -14,11 +14,6 @@ COPY .mvn .mvn
 COPY mvnw pom.xml ./
 COPY src ./src
 
-# Ensure application.properties is present for Spring Boot build
-RUN if [ ! -f src/main/resources/application.properties ] && [ -f src/main/resources/application.properties.example ]; then \
-        cp src/main/resources/application.properties.example src/main/resources/application.properties; \
-    fi
-
 # Build JAR skipping unit tests
 RUN chmod +x mvnw && ./mvnw clean package -DskipTests -B
 
