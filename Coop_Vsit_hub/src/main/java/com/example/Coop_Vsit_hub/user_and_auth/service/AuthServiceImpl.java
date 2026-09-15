@@ -38,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final ActiveDirectoryAuthService activeDirectoryAuthService;
 
-    @Value("${coopbank.security.jwt.refresh-token-expiration-ms}")
+    @Value("${coopbank.security.jwt.refresh-token-expiration-ms:604800000}")
     private long refreshTokenExpirationMs;
 
     @Override

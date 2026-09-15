@@ -16,10 +16,10 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 public class BruteForceProtectionService {
 
-    @Value("${coopbank.security.brute-force.max-attempts}")
+    @Value("${coopbank.security.brute-force.max-attempts:5}")
     private int maxAttempts;
 
-    @Value("${coopbank.security.brute-force.lock-duration-minutes}")
+    @Value("${coopbank.security.brute-force.lock-duration-minutes:15}")
     private long lockDurationMinutes;
 
     private final RedisTokenService redisTokenService;
