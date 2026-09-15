@@ -96,6 +96,9 @@ public class VisitDetailResponse {
 
     private com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse feedback;
 
+    private String attachmentUrl;
+    private String attachmentName;
+
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -163,6 +166,8 @@ public class VisitDetailResponse {
                 .directorReviewNotes(visit.getDirectorReviewNotes())
                 .directorReviewedAt(visit.getDirectorReviewedAt())
                 .directorReviewer(visit.getDirectorReviewer() != null ? UserDetailResponse.from(visit.getDirectorReviewer()) : null)
+                .attachmentUrl(visit.getAttachmentUrl())
+                .attachmentName(visit.getAttachmentName())
                 .feedback(feedback)
                 .createdAt(visit.getCreatedAt())
                 .updatedAt(visit.getUpdatedAt())

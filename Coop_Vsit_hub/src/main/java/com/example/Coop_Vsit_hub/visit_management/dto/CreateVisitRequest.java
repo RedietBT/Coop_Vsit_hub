@@ -158,4 +158,10 @@ public class CreateVisitRequest {
 
     @Schema(description = "Guest VIP classification tier (NORMAL_GUEST, VIP, VVIP)", example = "VIP")
     private String guestTier;
+
+    @Schema(description = "Optional uploaded document or attachment URL")
+    private String attachmentUrl;
+
+    @Schema(description = "Original filename of the optional attachment")
+    private String attachmentName;
 }

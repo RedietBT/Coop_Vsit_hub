@@ -102,8 +102,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         // Bypass static assets, Swagger UI, and OpenAPI docs from rate limiting
         if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")
-                || path.startsWith("/swagger-resources") || path.equals("/favicon.ico")
-                || path.startsWith("/mailhog")) {
+                || path.startsWith("/swagger-resources") || path.equals("/favicon.ico")) {
             filterChain.doFilter(request, response);
             return;
         }

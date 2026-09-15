@@ -90,4 +90,10 @@ public class UpdateIndividualGuestRequest {
 
     @Schema(example = "Key advisor on digital banking regulations and cross-border remittance frameworks.")
     private String notes;
+
+    @Schema(description = "Optional uploaded document or attachment URL")
+    private String attachmentUrl;
+
+    @Schema(description = "Original filename of the optional attachment")
+    private String attachmentName;
 }

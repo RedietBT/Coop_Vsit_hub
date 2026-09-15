@@ -39,6 +39,8 @@ public class IndividualGuestDetailResponse {
     private int relationshipScore;
     private Double starRating;
     private String notes;
+    private String attachmentUrl;
+    private String attachmentName;
     private long totalVisitsAttended;
     private long totalVisits;
     private long totalVisitsCompleted;
@@ -83,6 +85,8 @@ public class IndividualGuestDetailResponse {
                 .relationshipScore(guest.getRelationshipScore())
                 .starRating(stars)
                 .notes(guest.getNotes())
+                .attachmentUrl(guest.getAttachmentUrl())
+                .attachmentName(guest.getAttachmentName())
                 .totalVisitsAttended(totalVisits)
                 .totalVisits(totalVisits)
                 .totalVisitsCompleted(totalVisits)

@@ -181,6 +181,8 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
                 .vipTier(request.getVipTier() != null ? request.getVipTier() : VipTier.STANDARD)
                 .relationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 50)
                 .notes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null)
+                .attachmentUrl(request.getAttachmentUrl())
+                .attachmentName(request.getAttachmentName())
                 .build();
 
         IndividualGuest saved = guestRepository.save(guest);
@@ -229,6 +231,12 @@ public class IndividualGuestServiceImpl implements IndividualGuestService {
         guest.setVipTier(request.getVipTier() != null ? request.getVipTier() : VipTier.STANDARD);
         guest.setRelationshipScore(request.getRelationshipScore() != null ? request.getRelationshipScore() : 50);
         guest.setNotes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null);
+        if (request.getAttachmentUrl() != null) {
+            guest.setAttachmentUrl(request.getAttachmentUrl());
+        }
+        if (request.getAttachmentName() != null) {
+            guest.setAttachmentName(request.getAttachmentName());
+        }
 
         IndividualGuest saved = guestRepository.save(guest);
 

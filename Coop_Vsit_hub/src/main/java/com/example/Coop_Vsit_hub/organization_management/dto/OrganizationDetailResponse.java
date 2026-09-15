@@ -32,6 +32,8 @@ public class OrganizationDetailResponse {
     private String website;
     private String industrySector;
     private String notes;
+    private String attachmentUrl;
+    private String attachmentName;
     private long totalVisitsHosted;
     private Double starRating;
     private BigDecimal totalOpportunityPipelineValue;
@@ -71,6 +73,8 @@ public class OrganizationDetailResponse {
                 .website(org.getWebsite())
                 .industrySector(org.getIndustrySector())
                 .notes(org.getNotes())
+                .attachmentUrl(org.getAttachmentUrl())
+                .attachmentName(org.getAttachmentName())
                 .totalVisitsHosted(totalVisits)
                 .totalOpportunityPipelineValue(pipelineValue != null ? pipelineValue : BigDecimal.ZERO)
                 .currency("USD")

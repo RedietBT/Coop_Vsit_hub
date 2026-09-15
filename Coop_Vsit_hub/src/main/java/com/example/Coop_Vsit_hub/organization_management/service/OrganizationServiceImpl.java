@@ -186,6 +186,8 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .website(htmlSanitizer.sanitize(request.getWebsite()))
                 .industrySector(htmlSanitizer.sanitize(request.getIndustrySector()))
                 .notes(htmlSanitizer.sanitize(request.getNotes()))
+                .attachmentUrl(request.getAttachmentUrl())
+                .attachmentName(request.getAttachmentName())
                 .build();
 
         Organization saved = organizationRepository.save(org);
@@ -242,6 +244,12 @@ public class OrganizationServiceImpl implements OrganizationService {
         org.setWebsite(StringUtils.hasText(request.getWebsite()) ? request.getWebsite().trim() : null);
         org.setIndustrySector(StringUtils.hasText(request.getIndustrySector()) ? request.getIndustrySector().trim() : null);
         org.setNotes(StringUtils.hasText(request.getNotes()) ? request.getNotes().trim() : null);
+        if (request.getAttachmentUrl() != null) {
+            org.setAttachmentUrl(request.getAttachmentUrl());
+        }
+        if (request.getAttachmentName() != null) {
+            org.setAttachmentName(request.getAttachmentName());
+        }
 
         Organization saved = organizationRepository.save(org);
 

@@ -3,10 +3,10 @@ package com.example.coop_vsit_hub.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,10 +19,12 @@ import java.util.List;
 
 /**
  * Reverse-proxies requests from /mailhog/** to the embedded MailHog web service on localhost:8025.
- * Enables live cloud email inspection on Render at https://<your-render-url>/mailhog
+ * DISABLED BY DEFAULT — only active when mailhog.proxy.enabled=true (local dev only).
+ * Never enable this in production as it exposes internal email inspection.
  */
 @Controller
 @Slf4j
+@ConditionalOnProperty(name = "mailhog.proxy.enabled", havingValue = "true", matchIfMissing = false)
 public class MailHogProxyController {
 
     private static final String MAILHOG_TARGET = "http://127.0.0.1:8025";

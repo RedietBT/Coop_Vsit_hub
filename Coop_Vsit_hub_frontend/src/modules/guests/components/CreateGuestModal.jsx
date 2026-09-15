@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import useGuestStore from '../store/guestStore';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
+import FileUploadInput from '@/shared/components/FileUploadInput';
 
 const guestSchema = z.object({
   firstName: z.string().trim().min(2, 'First name is required'),
@@ -26,6 +27,7 @@ const guestSchema = z.object({
 
 export const CreateGuestModal = () => {
   const { isCreateModalOpen, closeCreateModal, createGuest } = useGuestStore();
+  const [attachment, setAttachment] = useState({ url: '', name: '' });
 
   const {
     register,
@@ -53,6 +55,7 @@ export const CreateGuestModal = () => {
 
   const handleClose = () => {
     reset();
+    setAttachment({ url: '', name: '' });
     closeCreateModal();
   };
 
@@ -60,6 +63,8 @@ export const CreateGuestModal = () => {
     await createGuest({
       ...data,
       relationshipScore: Number(data.relationshipScore) || 90,
+      attachmentUrl: attachment.url || null,
+      attachmentName: attachment.name || null,
     });
   };
 
@@ -185,6 +190,13 @@ export const CreateGuestModal = () => {
             {...register('profileNotes')}
           />
         </div>
+
+        <FileUploadInput
+          label="Identity / Supporting Document"
+          description="Optional: Attach passport copy, bio, accreditation, or ID (Max 5MB)"
+          value={attachment}
+          onChange={setAttachment}
+        />
 
         <div className="flex justify-end gap-3 pt-2">
           <Button

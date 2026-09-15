@@ -133,10 +133,9 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/v1/feedback/verify/**",
                     "/api/v1/feedback/submit",
-                    "/api/v1/meeting-rooms/images/**"
+                    "/api/v1/meeting-rooms/images/**",
+                    "/api/v1/files/**"
                 ).permitAll()
-                // MailHog Web Dashboard
-                .requestMatchers("/mailhog", "/mailhog/**").permitAll()
                 // Health Check / Keep-Alive Pings
                 .requestMatchers("/health", "/api/v1/health", "/ping").permitAll()
                 // Static assets

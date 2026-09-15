@@ -424,6 +424,8 @@ public class VisitServiceImpl implements VisitService {
                 .scheduledEndTime(endTime)
                 .linkedBookingId(request.getLinkedBookingId())
                 .guestTier(htmlSanitizer.sanitize(StringUtils.hasText(request.getGuestTier()) ? request.getGuestTier().trim() : "NORMAL_GUEST"))
+                .attachmentUrl(request.getAttachmentUrl())
+                .attachmentName(request.getAttachmentName())
                 .build();
 
         Visit saved = visitRepository.save(visit);

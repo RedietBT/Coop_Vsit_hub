@@ -7,6 +7,7 @@ import useOrganizationStore from '../store/organizationStore';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
 import Button from '@/shared/components/ui/Button';
+import FileUploadInput from '@/shared/components/FileUploadInput';
 
 const orgSchema = z.object({
   name: z.string().trim().min(2, 'Organization name is required'),
@@ -39,6 +40,7 @@ export const CreateOrganizationModal = () => {
   const { isCreateModalOpen, closeCreateModal, createOrganization, organizations } =
     useOrganizationStore();
 
+  const [attachment, setAttachment] = useState({ url: '', name: '' });
   const [sectorInput, setSectorInput] = useState('');
   const [showSectorDropdown, setShowSectorDropdown] = useState(false);
   const sectorDropdownRef = useRef(null);
@@ -96,6 +98,7 @@ export const CreateOrganizationModal = () => {
 
   const handleClose = () => {
     reset();
+    setAttachment({ url: '', name: '' });
     setSectorInput('');
     setShowSectorDropdown(false);
     closeCreateModal();
@@ -119,6 +122,8 @@ export const CreateOrganizationModal = () => {
       ...data,
       industrySector: sectorInput.trim() || undefined,
       relationshipScore: Number(data.relationshipScore) || 85,
+      attachmentUrl: attachment.url || null,
+      attachmentName: attachment.name || null,
     });
     handleClose();
   };
@@ -251,6 +256,13 @@ export const CreateOrganizationModal = () => {
             {...register('overviewNotes')}
           />
         </div>
+
+        <FileUploadInput
+          label="Partnership / Corporate Document"
+          description="Optional: Attach MoU, NDA, company profile, or trade license (Max 5MB)"
+          value={attachment}
+          onChange={setAttachment}
+        />
 
         <div className="flex justify-end gap-3 pt-2">
           <Button

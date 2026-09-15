@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import Modal from '@/shared/components/ui/Modal';
 import Button from '@/shared/components/ui/Button';
+import FileUploadInput from '@/shared/components/FileUploadInput';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import visitApi from '@/modules/visits/api/visitApi';
@@ -78,6 +79,8 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
     visitorCount: 1,
     visitObjective: '',
     linkedBookingId: null,
+    attachmentUrl: '',
+    attachmentName: '',
   });
 
   const [bookedRoomsForDate, setBookedRoomsForDate] = useState([]);
@@ -218,6 +221,8 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
         zone: formData.zone.trim() || null,
         woreda: formData.woreda.trim() || null,
         idType: formData.idType || 'National ID',
+        attachmentUrl: formData.attachmentUrl || null,
+        attachmentName: formData.attachmentName || null,
         isDraft: false,
       };
 
@@ -882,6 +887,16 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
               />
             </div>
+
+            <FileUploadInput
+              label="Supporting Documents / Attachments"
+              description="Optional: Attach invitation letter, ID scan, presentation, or NDA (Max 5MB)"
+              value={{ url: formData.attachmentUrl, name: formData.attachmentName }}
+              onChange={({ url, name }) => {
+                handleChange('attachmentUrl', url);
+                handleChange('attachmentName', name);
+              }}
+            />
           </div>
 
           {/* Instant Schedule Notice */}
