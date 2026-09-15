@@ -22,10 +22,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JwtUtils {
 
-    @Value("${coopbank.security.jwt.secret}")
+    @Value("${coopbank.security.jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String jwtSecret;
 
-    @Value("${coopbank.security.jwt.access-token-expiration-ms}")
+    @Value("${coopbank.security.jwt.access-token-expiration-ms:900000}")
     private long jwtExpirationMs;
 
     private final RedisTokenService redisTokenService;

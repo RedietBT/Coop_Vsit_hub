@@ -24,10 +24,10 @@ import java.util.Base64;
 @Slf4j
 public class SwaggerBasicAuthFilter extends OncePerRequestFilter {
 
-    @Value("${coopbank.security.swagger.username}")
+    @Value("${coopbank.security.swagger.username:coop_admin}")
     private String swaggerUsername;
 
-    @Value("${coopbank.security.swagger.password}")
+    @Value("${coopbank.security.swagger.password:CoopBank#Secure2026!}")
     private String swaggerPassword;
 
     private static final String REALM = "CoopBank API Documentation";

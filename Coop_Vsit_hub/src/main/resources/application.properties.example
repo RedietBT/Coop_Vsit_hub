@@ -22,14 +22,15 @@ spring.flyway.baseline-version=0
 spring.flyway.validate-on-migrate=false
 spring.flyway.ignore-migration-patterns=*:*
 
-# MailHog / SMTP Credentials
-spring.mail.host=${SPRING_MAIL_HOST:localhost}
-spring.mail.port=${SPRING_MAIL_PORT:1025}
-spring.mail.username=${SPRING_MAIL_USERNAME:}
-spring.mail.password=${SPRING_MAIL_PASSWORD:}
-spring.mail.from=${SPRING_MAIL_FROM:no-reply@coopbank.com.et}
-spring.mail.properties.mail.smtp.auth=${SPRING_MAIL_AUTH:false}
-spring.mail.properties.mail.smtp.starttls.enable=${SPRING_MAIL_STARTTLS:false}
+# Production SMTP Credentials (Coop Bank Internal Mail Relay)
+spring.mail.host=${SPRING_MAIL_HOST:10.12.150.151}
+spring.mail.port=${SPRING_MAIL_PORT:587}
+spring.mail.username=${SPRING_MAIL_USERNAME:noreply@coopbankoromiasc.com}
+spring.mail.password=${SPRING_MAIL_PASSWORD:N0rep1y7ujm<KI*}
+spring.mail.from=${SPRING_MAIL_FROM:noreply@coopbankoromiasc.com}
+spring.mail.properties.mail.smtp.auth=${SPRING_MAIL_AUTH:true}
+spring.mail.properties.mail.smtp.starttls.enable=${SPRING_MAIL_STARTTLS:true}
+spring.mail.properties.mail.smtp.starttls.required=${SPRING_MAIL_STARTTLS_REQUIRED:true}
 
 # Application Base URL
 coopbank.app.base-url=${APP_BASE_URL:http://localhost:8080}
