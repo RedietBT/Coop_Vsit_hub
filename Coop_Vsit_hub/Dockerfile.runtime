@@ -1,0 +1,24 @@
+# =============================================================================
+# Runtime-only image — use when the server cannot pull JDK images or run Maven
+# (e.g. Docker Hub blocked: "connection reset by peer" on 10.8.101.151).
+#
+# On a machine WITH network + Maven:
+#   ./mvnw clean package -DskipTests -B
+#
+# Copy this repo (or at least target/*.jar) to the server, then:
+#   docker build -f Dockerfile.runtime -t coop-backend .
+# =============================================================================
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S coopgroup && adduser -S coopuser -G coopgroup
+
+COPY target/*.jar app.jar
+RUN chown coopuser:coopgroup app.jar
+
+USER coopuser
+EXPOSE 8080
+
+ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
