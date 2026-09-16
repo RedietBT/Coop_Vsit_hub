@@ -1,7 +1,7 @@
 # =============================================================================
 # Multi-Stage Dockerfile for CoopBank Visit Hub Backend (Spring Boot 3.3 / Java 21)
 # Cooperative Bank of Oromia
-# Build: 2026-09-15
+# Build: 2026-09-16-v2
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -14,6 +14,11 @@ WORKDIR /build
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
 COPY src ./src
+
+# Ensure a baseline application.properties exists inside the jar if not present
+RUN if [ ! -f src/main/resources/application.properties ] && [ -f src/main/resources/application.properties.example ]; then \
+      cp src/main/resources/application.properties.example src/main/resources/application.properties; \
+    fi
 
 # Build JAR skipping unit tests
 RUN chmod +x mvnw && ./mvnw clean package -DskipTests -B

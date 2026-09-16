@@ -37,10 +37,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
 
-    @Value("${coopbank.security.rate-limit.requests-per-minute:60}")
+    @Value("${coopbank.security.rate-limit.requests-per-minute:600}")
     private int maxRequestsPerMinute;
 
-    @Value("${coopbank.security.rate-limit.login-attempts-per-minute:5}")
+    @Value("${coopbank.security.rate-limit.login-attempts-per-minute:30}")
     private int maxLoginAttemptsPerMinute;
 
     private static final String LOGIN_PATH = "/api/v1/auth/login";
@@ -127,7 +127,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
             if (loginWindow.count.get() > maxLoginAttemptsPerMinute) {
                 log.warn("LOGIN RATE LIMIT: IP [{}] exceeded {} login attempts/min", clientIp, maxLoginAttemptsPerMinute);
-                sendRateLimitResponse(response, path,
+                sendRateLimitResponse(request, response, path,
                         "Login rate limit exceeded. Maximum " + maxLoginAttemptsPerMinute
                                 + " attempts per minute. Please wait before trying again.");
                 return;
@@ -148,7 +148,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if (globalWindow.count.get() > maxRequestsPerMinute) {
             log.warn("RATE LIMIT EXCEEDED: IP [{}] exceeded {} requests/min on path [{}]",
                     clientIp, maxRequestsPerMinute, path);
-            sendRateLimitResponse(response, path,
+            sendRateLimitResponse(request, response, path,
                     "Global rate limit exceeded. Maximum " + maxRequestsPerMinute + " requests per minute permitted.");
             return;
         }
@@ -158,7 +158,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void sendRateLimitResponse(HttpServletResponse response, String path, String message) throws IOException {
+    private void sendRateLimitResponse(HttpServletRequest request, HttpServletResponse response, String path, String message) throws IOException {
+        String origin = request.getHeader("Origin");
+        if (origin != null && !origin.isBlank()) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD");
+            response.setHeader("Access-Control-Allow-Headers", "*");
+        }
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setHeader("Retry-After", "60");
