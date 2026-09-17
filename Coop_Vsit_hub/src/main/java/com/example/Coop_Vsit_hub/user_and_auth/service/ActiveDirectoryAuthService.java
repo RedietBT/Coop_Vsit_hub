@@ -269,13 +269,8 @@ public class ActiveDirectoryAuthService {
             return result;
 
         } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            String hostPort = adUrl.replace("ldaps://", "").replace("ldap://", "");
-            if (msg.contains(hostPort)) {
-                msg = "Cannot connect to AD server at " + adUrl + " (network unreachable or timeout). Please ensure you are connected to the bank's internal network or bank VPN.";
-            }
-            log.error("AD lookup error for '{}': {}", clean, msg);
-            return Map.of("error", "AD lookup failed: " + msg, "adUrl", adUrl);
+            log.error("AD lookup error for '{}': {}", clean, e.getMessage());
+            return Map.of("error", "AD lookup failed: " + e.getMessage(), "adUrl", adUrl);
         }
     }
 
