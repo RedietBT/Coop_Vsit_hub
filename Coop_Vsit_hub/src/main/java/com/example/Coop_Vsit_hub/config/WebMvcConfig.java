@@ -11,7 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Web MVC Configuration for serving uploaded attachment files as static resources.
+ * Web MVC Configuration for serving uploaded attachment files as static resources
+ * (CORS is configured in {@link SecurityConfig}.)
  * Configured upload directory is created on startup if it does not exist.
  */
 @Configuration

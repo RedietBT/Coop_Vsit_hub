@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+target/classes
+target/generated-sources
+target/maven-status
+target/surefire-reports
+*.md
+.env
+.env.*

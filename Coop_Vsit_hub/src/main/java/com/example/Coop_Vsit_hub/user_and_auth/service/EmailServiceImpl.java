@@ -54,8 +54,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(htmlContent, true);
             mailSender.send(message);
 
-            log.info("Password reset email sent via SMTP to: {}", recipientEmail);
-        } catch (MessagingException e) {
+            log.info("Password reset email sent to: {}", recipientEmail);
+        } catch (Exception e) {
             log.error("Failed to send password reset email to {}: {}", recipientEmail, e.getMessage(), e);
         }
     }
@@ -97,8 +97,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(htmlContent, true);
             mailSender.send(message);
 
-            log.info("Onboarding and email verification link sent via SMTP to: {}", recipientEmail);
-        } catch (MessagingException e) {
+            log.info("Onboarding and email verification link sent to: {}", recipientEmail);
+        } catch (Exception e) {
             log.error("Failed to send onboarding email to {}: {}", recipientEmail, e.getMessage(), e);
         }
     }

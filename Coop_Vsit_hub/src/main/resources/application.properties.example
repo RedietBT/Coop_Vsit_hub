@@ -31,6 +31,7 @@ spring.mail.from=${SPRING_MAIL_FROM:noreply@coopbankoromiasc.com}
 spring.mail.properties.mail.smtp.auth=${SPRING_MAIL_AUTH:true}
 spring.mail.properties.mail.smtp.starttls.enable=${SPRING_MAIL_STARTTLS:true}
 spring.mail.properties.mail.smtp.starttls.required=${SPRING_MAIL_STARTTLS_REQUIRED:true}
+spring.mail.properties.mail.smtp.ssl.trust=${SPRING_MAIL_SSL_TRUST:*}
 
 # Application Base URL
 coopbank.app.base-url=${APP_BASE_URL:http://localhost:8080}

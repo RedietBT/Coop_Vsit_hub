@@ -25,8 +25,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Global Spring Security & Access Control Configuration.
@@ -64,7 +67,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(Customizer.withDefaults())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .headers(headers -> {
@@ -150,12 +153,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public FilterRegistrationBean<CorsFilter> corsFilterRegistrationBean() {
-        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(corsConfigurationSource()));
-        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        return bean;
-    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
@@ -164,38 +161,82 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // Parse comma-separated origins from environment / application.properties
-        List<String> allowedOrigins = Arrays.stream(allowedOriginsConfig.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .map(origin -> {
-                    if (origin.startsWith("http://") || origin.startsWith("https://")) {
-                        try {
-                            java.net.URI uri = java.net.URI.create(origin);
-                            if (uri.getHost() != null) {
-                                String scheme = uri.getScheme();
-                                String host = uri.getHost();
-                                int port = uri.getPort();
-                                return (port == -1) ? (scheme + "://" + host) : (scheme + "://" + host + ":" + port);
-                            }
-                        } catch (Exception ignored) {
-                        }
-                    }
-                    return origin.replaceAll("/+$", "");
-                })
-                .distinct()
-                .toList();
+        CorsConfiguration configuration = buildCorsConfiguration();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
+    /** Runs before Spring Security so preflight OPTIONS is never rejected as "Invalid CORS request". */
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilterRegistration(CorsConfigurationSource corsConfigurationSource) {
+        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(new CorsFilter(corsConfigurationSource));
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
+    }
+
+    private CorsConfiguration buildCorsConfiguration() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(allowedOrigins);
+        applyAllowedOrigins(configuration, allowedOriginsConfig);
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        return configuration;
     }
+
+    /**
+     * Maps {@code coopbank.security.cors.allowed-origins} into Spring CORS origin rules.
+     * Literal {@code *} cannot be used with {@code allowCredentials=true}; use explicit origins or patterns instead.
+     */
+    private static void applyAllowedOrigins(CorsConfiguration configuration, String allowedOriginsConfig) {
+        Set<String> origins = new LinkedHashSet<>();
+        Set<String> patterns = new LinkedHashSet<>();
+
+        Arrays.stream(allowedOriginsConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .forEach(token -> addOriginToken(origins, patterns, token));
+
+        if (origins.isEmpty() && patterns.isEmpty()) {
+            addOriginToken(origins, patterns, "http://10.8.101.150");
+            addOriginToken(origins, patterns, "http://10.8.101.150:*");
+            addOriginToken(origins, patterns, "http://localhost:*");
+            addOriginToken(origins, patterns, "https://*.vercel.app");
+        }
+
+        if (!origins.isEmpty()) {
+            configuration.setAllowedOrigins(new ArrayList<>(origins));
+        }
+        if (!patterns.isEmpty()) {
+            configuration.setAllowedOriginPatterns(new ArrayList<>(patterns));
+        }
+    }
+
+    /**
+     * {@code http://10.8.101.150:*} does not match browser Origin {@code http://10.8.101.150}
+     * (default port is omitted). Expand host:port patterns to include the base origin.
+     */
+    private static void addOriginToken(Set<String> origins, Set<String> patterns, String token) {
+        if ("*".equals(token)) {
+            return;
+        }
+        if (token.contains("*")) {
+            patterns.add(token);
+            if (token.endsWith(":*")) {
+                String base = token.substring(0, token.length() - 2);
+                origins.add(base);
+                if (base.startsWith("http://")) {
+                    origins.add(base + ":80");
+                } else if (base.startsWith("https://")) {
+                    origins.add(base + ":443");
+                }
+            }
+            return;
+        }
+        origins.add(token);
+    }
+
 }
