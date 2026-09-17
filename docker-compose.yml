@@ -3,8 +3,6 @@
 # Cooperative Bank of Oromia
 # =============================================================================
 
-version: '3.8'
-
 services:
   # ---------------------------------------------------------------------------
   # 1. PostgreSQL Database Service
@@ -28,35 +26,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # 2. MailHog SMTP & Email Verification Service
-  # ---------------------------------------------------------------------------
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: coop-mailhog
-    restart: always
-    ports:
-      - "1025:1025" # SMTP server port
-      - "8025:8025" # Web UI dashboard
-
-  # ---------------------------------------------------------------------------
-  # 3. Redis In-Memory Cache & Token Store
-  # ---------------------------------------------------------------------------
-  redis:
-    image: redis:7-alpine
-    container_name: coop-redis
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  # ---------------------------------------------------------------------------
-  # 4. CoopBank Visit Hub Backend (Spring Boot Service)
+  # 2. CoopBank Visit Hub Backend (Spring Boot Service)
   # ---------------------------------------------------------------------------
   backend:
     build:
@@ -70,30 +40,30 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-coop_visit_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-coop_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-coop_secure_pass}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_MAIL_HOST: mailhog
-      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-10.12.150.151}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-noreply@coopbankoromiasc.com}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
       COOPBANK_APP_FRONTEND_URL: ${FRONTEND_URL:-https://coop-vsit-hub.vercel.app}
       APP_FRONTEND_URL: ${FRONTEND_URL:-https://coop-vsit-hub.vercel.app}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://10.8.101.150,http://10.8.101.150:*}
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      AD_ENABLED: ${AD_ENABLED:-false}
+      AD_URL: ${AD_URL:-ldaps://10.1.72.10:636}
+      AD_BASE_DN: ${AD_BASE_DN:-DC=coopbank,DC=local}
+      AD_USERNAME: ${AD_USERNAME:-}
+      AD_PASSWORD: ${AD_PASSWORD:-}
+      AD_SSL_TRUST_ALL: ${AD_SSL_TRUST_ALL:-false}
       JAVA_TOOL_OPTIONS: "-Dcom.sun.jndi.ldap.object.disableEndpointIdentification=true"
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailhog:
-        condition: service_started
 
 # -----------------------------------------------------------------------------
 # Persistent Volumes
 # -----------------------------------------------------------------------------
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
     driver: local

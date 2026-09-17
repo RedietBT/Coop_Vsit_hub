@@ -51,7 +51,7 @@ public class AuthController {
     @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
     @Operation(
             summary = "Register Bank Staff Account (Admin Only)",
-            description = "Onboards a new CoopBank user. System auto-generates temporary password and dispatches MailHog onboarding email with 24-hour verification link.",
+            description = "Onboards a new CoopBank user. System auto-generates temporary password and dispatches onboarding email with 24-hour verification link.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     public ResponseEntity<AuthResponse> register(
@@ -73,7 +73,7 @@ public class AuthController {
     @GetMapping("/verify-email")
     @Operation(
             summary = "Verify Email Address via Link (Public)",
-            description = "Confirms staff email address using token link received via MailHog email."
+            description = "Confirms staff email address using token link received via SMTP email."
     )
     public ResponseEntity<Map<String, String>> verifyEmailGet(@RequestParam("token") String token) {
         authService.verifyEmail(token);
@@ -233,7 +233,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     @Operation(
             summary = "Request Password Reset Link (Public)",
-            description = "Initiates a password reset request. Accepts Username, Email, or Phone Number. Sends HTML email with 15-minute token via MailHog."
+            description = "Initiates a password reset request. Accepts Username, Email, or Phone Number. Sends HTML email with 15-minute token via SMTP."
     )
     public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request,

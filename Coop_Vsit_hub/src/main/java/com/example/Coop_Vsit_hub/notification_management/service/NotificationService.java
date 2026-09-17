@@ -43,7 +43,7 @@ public interface NotificationService {
     void deleteNotification(UUID id, String username);
 
     /**
-     * Dispatch notification to a single user (In-app + Optional MailHog Email).
+     * Dispatch notification to a single user (In-app + Optional SMTP Email).
      */
     void notifyUser(User recipient, String title, String message, NotificationType type, UUID refId, String refCode, boolean sendEmail);
 

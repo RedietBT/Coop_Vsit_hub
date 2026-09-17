@@ -34,7 +34,7 @@ public interface FeedbackService {
     FeedbackDetailResponse getFeedbackByVisitId(UUID visitId);
 
     /**
-     * Generate secure token and send survey invitation email via MailHog.
+     * Generate secure token and send survey invitation email via SMTP.
      */
     void createAndSendFeedbackInvitation(Visit visit);
 

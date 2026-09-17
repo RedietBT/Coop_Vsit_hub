@@ -51,7 +51,7 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final SwaggerBasicAuthFilter swaggerBasicAuthFilter;
 
-    @Value("${coopbank.security.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*}")
+    @Value("${coopbank.security.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*,http://10.8.101.151,http://10.8.101.151:*}")
     private String allowedOriginsConfig;
 
     /** Set HSTS_ENABLED=true in production (HTTPS). Keep false for local HTTP dev. */

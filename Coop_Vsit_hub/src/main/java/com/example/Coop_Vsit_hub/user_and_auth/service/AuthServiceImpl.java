@@ -38,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final ActiveDirectoryAuthService activeDirectoryAuthService;
 
-    @Value("${coopbank.security.jwt.refresh-token-expiration-ms}")
+    @Value("${coopbank.security.jwt.refresh-token-expiration-ms:604800000}")
     private long refreshTokenExpirationMs;
 
     @Override
@@ -93,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
         String verificationToken = UUID.randomUUID().toString();
         redisTokenService.storeEmailVerificationToken(verificationToken, savedUser.getUsername(), 24);
 
-        // Send Onboarding Email via MailHog
+        // Send Onboarding Email via SMTP
         emailService.sendStaffOnboardingEmail(
                 savedUser.getEmail(),
                 savedUser.getFullName(),
@@ -109,13 +109,13 @@ public class AuthServiceImpl implements AuthService {
                 AuditStatus.SUCCESS,
                 ipAddress,
                 userAgent,
-                "New user registered with temporary password and verification token dispatched via MailHog."
+                "New user registered with temporary password and verification token dispatched via SMTP."
         );
 
         return AuthResponse.builder()
                 .isEmailVerified(false)
                 .mustChangePassword(true)
-                .message("User registered successfully. Temporary password and email verification link sent via MailHog to " + savedUser.getEmail())
+                .message("User registered successfully. Temporary password and email verification link sent via SMTP to " + savedUser.getEmail())
                 .user(buildUserProfileResponse(savedUser))
                 .build();
     }
@@ -384,7 +384,7 @@ public class AuthServiceImpl implements AuthService {
             // Store single-use reset token in Redis for 15 minutes
             redisTokenService.storePasswordResetToken(resetToken, user.getUsername(), 15);
 
-            // Send email notification via MailHog strictly to user's registered email
+            // Send email notification via SMTP strictly to user's registered email
             emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), resetToken);
 
             auditLoggerService.logEvent(
