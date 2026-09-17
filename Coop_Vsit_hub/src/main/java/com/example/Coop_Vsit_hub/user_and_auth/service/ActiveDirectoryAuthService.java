@@ -8,18 +8,15 @@ import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.ldap.core.AttributesMapper;
-import org.springframework.ldap.core.LdapTemplate;
-import org.springframework.ldap.core.support.LdapContextSource;
-import org.springframework.ldap.filter.AndFilter;
-import org.springframework.ldap.filter.EqualsFilter;
-import org.springframework.ldap.filter.OrFilter;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
+import javax.naming.PartialResultException;
+import javax.naming.directory.*;
 import java.util.*;
 
 /**
@@ -73,10 +70,60 @@ public class ActiveDirectoryAuthService {
             return rawUser;
         }
         String trimmed = rawUser.trim();
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+            (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
+        }
         if (trimmed.contains("@") || trimmed.contains("=")) {
             return trimmed;
         }
         return trimmed + "@" + (org.springframework.util.StringUtils.hasText(adDomain) ? adDomain : "coopbank.local");
+    }
+
+    private String resolveBindPassword(String rawPassword) {
+        if (!org.springframework.util.StringUtils.hasText(rawPassword)) {
+            return rawPassword;
+        }
+        String trimmed = rawPassword.trim();
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+            (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            return trimmed.substring(1, trimmed.length() - 1);
+        }
+        return rawPassword;
+    }
+
+    private DirContext createDirContext(String principal, String password) throws NamingException {
+        Hashtable<String, Object> env = new Hashtable<>();
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        String providerUrl = adUrl.endsWith("/") ? adUrl + adBaseDn : adUrl + "/" + adBaseDn;
+        env.put(Context.PROVIDER_URL, providerUrl);
+        env.put(Context.SECURITY_AUTHENTICATION, "simple");
+        env.put(Context.SECURITY_PRINCIPAL, principal);
+        env.put(Context.SECURITY_CREDENTIALS, password);
+        if (adUrl.toLowerCase().startsWith("ldaps://")) {
+            env.put(Context.SECURITY_PROTOCOL, "ssl");
+            if (trustAllSsl) {
+                env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            }
+        }
+        env.put(Context.REFERRAL, "ignore");
+        return new InitialDirContext(env);
+    }
+
+    private static String escapeLdapFilter(String input) {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            switch (c) {
+                case '\\' -> sb.append("\\5c");
+                case '*' -> sb.append("\\2a");
+                case '(' -> sb.append("\\28");
+                case ')' -> sb.append("\\29");
+                case '\0' -> sb.append("\\00");
+                default -> sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -98,54 +145,68 @@ public class ActiveDirectoryAuthService {
             throw new IllegalStateException("Active Directory authentication is currently disabled in system configuration.");
         }
 
+        String bindUser = resolveBindUser(org.springframework.util.StringUtils.hasText(adUsername) ? adUsername : cleanIdentifier);
+        String bindPass = resolveBindPassword(org.springframework.util.StringUtils.hasText(adUsername) ? adPassword : password);
+
+        DirContext ctx = null;
         try {
-            // Configure LDAP Context Source
-            LdapContextSource contextSource = new LdapContextSource();
-            contextSource.setUrl(adUrl);
-            contextSource.setBase(adBaseDn);
-            String bindUser = resolveBindUser(org.springframework.util.StringUtils.hasText(adUsername) ? adUsername : cleanIdentifier);
-            String bindPass = org.springframework.util.StringUtils.hasText(adUsername) ? adPassword : password;
-            contextSource.setUserDn(bindUser);
-            contextSource.setPassword(bindPass);
-            
-            Map<String, Object> environment = new HashMap<>();
-            environment.put("java.naming.security.protocol", "ssl");
-            environment.put("com.sun.jndi.ldap.connect.timeout", "4000");
-            environment.put("com.sun.jndi.ldap.read.timeout", "6000");
-            if (trustAllSsl) {
-                log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed via coopbank.ad.ssl.trust-all=true. Do not use in production!");
-                environment.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
+            // 1. Connect and search for the user profile
+            ctx = createDirContext(bindUser, bindPass);
+
+            SearchControls sc = new SearchControls();
+            sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            sc.setCountLimit(2);
+            String[] fields = {
+                "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
+                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
+                "title", "memberOf"
+            };
+            sc.setReturningAttributes(fields);
+
+            String escapedUser = escapeLdapFilter(username);
+            String escapedId = escapeLdapFilter(cleanIdentifier);
+            String filter = "(&(objectClass=user)(|(sAMAccountName=" + escapedUser + ")(userPrincipalName=" + escapedId + ")(mail=" + escapedId + ")))";
+
+            NamingEnumeration<SearchResult> answer = ctx.search("", filter, sc);
+            SearchResult sr = null;
+            while (true) {
+                try {
+                    if (!answer.hasMore()) {
+                        break;
+                    }
+                } catch (PartialResultException pre) {
+                    log.debug("Active Directory referral ignored during authentication search: {}", pre.getMessage());
+                    break;
+                }
+                try {
+                    sr = answer.next();
+                    if (sr != null) {
+                        break;
+                    }
+                } catch (PartialResultException pre) {
+                    log.debug("Active Directory referral ignored during authentication next: {}", pre.getMessage());
+                    break;
+                }
             }
-            contextSource.setBaseEnvironmentProperties(environment);
-            contextSource.afterPropertiesSet();
 
-            LdapTemplate ldapTemplate = new LdapTemplate(contextSource);
-            ldapTemplate.setIgnorePartialResultException(true);
-
-            // Filter for Active Directory User
-            AndFilter filter = new AndFilter();
-            filter.and(new EqualsFilter("objectClass", "user"));
-
-            OrFilter orFilter = new OrFilter();
-            orFilter.or(new EqualsFilter("sAMAccountName", username));
-            orFilter.or(new EqualsFilter("userPrincipalName", cleanIdentifier));
-            orFilter.or(new EqualsFilter("mail", cleanIdentifier));
-            filter.and(orFilter);
-
-            List<AdStaffProfile> results = ldapTemplate.search("", filter.encode(), new AdAttributesMapper());
-
-            if (results == null || results.isEmpty()) {
+            if (sr == null) {
                 log.warn("Staff user '{}' not found in Active Directory.", cleanIdentifier);
                 throw new IllegalArgumentException("Invalid CoopBank Active Directory credentials.");
             }
 
-            AdStaffProfile staffProfile = results.get(0);
+            Attributes attrs = sr.getAttributes();
+            AdStaffProfile staffProfile = mapStaffProfile(attrs);
+            String userFullDn = sr.getNameInNamespace();
 
-            // Authenticate user password by attempting bind with user DN
-            boolean authenticated = ldapTemplate.authenticate("", filter.encode(), password);
-            if (!authenticated) {
-                log.warn("Active Directory password verification failed for staff: {}", username);
-                throw new IllegalArgumentException("Invalid CoopBank Active Directory password.");
+            // 2. If using service account bind, verify user's password by performing a user bind
+            if (org.springframework.util.StringUtils.hasText(adUsername)) {
+                try {
+                    DirContext userCtx = createDirContext(userFullDn, password);
+                    userCtx.close();
+                } catch (NamingException e) {
+                    log.warn("Active Directory password verification failed for staff: {}", username);
+                    throw new IllegalArgumentException("Invalid CoopBank Active Directory password.");
+                }
             }
 
             log.info("Active Directory authentication successful for staff: {} ({})", staffProfile.getUsername(), staffProfile.getEmail());
@@ -172,8 +233,20 @@ public class ActiveDirectoryAuthService {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Active Directory connection error to {}: {}", adUrl, e.getMessage());
-            throw new IllegalStateException("CoopBank Active Directory service (" + adUrl + ") is unreachable. Please verify network/VPN connectivity: " + e.getMessage());
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) {
+                root = root.getCause();
+            }
+            if (root instanceof NamingException ne && ne.getRootCause() != null) {
+                root = ne.getRootCause();
+            }
+            String rootMsg = (root != null && root.getMessage() != null && !root.getMessage().equals(e.getMessage())) ? " (Root cause: " + root.getMessage() + ")" : "";
+            log.error("Active Directory connection error to {}: {}{}", adUrl, e.getMessage(), rootMsg, e);
+            throw new IllegalStateException("CoopBank Active Directory service (" + adUrl + ") connection failed: " + e.getMessage() + rootMsg, e);
+        } finally {
+            if (ctx != null) {
+                try { ctx.close(); } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -192,47 +265,58 @@ public class ActiveDirectoryAuthService {
             return Map.of("error", "Active Directory is disabled in configuration.");
         }
 
+        if (!org.springframework.util.StringUtils.hasText(adUsername) || !org.springframework.util.StringUtils.hasText(adPassword)) {
+            log.warn("AD lookup attempted but coopbank.ad.username or coopbank.ad.password is not configured.");
+            return Map.of("error", "AD lookup failed: AD service account credentials (coopbank.ad.username / coopbank.ad.password) are missing in application.properties.", "adUrl", adUrl);
+        }
+
+        DirContext ctx = null;
         try {
-            LdapContextSource contextSource = new LdapContextSource();
-            contextSource.setUrl(adUrl);
-            contextSource.setBase(adBaseDn);
-            contextSource.setUserDn(resolveBindUser(adUsername));
-            contextSource.setPassword(adPassword);
-            Map<String, Object> env = new HashMap<>();
-            env.put("java.naming.security.protocol", "ssl");
-            if (trustAllSsl) {
-                log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed in AD lookup.");
-                env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
-            }
-            contextSource.setBaseEnvironmentProperties(env);
-            contextSource.afterPropertiesSet();
+            ctx = createDirContext(resolveBindUser(adUsername), resolveBindPassword(adPassword));
 
-            LdapTemplate ldapTemplate = new LdapTemplate(contextSource);
-            ldapTemplate.setIgnorePartialResultException(true);
+            SearchControls sc = new SearchControls();
+            sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            sc.setCountLimit(10);
+            String[] fields = {
+                "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
+                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
+                "title", "memberOf"
+            };
+            sc.setReturningAttributes(fields);
 
-            AndFilter filter = new AndFilter();
-            filter.and(new EqualsFilter("objectClass", "user"));
-            OrFilter orFilter = new OrFilter();
-            orFilter.or(new EqualsFilter("sAMAccountName", samName));
-            orFilter.or(new EqualsFilter("userPrincipalName", clean));
-            orFilter.or(new EqualsFilter("mail", clean));
-            filter.and(orFilter);
+            String escapedSam = escapeLdapFilter(samName);
+            String escapedClean = escapeLdapFilter(clean);
+            String filter = "(&(objectClass=user)(|(sAMAccountName=" + escapedSam + ")(userPrincipalName=" + escapedClean + ")(mail=" + escapedClean + ")))";
 
-            List<Map<String, Object>> results = ldapTemplate.search("", filter.encode(), (Attributes attrs) -> {
-                Map<String, Object> entry = new LinkedHashMap<>();
-                String[] fields = {"sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                        "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName"};
-                for (String f : fields) {
-                    try {
-                        if (attrs.get(f) != null && attrs.get(f).get() != null) {
-                            entry.put(f, attrs.get(f).get().toString());
-                        }
-                    } catch (NamingException ignored) {}
+            NamingEnumeration<SearchResult> answer = ctx.search("", filter, sc);
+            List<Map<String, Object>> results = new ArrayList<>();
+            while (true) {
+                try {
+                    if (!answer.hasMore()) {
+                        break;
+                    }
+                } catch (PartialResultException pre) {
+                    log.debug("Active Directory referral ignored during user lookup hasMore: {}", pre.getMessage());
+                    break;
                 }
-                return entry;
-            });
+                SearchResult sr;
+                try {
+                    sr = answer.next();
+                } catch (PartialResultException pre) {
+                    log.debug("Active Directory referral ignored during user lookup next: {}", pre.getMessage());
+                    break;
+                }
+                Attributes attrs = sr.getAttributes();
+                Map<String, Object> entry = new LinkedHashMap<>();
+                for (String f : fields) {
+                    if (attrs.get(f) != null && attrs.get(f).get() != null) {
+                        entry.put(f, attrs.get(f).get().toString());
+                    }
+                }
+                results.add(entry);
+            }
 
-            if (results == null || results.isEmpty()) {
+            if (results.isEmpty()) {
                 log.warn("AD lookup: user '{}' not found in Active Directory.", clean);
                 return Map.of("found", false, "searchedFor", clean, "adUrl", adUrl, "baseDn", adBaseDn);
             }
@@ -267,8 +351,20 @@ public class ActiveDirectoryAuthService {
             return result;
 
         } catch (Exception e) {
-            log.error("AD lookup error for '{}': {}", clean, e.getMessage());
-            return Map.of("error", "AD lookup failed: " + e.getMessage(), "adUrl", adUrl);
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) {
+                root = root.getCause();
+            }
+            if (root instanceof NamingException ne && ne.getRootCause() != null) {
+                root = ne.getRootCause();
+            }
+            String rootMsg = (root != null && root.getMessage() != null && !root.getMessage().equals(e.getMessage())) ? " (Root cause: " + root.getMessage() + ")" : "";
+            log.error("AD lookup error for '{}': {}{}", clean, e.getMessage(), rootMsg, e);
+            return Map.of("error", "AD lookup failed: " + e.getMessage() + rootMsg, "adUrl", adUrl);
+        } finally {
+            if (ctx != null) {
+                try { ctx.close(); } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -372,45 +468,42 @@ public class ActiveDirectoryAuthService {
         return null;
     }
 
-    private static class AdAttributesMapper implements AttributesMapper<AdStaffProfile> {
-        @Override
-        public AdStaffProfile mapFromAttributes(Attributes attrs) throws NamingException {
-            String samAccountName = getAttr(attrs, "sAMAccountName");
-            String mail = getAttr(attrs, "mail");
-            String givenName = getAttr(attrs, "givenName");
-            String sn = getAttr(attrs, "sn");
-            String displayName = getAttr(attrs, "displayName");
-            String department = getAttr(attrs, "department");
-            String telephoneNumber = getAttr(attrs, "telephoneNumber");
-            String title = getAttr(attrs, "title");
-            String memberOf = getAttr(attrs, "memberOf");
+    private AdStaffProfile mapStaffProfile(Attributes attrs) throws NamingException {
+        String samAccountName = getAttr(attrs, "sAMAccountName");
+        String mail = getAttr(attrs, "mail");
+        String givenName = getAttr(attrs, "givenName");
+        String sn = getAttr(attrs, "sn");
+        String displayName = getAttr(attrs, "displayName");
+        String department = getAttr(attrs, "department");
+        String telephoneNumber = getAttr(attrs, "telephoneNumber");
+        String title = getAttr(attrs, "title");
+        String memberOf = getAttr(attrs, "memberOf");
 
-            if (givenName == null && displayName != null) {
-                String[] parts = displayName.split("\\s+");
-                givenName = parts[0];
-                if (parts.length > 1) {
-                    sn = parts[parts.length - 1];
-                }
+        if (givenName == null && displayName != null) {
+            String[] parts = displayName.split("\\s+");
+            givenName = parts[0];
+            if (parts.length > 1) {
+                sn = parts[parts.length - 1];
             }
-
-            return AdStaffProfile.builder()
-                    .username(samAccountName)
-                    .email(mail)
-                    .firstName(givenName != null ? givenName : samAccountName)
-                    .lastName(sn != null ? sn : "Staff")
-                    .department(department)
-                    .phone(telephoneNumber)
-                    .title(title)
-                    .memberOf(memberOf)
-                    .build();
         }
 
-        private String getAttr(Attributes attrs, String name) throws NamingException {
-            if (attrs.get(name) != null && attrs.get(name).get() != null) {
-                return attrs.get(name).get().toString();
-            }
-            return null;
+        return AdStaffProfile.builder()
+                .username(samAccountName)
+                .email(mail)
+                .firstName(givenName != null ? givenName : samAccountName)
+                .lastName(sn != null ? sn : "Staff")
+                .department(department)
+                .phone(telephoneNumber)
+                .title(title)
+                .memberOf(memberOf)
+                .build();
+    }
+
+    private String getAttr(Attributes attrs, String name) throws NamingException {
+        if (attrs.get(name) != null && attrs.get(name).get() != null) {
+            return attrs.get(name).get().toString();
         }
+        return null;
     }
 
     @lombok.Data
