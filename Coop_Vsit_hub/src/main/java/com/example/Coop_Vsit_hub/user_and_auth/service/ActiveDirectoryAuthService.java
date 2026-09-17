@@ -200,6 +200,8 @@ public class ActiveDirectoryAuthService {
             contextSource.setPassword(adPassword);
             Map<String, Object> env = new HashMap<>();
             env.put("java.naming.security.protocol", "ssl");
+            env.put("com.sun.jndi.ldap.connect.timeout", "4000");
+            env.put("com.sun.jndi.ldap.read.timeout", "6000");
             if (trustAllSsl) {
                 log.warn("SECURITY WARNING: LDAPS certificate validation is bypassed in AD lookup.");
                 env.put("java.naming.ldap.factory.socket", "com.example.coop_vsit_hub.user_and_auth.security.TrustAllSSLSocketFactory");
@@ -267,8 +269,13 @@ public class ActiveDirectoryAuthService {
             return result;
 
         } catch (Exception e) {
-            log.error("AD lookup error for '{}': {}", clean, e.getMessage());
-            return Map.of("error", "AD lookup failed: " + e.getMessage(), "adUrl", adUrl);
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            String hostPort = adUrl.replace("ldaps://", "").replace("ldap://", "");
+            if (msg.contains(hostPort)) {
+                msg = "Cannot connect to AD server at " + adUrl + " (network unreachable or timeout). Please ensure you are connected to the bank's internal network or bank VPN.";
+            }
+            log.error("AD lookup error for '{}': {}", clean, msg);
+            return Map.of("error", "AD lookup failed: " + msg, "adUrl", adUrl);
         }
     }
 
