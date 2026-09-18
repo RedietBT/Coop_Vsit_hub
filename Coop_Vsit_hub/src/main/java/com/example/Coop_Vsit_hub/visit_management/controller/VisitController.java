@@ -125,7 +125,7 @@ public class VisitController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_SECURITY_DESK', 'ROLE_RELATIONSHIP_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_DIRECTOR', 'ROLE_ADMIN', 'ROLE_SECURITY_DESK', 'ROLE_RELATIONSHIP_MANAGER')")
     @Operation(summary = "Transition Visit Status", description = "Approve, reject, schedule, or cancel visit with decision notes and cancellation reason.")
     public ResponseEntity<VisitDetailResponse> transitionVisitStatus(
             @PathVariable UUID id,

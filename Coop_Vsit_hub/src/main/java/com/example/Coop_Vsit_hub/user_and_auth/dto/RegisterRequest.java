@@ -57,4 +57,10 @@ public class RegisterRequest {
     private String phoneNumber;
 
     private Set<RoleName> roles;
+
+    /**
+     * Set to true if the user is authenticated via Active Directory.
+     * When true, password change and email verification requirements are bypassed.
+     */
+    private Boolean isAdUser;
 }

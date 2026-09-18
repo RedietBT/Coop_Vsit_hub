@@ -211,12 +211,23 @@ public class ActiveDirectoryAuthService {
 
             log.info("Active Directory authentication successful for staff: {} ({})", staffProfile.getUsername(), staffProfile.getEmail());
 
-            // Determine Role based on AD Title or Group Membership
-            RoleName assignedRole = resolveRoleFromAdProfile(staffProfile);
-            if (assignedRole == null) {
-                log.warn("Access Denied: Staff user '{}' is neither a Director nor a Secretary (Title: {}, Dept: {})",
-                        staffProfile.getUsername(), staffProfile.getTitle(), staffProfile.getDepartment());
-                throw new IllegalArgumentException("Access Denied: CoopBank Visit Hub access is restricted to Directors and Department Secretaries.");
+            // 1. Check if user is already registered in the Hub (by admin or previous login)
+            User existingUser = userRepository.findByUsername(staffProfile.getUsername())
+                    .or(() -> (staffProfile.getEmail() != null) ? userRepository.findByEmail(staffProfile.getEmail().toLowerCase()) : Optional.empty())
+                    .orElse(null);
+
+            RoleName assignedRole = null;
+            if (existingUser != null && existingUser.getRoles() != null && !existingUser.getRoles().isEmpty()) {
+                // User already has assigned system roles (e.g. Relationship Manager, Security Desk, Approver, etc.)
+                log.info("Staff '{}' authenticated with existing system roles: {}", staffProfile.getUsername(), existingUser.getRoles());
+            } else {
+                // Auto-provisioning direct AD user (Directors / Department Secretaries)
+                assignedRole = resolveRoleFromAdProfile(staffProfile);
+                if (assignedRole == null) {
+                    log.warn("Access Denied: Staff user '{}' does not have an assigned system role (Title: {}, Dept: {})",
+                            staffProfile.getUsername(), staffProfile.getTitle(), staffProfile.getDepartment());
+                    throw new IllegalArgumentException("Access Denied: Your account has not been assigned a role in CoopBank Visit Hub. Please contact the System Administrator.");
+                }
             }
 
             return syncStaffUser(
@@ -344,8 +355,31 @@ public class ActiveDirectoryAuthService {
             boolean inDb = (email != null && userRepository.findByEmail(email.toLowerCase()).isPresent())
                         || (sam   != null && userRepository.findByUsername(sam).isPresent());
 
+            // Build clean staff object for registration form autofill
+            String firstName = (String) adAttrs.get("givenName");
+            String lastName  = (String) adAttrs.get("sn");
+            String displayName = (String) adAttrs.get("displayName");
+            if ((firstName == null || firstName.isBlank()) && displayName != null) {
+                String[] parts = displayName.split("\\s+");
+                firstName = parts[0];
+                if (parts.length > 1 && (lastName == null || lastName.isBlank())) {
+                    lastName = parts[parts.length - 1];
+                }
+            }
+
+            Map<String, Object> staff = new LinkedHashMap<>();
+            staff.put("username", sam);
+            staff.put("email", email != null ? email : (sam + "@" + adDomain));
+            staff.put("firstName", firstName != null ? firstName : sam);
+            staff.put("lastName", lastName != null ? lastName : "Staff");
+            staff.put("department", adAttrs.get("department"));
+            staff.put("phoneNumber", adAttrs.get("telephoneNumber"));
+            staff.put("title", adAttrs.get("title"));
+            staff.put("isAdUser", true);
+
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("found", true);
+            result.put("staff", staff);
             result.put("adAttributes", adAttrs);
             result.put("existsInLocalDb", inDb);
             return result;
@@ -425,10 +459,9 @@ public class ActiveDirectoryAuthService {
             user.setMustChangePassword(false);
             user.setFailedLoginAttempts(0);
 
-            // If user is not admin, ensure they have the targeted role
-            boolean hasAdmin = user.getRoles() != null && user.getRoles().stream()
-                    .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
-            if (!hasAdmin) {
+            // Preserve existing admin-assigned roles!
+            // Only assign effectiveRole if the user currently has no roles assigned
+            if ((user.getRoles() == null || user.getRoles().isEmpty()) && effectiveRole != null) {
                 Role assignedRole = roleRepository.findByName(effectiveRole)
                         .orElseGet(() -> roleRepository.save(Role.builder()
                                 .name(effectiveRole)
@@ -437,6 +470,7 @@ public class ActiveDirectoryAuthService {
                 Set<Role> roles = new HashSet<>();
                 roles.add(assignedRole);
                 user.setRoles(roles);
+                log.info("Assigned initial role {} to user: {}", effectiveRole, username);
             }
         }
 

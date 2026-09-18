@@ -160,18 +160,23 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserDetailResponse updateUserRoles(UUID id, UpdateUserRolesRequest request, String adminUsername) {
-        log.info("Administrator '{}' updating roles for user ID: {} to: {}", adminUsername, id, request.getRoles());
+        Set<RoleName> targetRoles = request.getRoles();
+        if (targetRoles == null || targetRoles.isEmpty()) {
+            throw new IllegalArgumentException("At least one authorization role must be selected.");
+        }
+
+        log.info("Administrator '{}' updating roles for user ID: {} to: {}", adminUsername, id, targetRoles);
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
 
         // Prevent admin from removing their own admin role
-        if (user.getUsername().equalsIgnoreCase(adminUsername) && !request.getRoles().contains(RoleName.ROLE_ADMIN)) {
+        if (user.getUsername().equalsIgnoreCase(adminUsername) && !targetRoles.contains(RoleName.ROLE_ADMIN)) {
             throw new IllegalArgumentException("You cannot remove ROLE_ADMIN from your own active administrator account.");
         }
 
         Set<Role> resolvedRoles = new HashSet<>();
-        for (RoleName roleName : request.getRoles()) {
+        for (RoleName roleName : targetRoles) {
             Role role = roleRepository.findByName(roleName)
                     .orElseThrow(() -> new IllegalArgumentException("Role not recognized in system: " + roleName));
             resolvedRoles.add(role);

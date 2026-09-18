@@ -56,7 +56,7 @@ public class FeedbackController {
     }
 
     @GetMapping("/analytics")
-    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).APPROVER)")
+    @PreAuthorize("hasAnyAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN, T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).DIRECTOR)")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Executive Feedback & CSAT Analytics", description = "Computes aggregated CSAT percentage, Net Promoter Score (NPS), rating averages, and recent guest reviews.")
     public ResponseEntity<FeedbackAnalyticsResponse> getFeedbackAnalytics() {

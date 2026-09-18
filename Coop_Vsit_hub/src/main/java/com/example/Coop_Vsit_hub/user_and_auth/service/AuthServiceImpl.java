@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,7 +69,17 @@ public class AuthServiceImpl implements AuthService {
             roles.add(defaultRole);
         }
 
-        String tempPassword = TemporaryPasswordGenerator.generateTemporaryPassword();
+        boolean isAdStaff = Boolean.TRUE.equals(request.getIsAdUser());
+        if (!isAdStaff && activeDirectoryAuthService.isAdEnabled()) {
+            try {
+                Map<String, Object> adCheck = activeDirectoryAuthService.lookupByEmail(request.getEmail());
+                if (Boolean.TRUE.equals(adCheck.get("found"))) {
+                    isAdStaff = true;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        String tempPassword = isAdStaff ? UUID.randomUUID().toString() : TemporaryPasswordGenerator.generateTemporaryPassword();
 
         User user = User.builder()
                 .username(request.getUsername().trim())
@@ -81,43 +92,62 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber().trim() : null)
                 .isEnabled(true)
                 .isAccountNonLocked(true)
-                .isEmailVerified(false)
-                .mustChangePassword(true)
+                .isEmailVerified(isAdStaff)
+                .mustChangePassword(!isAdStaff)
                 .failedLoginAttempts(0)
                 .roles(roles)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        // Generate Email Verification Token in Redis for 24 hours
-        String verificationToken = UUID.randomUUID().toString();
-        redisTokenService.storeEmailVerificationToken(verificationToken, savedUser.getUsername(), 24);
+        if (!isAdStaff) {
+            // Generate Email Verification Token in Redis for 24 hours
+            String verificationToken = UUID.randomUUID().toString();
+            redisTokenService.storeEmailVerificationToken(verificationToken, savedUser.getUsername(), 24);
 
-        // Send Onboarding Email via MailHog
-        emailService.sendStaffOnboardingEmail(
-                savedUser.getEmail(),
-                savedUser.getFullName(),
-                savedUser.getUsername(),
-                tempPassword,
-                verificationToken
-        );
+            // Send Onboarding Email via MailHog
+            emailService.sendStaffOnboardingEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFullName(),
+                    savedUser.getUsername(),
+                    tempPassword,
+                    verificationToken
+            );
 
-        auditLoggerService.logEvent(
-                savedUser,
-                savedUser.getUsername(),
-                AuditEventType.LOGIN_SUCCESS,
-                AuditStatus.SUCCESS,
-                ipAddress,
-                userAgent,
-                "New user registered with temporary password and verification token dispatched via MailHog."
-        );
+            auditLoggerService.logEvent(
+                    savedUser,
+                    savedUser.getUsername(),
+                    AuditEventType.LOGIN_SUCCESS,
+                    AuditStatus.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    "New user registered with temporary password and verification token dispatched via MailHog."
+            );
 
-        return AuthResponse.builder()
-                .isEmailVerified(false)
-                .mustChangePassword(true)
-                .message("User registered successfully. Temporary password and email verification link sent via MailHog to " + savedUser.getEmail())
-                .user(buildUserProfileResponse(savedUser))
-                .build();
+            return AuthResponse.builder()
+                    .isEmailVerified(false)
+                    .mustChangePassword(true)
+                    .message("User registered successfully. Temporary password and email verification link sent via MailHog to " + savedUser.getEmail())
+                    .user(buildUserProfileResponse(savedUser))
+                    .build();
+        } else {
+            auditLoggerService.logEvent(
+                    savedUser,
+                    savedUser.getUsername(),
+                    AuditEventType.LOGIN_SUCCESS,
+                    AuditStatus.SUCCESS,
+                    ipAddress,
+                    userAgent,
+                    "New staff registered with Active Directory authentication. System roles assigned: " + request.getRoles()
+            );
+
+            return AuthResponse.builder()
+                    .isEmailVerified(true)
+                    .mustChangePassword(false)
+                    .message("Staff user registered successfully with Active Directory authentication.")
+                    .user(buildUserProfileResponse(savedUser))
+                    .build();
+        }
     }
 
     @Override
