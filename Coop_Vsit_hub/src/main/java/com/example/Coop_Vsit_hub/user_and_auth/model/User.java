@@ -59,11 +59,11 @@ public class User {
 
     @Builder.Default
     @Column(name = "is_email_verified", nullable = false)
-    private boolean isEmailVerified = false;
+    private boolean isEmailVerified = true;
 
     @Builder.Default
     @Column(name = "must_change_password", nullable = false)
-    private boolean mustChangePassword = true;
+    private boolean mustChangePassword = false;
 
     @Builder.Default
     @Column(name = "failed_login_attempts", nullable = false)

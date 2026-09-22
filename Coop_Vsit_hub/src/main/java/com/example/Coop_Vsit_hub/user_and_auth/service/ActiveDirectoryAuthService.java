@@ -479,24 +479,52 @@ public class ActiveDirectoryAuthService {
 
     /**
      * Resolves appropriate Hub role from Active Directory job title or group membership.
-     * Restricts portal entry strictly to Directors and Department Secretaries.
+     * Allows direct login/auto-provisioning for:
+     * - Directors (whether Senior Director, regular Director, Executive Director, etc.)
+     * - Chiefs (Chief Officers, CIO, CTO, CFO, etc.), VPs, Department Heads
+     * - Senior Managers (specifically "Senior Manager", "Sr. Manager", "Snr Manager" - strictly NOT regular/normal Managers)
+     * - Secretaries / Executive Assistants / Administrative Assistants
+     * - Front Desk / Reception / Security
      */
     private RoleName resolveRoleFromAdProfile(AdStaffProfile profile) {
-        String title = (profile.getTitle() != null) ? profile.getTitle().toLowerCase() : "";
-        String memberOf = (profile.getMemberOf() != null) ? profile.getMemberOf().toLowerCase() : "";
+        String title = (profile.getTitle() != null) ? profile.getTitle().toLowerCase().trim() : "";
+        String memberOf = (profile.getMemberOf() != null) ? profile.getMemberOf().toLowerCase().trim() : "";
 
-        if (title.contains("director") || title.contains("chief") || title.contains("vice president")
-                || title.contains("vp") || title.contains("head") || memberOf.contains("director")) {
+        // 1. Directors (any variation: Senior Director, regular Director, etc.), Chiefs, VPs, Heads
+        boolean isDirectorOrChief = title.contains("director")
+                || title.contains("chief")
+                || title.contains("chif")
+                || title.contains("vice president")
+                || title.contains("vp")
+                || title.contains("head")
+                || memberOf.contains("director")
+                || memberOf.contains("chief");
+
+        // 2. Senior Manager ONLY (strictly Senior Manager / Sr. Manager - NOT regular/normal Manager)
+        boolean isSeniorManager = title.contains("senior manager")
+                || title.contains("sr. manager")
+                || title.contains("sr manager")
+                || title.contains("snr manager")
+                || title.contains("snr. manager")
+                || memberOf.contains("senior manager")
+                || memberOf.contains("sr. manager");
+
+        if (isDirectorOrChief || isSeniorManager) {
             return RoleName.ROLE_DIRECTOR;
         }
 
-        if (title.contains("secretary") || title.contains("assistant") || title.contains("admin")
-                || memberOf.contains("secretary")) {
+        // 3. Secretary / Secretarial / Executive Assistant / Admin Assistant
+        if (title.contains("secretary") || title.contains("secretar") || title.contains("secretor")
+                || title.contains("assistant") || title.contains("admin")
+                || memberOf.contains("secretary") || memberOf.contains("secretar")) {
             return RoleName.ROLE_SECRETARY;
         }
 
-        if (title.contains("security") || memberOf.contains("security")) {
-            return RoleName.ROLE_SECURITY_DESK;
+        // 4. Front Desk / Reception / Security
+        if (title.contains("front desk") || title.contains("reception") || title.contains("receptionist")
+                || memberOf.contains("front desk") || memberOf.contains("reception") || memberOf.contains("receptionist")
+                || title.contains("security") || memberOf.contains("security")) {
+            return RoleName.ROLE_FRONT_DESK;
         }
 
         return null;

@@ -8,12 +8,14 @@ public enum RoleName {
     ROLE_ADMIN,
     ROLE_RELATIONSHIP_MANAGER,
     ROLE_SECURITY_DESK,
+    ROLE_FRONT_DESK,
     ROLE_DIRECTOR,
     ROLE_SECRETARY;
 
     public static final String ADMIN = "ROLE_ADMIN";
     public static final String RELATIONSHIP_MANAGER = "ROLE_RELATIONSHIP_MANAGER";
     public static final String SECURITY_DESK = "ROLE_SECURITY_DESK";
+    public static final String FRONT_DESK = "ROLE_FRONT_DESK";
     public static final String DIRECTOR = "ROLE_DIRECTOR";
     public static final String SECRETARY = "ROLE_SECRETARY";
 }

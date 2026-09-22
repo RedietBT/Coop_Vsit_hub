@@ -60,4 +60,8 @@ public class UpdateUserRequest {
     )
     @Schema(example = "+251911223344")
     private String phoneNumber;
+
+    @Size(min = 6, max = 100, message = "Password must be at least 6 characters.")
+    @Schema(example = "Secret123!", description = "Optional new password to reset for the user")
+    private String password;
 }

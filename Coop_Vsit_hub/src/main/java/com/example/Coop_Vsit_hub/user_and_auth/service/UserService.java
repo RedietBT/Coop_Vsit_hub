@@ -60,4 +60,9 @@ public interface UserService {
      * Delete user from system with safeguards.
      */
     void deleteUser(UUID id, String adminUsername);
+
+    /**
+     * Directly set or reset staff password by an administrator.
+     */
+    void adminResetPassword(UUID id, String newPassword, String adminUsername);
 }

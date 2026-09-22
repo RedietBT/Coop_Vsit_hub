@@ -79,12 +79,20 @@ public class AuthServiceImpl implements AuthService {
             } catch (Exception ignored) {}
         }
 
-        String tempPassword = isAdStaff ? UUID.randomUUID().toString() : TemporaryPasswordGenerator.generateTemporaryPassword();
+        boolean hasExplicitPassword = org.springframework.util.StringUtils.hasText(request.getPassword());
+        String effectivePassword;
+        if (hasExplicitPassword) {
+            effectivePassword = request.getPassword().trim();
+        } else if (isAdStaff) {
+            effectivePassword = UUID.randomUUID().toString();
+        } else {
+            effectivePassword = TemporaryPasswordGenerator.generateTemporaryPassword();
+        }
 
         User user = User.builder()
                 .username(request.getUsername().trim())
                 .email(request.getEmail().trim().toLowerCase())
-                .passwordHash(passwordEncoder.encode(tempPassword))
+                .passwordHash(passwordEncoder.encode(effectivePassword))
                 .firstName(request.getFirstName().trim())
                 .middleName(request.getMiddleName() != null ? request.getMiddleName().trim() : null)
                 .lastName(request.getLastName().trim())
@@ -92,62 +100,55 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber().trim() : null)
                 .isEnabled(true)
                 .isAccountNonLocked(true)
-                .isEmailVerified(isAdStaff)
-                .mustChangePassword(!isAdStaff)
+                .isEmailVerified(true) // Staff onboarded by admin are immediately pre-verified
+                .mustChangePassword(!hasExplicitPassword && !isAdStaff)
                 .failedLoginAttempts(0)
                 .roles(roles)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        if (!isAdStaff) {
-            // Generate Email Verification Token in Redis for 24 hours
-            String verificationToken = UUID.randomUUID().toString();
-            redisTokenService.storeEmailVerificationToken(verificationToken, savedUser.getUsername(), 24);
+        String roleSummary = savedUser.getRoles().stream()
+                .map(r -> r.getName().name().replace("ROLE_", "").replace("_", " "))
+                .collect(Collectors.joining(", "));
 
-            // Send Onboarding Email via MailHog
+        String roleDetails = savedUser.getRoles().stream()
+                .map(r -> "<strong>" + r.getName().name().replace("ROLE_", "").replace("_", " ") + "</strong>: "
+                        + (r.getDescription() != null ? r.getDescription() : "Authorized access"))
+                .collect(Collectors.joining("<br/>"));
+
+        // Dispatch Onboarding Email with credentials and role explanation
+        try {
+            String emailPassword = isAdStaff ? "Use your official Active Directory password" : effectivePassword;
             emailService.sendStaffOnboardingEmail(
                     savedUser.getEmail(),
                     savedUser.getFullName(),
                     savedUser.getUsername(),
-                    tempPassword,
-                    verificationToken
+                    emailPassword,
+                    roleSummary,
+                    roleDetails
             );
-
-            auditLoggerService.logEvent(
-                    savedUser,
-                    savedUser.getUsername(),
-                    AuditEventType.LOGIN_SUCCESS,
-                    AuditStatus.SUCCESS,
-                    ipAddress,
-                    userAgent,
-                    "New user registered with temporary password and verification token dispatched via MailHog."
-            );
-
-            return AuthResponse.builder()
-                    .isEmailVerified(false)
-                    .mustChangePassword(true)
-                    .message("User registered successfully. Temporary password and email verification link sent via MailHog to " + savedUser.getEmail())
-                    .user(buildUserProfileResponse(savedUser))
-                    .build();
-        } else {
-            auditLoggerService.logEvent(
-                    savedUser,
-                    savedUser.getUsername(),
-                    AuditEventType.LOGIN_SUCCESS,
-                    AuditStatus.SUCCESS,
-                    ipAddress,
-                    userAgent,
-                    "New staff registered with Active Directory authentication. System roles assigned: " + request.getRoles()
-            );
-
-            return AuthResponse.builder()
-                    .isEmailVerified(true)
-                    .mustChangePassword(false)
-                    .message("Staff user registered successfully with Active Directory authentication.")
-                    .user(buildUserProfileResponse(savedUser))
-                    .build();
+        } catch (Exception e) {
+            log.warn("Could not dispatch onboarding email for {}: {}", savedUser.getEmail(), e.getMessage());
         }
+
+        auditLoggerService.logEvent(
+                savedUser,
+                savedUser.getUsername(),
+                AuditEventType.LOGIN_SUCCESS,
+                AuditStatus.SUCCESS,
+                ipAddress,
+                userAgent,
+                isAdStaff ? "New AD staff registered. System roles assigned: " + request.getRoles()
+                          : "New staff user registered with credentials and role permissions."
+        );
+
+        return AuthResponse.builder()
+                .isEmailVerified(true)
+                .mustChangePassword(false)
+                .message("User registered successfully. Welcome email with account credentials and role details sent to " + savedUser.getEmail())
+                .user(buildUserProfileResponse(savedUser))
+                .build();
     }
 
     @Override
@@ -191,9 +192,11 @@ public class AuthServiceImpl implements AuthService {
 
         String cleanUsername = identifier.contains("@") ? identifier.substring(0, identifier.indexOf("@")).trim() : identifier;
 
-        // Step 1: Check Local Database (System Admins & local/test credentials)
-        User localUser = userRepository.findByUsernameOrEmail(identifier)
-                .or(() -> userRepository.findByUsernameOrEmail(cleanUsername))
+        // Step 1: Check Local Database
+        // Matches identifier (full email or username), clean username (e.g. "frontdesk" from "frontdesk@coopbank.local"), or phone
+        User localUser = userRepository.findByUsernameOrEmailIgnoreCase(identifier)
+                .or(() -> userRepository.findByUsernameOrEmailIgnoreCase(cleanUsername))
+                .or(() -> userRepository.findByUsernameOrEmailOrPhoneNumber(identifier))
                 .orElse(null);
 
         // If local user exists and password matches local BCrypt hash, authenticate locally
@@ -219,25 +222,14 @@ public class AuthServiceImpl implements AuthService {
                 throw new IllegalStateException("User account is disabled. Please contact CoopBank system administrator.");
             }
 
-            // Security Check 3: Email Verification Check
+            // Auto-verify email for onboarded staff upon successful credential verification
             if (!localUser.isEmailVerified()) {
-                auditLoggerService.logEvent(localUser, identifier, AuditEventType.LOGIN_FAILED, AuditStatus.BLOCKED, ipAddress, userAgent, "Unverified email account attempted login.");
-                throw new IllegalStateException("Your email address is not verified. Please verify your email via the link sent to your inbox before signing in.");
+                localUser.setEmailVerified(true);
+                userRepository.save(localUser);
             }
 
             // Successful Authentication: Reset counters
             bruteForceProtectionService.recordSuccess(localUser, identifier);
-
-            // Security Check 4: Mandatory Initial Password Change Check
-            if (localUser.isMustChangePassword()) {
-                auditLoggerService.logEvent(localUser, localUser.getUsername(), AuditEventType.LOGIN_SUCCESS, AuditStatus.SUCCESS, ipAddress, userAgent, "Authenticated with temporary password. First-time password change required.");
-                return AuthResponse.builder()
-                        .isEmailVerified(true)
-                        .mustChangePassword(true)
-                        .message("Temporary password recognized. Please change your initial password before accessing system features.")
-                        .user(buildUserProfileResponse(localUser))
-                        .build();
-            }
 
             auditLoggerService.logEvent(
                     localUser,
@@ -267,22 +259,13 @@ public class AuthServiceImpl implements AuthService {
                 );
                 return buildAuthResponse(adUser);
             } catch (IllegalArgumentException e) {
-                // AD rejected credentials or staff role is restricted
-                if (localUser != null) {
-                    bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
-                }
-                throw e;
+                log.info("Active Directory authentication rejected for {}: {}", identifier, e.getMessage());
             } catch (Exception e) {
                 log.warn("Active Directory authentication could not be completed for {}: {}", identifier, e.getMessage());
-                if (localUser != null) {
-                    bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
-                    throw new IllegalArgumentException("Invalid username/email or password.");
-                }
-                throw new IllegalStateException("Active Directory service is currently unreachable (verify network/VPN connectivity) and user does not exist locally.");
             }
         }
 
-        // Step 3: If AD is disabled and local authentication failed
+        // Step 3: If neither local nor AD authentication succeeded
         if (localUser != null) {
             bruteForceProtectionService.recordFailedAttempt(localUser, identifier);
         }

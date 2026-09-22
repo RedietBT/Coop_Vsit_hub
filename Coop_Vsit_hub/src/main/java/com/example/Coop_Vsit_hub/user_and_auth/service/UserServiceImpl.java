@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuditLoggerService auditLoggerService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -142,6 +144,15 @@ public class UserServiceImpl implements UserService {
         user.setDepartment(request.getDepartment() != null ? request.getDepartment().trim() : null);
         user.setPhoneNumber(request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank() ? request.getPhoneNumber().trim() : null);
 
+        if (request.getPassword() != null && !request.getPassword().trim().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword().trim()));
+            user.setEmailVerified(true);
+            user.setMustChangePassword(false);
+            user.setAccountNonLocked(true);
+            user.setFailedLoginAttempts(0);
+            user.setPasswordChangedAt(java.time.Instant.now());
+        }
+
         User saved = userRepository.save(user);
 
         auditLoggerService.logEvent(
@@ -183,6 +194,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setRoles(resolvedRoles);
+        user.setEmailVerified(true);
         User saved = userRepository.save(user);
 
         // Revoke active sessions so user must re-authenticate with updated claims
@@ -283,5 +295,34 @@ public class UserServiceImpl implements UserService {
         );
 
         log.info("User '{}' (ID: {}) successfully deleted by admin '{}'", user.getUsername(), id, adminUsername);
+    }
+
+    @Override
+    @Transactional
+    public void adminResetPassword(UUID id, String newPassword, String adminUsername) {
+        log.info("Administrator '{}' resetting password for user ID: {}", adminUsername, id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setEmailVerified(true);
+        user.setMustChangePassword(false);
+        user.setAccountNonLocked(true);
+        user.setFailedLoginAttempts(0);
+        user.setLockTime(null);
+        user.setPasswordChangedAt(java.time.Instant.now());
+        User saved = userRepository.save(user);
+
+        refreshTokenRepository.revokeAllUserTokens(saved);
+
+        auditLoggerService.logEvent(
+                saved,
+                saved.getUsername(),
+                AuditEventType.PASSWORD_CHANGE,
+                AuditStatus.SUCCESS,
+                "SYSTEM",
+                "ADMIN_PANEL",
+                String.format("Password reset by admin '%s' for user '%s'", adminUsername, saved.getUsername())
+        );
     }
 }

@@ -61,43 +61,56 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendStaffOnboardingEmail(String recipientEmail, String recipientName, String username, String tempPassword, String verificationToken) {
+    public void sendStaffOnboardingEmail(String recipientEmail, String recipientName, String username, String password, String roleSummary, String roleDetails) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail);
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
             helper.setTo(recipientEmail);
-            helper.setSubject("🏦 Welcome to CoopBank Visit Hub - Account Onboarding & Verification");
+            helper.setSubject("🏦 Welcome to CoopBank Visit Hub - Account Credentials & Access Information");
 
-            String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
+            String loginUrl = frontendUrl + "/login";
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
-                    + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub</p>"
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;'>"
+                    + "<h2 style='color: #ffffff; margin: 0; font-size: 22px; font-weight: bold;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe; margin: 6px 0 0 0; font-size: 14px;'>Executive Visit Hub — Staff Onboarding</p>"
                     + "</div>"
-                    + "<div style='padding: 20px; color: #333333;'>"
-                    + "<h3>Dear " + recipientName + ",</h3>"
-                    + "<p>An official CoopBank staff account has been created for you by the System Administrator.</p>"
-                    + "<div style='background-color: #f8fafc; padding: 15px; border-left: 4px solid #0088cc; margin: 20px 0;'>"
-                    + "<p style='margin: 5px 0;'><strong>Username:</strong> " + username + "</p>"
-                    + "<p style='margin: 5px 0;'><strong>Temporary Password:</strong> <span style='font-family: monospace; font-size: 16px; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;'>" + tempPassword + "</span></p>"
+                    + "<div style='padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;'>"
+                    + "<h3 style='color: #0f172a; margin-top: 0;'>Dear " + (recipientName != null ? recipientName : "Staff Member") + ",</h3>"
+                    + "<p>Welcome to <strong>Cooperative Bank of Oromia - Visit Hub</strong>. Your user account has been successfully created and configured by the System Administrator.</p>"
+                    + "<div style='background-color: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #00adef; border-radius: 6px; padding: 16px; margin: 20px 0;'>"
+                    + "<p style='margin: 4px 0;'><strong>Username:</strong> <span style='color: #0369a1; font-weight: bold;'>" + username + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>Registered Email:</strong> " + recipientEmail + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>Password:</strong> <span style='font-family: monospace; font-size: 15px; color: #0369a1; background: #e0f2fe; padding: 3px 8px; border-radius: 4px; font-weight: bold;'>" + password + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>Assigned Role:</strong> <span style='color: #0f172a; font-weight: 600;'>" + (roleSummary != null ? roleSummary : "Authorized Staff") + "</span></p>"
                     + "</div>"
-                    + "<p><strong>Step 1:</strong> First, please verify your email address by clicking the button below (Link valid for 24 hours):</p>"
-                    + "<div style='text-align: center; margin: 25px 0;'>"
-                    + "<a href='" + verifyLink + "' style='background-color: #0088cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Verify My Email Address</a>"
+                    + (roleDetails != null && !roleDetails.isBlank()
+                        ? "<div style='background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px; margin: 16px 0;'>"
+                          + "<strong style='color: #166534;'>Your Role & System Responsibilities:</strong>"
+                          + "<p style='margin: 6px 0 0 0; color: #15803d; font-size: 13px;'>" + roleDetails + "</p>"
+                          + "</div>"
+                        : "")
+                    + "<div style='text-align: center; margin: 28px 0;'>"
+                    + "<a href='" + loginUrl + "' style='background: linear-gradient(135deg, #00adef, #0072bc); color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;'>Sign In to Visit Hub</a>"
                     + "</div>"
-                    + "<p><strong>Step 2:</strong> After email verification, sign in with your temporary password. You will be required to set your permanent custom password before accessing system features.</p>"
-                    + "<p style='font-size: 12px; color: #666666;'>Verification URL:<br/><a href='" + verifyLink + "'>" + verifyLink + "</a></p>"
-                    + "<p style='margin-top: 30px; font-size: 12px; color: #888888;'>This is an automated security notification from Cooperative Bank of Oromia.</p>"
+                    + "<div style='background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px; margin: 18px 0;'>"
+                    + "<p style='margin: 0; color: #92400e; font-size: 13px;'>🔒 <strong>Security Recommendation:</strong> For your security, we encourage you to update your password after signing in by navigating to your profile settings.</p>"
+                    + "</div>"
+                    + "<p style='font-size: 12px; color: #64748b; margin-top: 24px;'>Direct Login Link: <a href='" + loginUrl + "' style='color: #00adef;'>" + loginUrl + "</a></p>"
+                    + "<p style='margin-top: 24px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;'>This is an official automated notification from Cooperative Bank of Oromia Visit Hub Security & Governance.</p>"
                     + "</div>"
                     + "</div>";
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
 
-            log.info("Onboarding and email verification link sent to: {}", recipientEmail);
+            log.info("Onboarding credentials email sent to: {}", recipientEmail);
         } catch (Exception e) {
             log.error("Failed to send onboarding email to {}: {}", recipientEmail, e.getMessage(), e);
         }

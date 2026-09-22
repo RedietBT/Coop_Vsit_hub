@@ -12,6 +12,7 @@ import lombok.*;
 public class LoginRequest {
 
     @NotBlank(message = "Username or email is required.")
+    @com.fasterxml.jackson.annotation.JsonAlias({"username", "email"})
     @Schema(example = "dalemu@coopbank.local", description = "Staff AD username, corporate email, or admin username")
     private String identifier;
 

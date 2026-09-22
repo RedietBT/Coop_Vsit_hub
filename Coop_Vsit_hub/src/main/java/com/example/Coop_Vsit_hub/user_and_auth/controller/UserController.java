@@ -113,6 +113,26 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUserStatus(id, request, adminUsername));
     }
 
+    @PutMapping("/{id}/password")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @Operation(summary = "Admin Reset Staff Password", description = "Allows an administrator to directly set or reset a staff member's password.")
+    public ResponseEntity<Map<String, String>> adminResetPassword(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> request,
+            Principal principal
+    ) {
+        String newPassword = request.get("password");
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters.");
+        }
+        String adminUsername = principal != null ? principal.getName() : "ADMIN";
+        userService.adminResetPassword(id, newPassword.trim(), adminUsername);
+        return ResponseEntity.ok(Map.of(
+                "message", "User password successfully updated by administrator.",
+                "userId", id.toString()
+        ));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
     @Operation(summary = "Delete User Account", description = "Permanently remove a user account with admin self-deletion safeguards. Admin only.")

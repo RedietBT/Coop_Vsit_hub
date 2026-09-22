@@ -59,6 +59,13 @@ public class RegisterRequest {
     private Set<RoleName> roles;
 
     /**
+     * Optional initial password for non-AD staff onboarded by administrator.
+     * If provided, allows immediate login with this password.
+     */
+    @Size(min = 6, max = 100, message = "Password must be at least 6 characters.")
+    private String password;
+
+    /**
      * Set to true if the user is authenticated via Active Directory.
      * When true, password change and email verification requirements are bypassed.
      */
