@@ -129,15 +129,18 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Override
     @Transactional(readOnly = true)
     public List<MeetingRoomDto> getMeetingRoomsForUser(boolean activeOnly, User currentUser) {
-        if (currentUser != null && isSecretary(currentUser)) {
-            String dept = currentUser.getDepartment();
-            if (dept != null && !dept.isBlank()) {
-                log.info("Filtering meeting rooms for Secretary in department '{}'", dept);
-                List<MeetingRoom> list = activeOnly
-                        ? meetingRoomRepository.findByDepartmentIgnoreCaseAndIsActiveTrueOrderByNameAsc(dept.trim())
-                        : meetingRoomRepository.findByDepartmentIgnoreCaseOrderByNameAsc(dept.trim());
-                return list.stream().map(MeetingRoomDto::from).collect(Collectors.toList());
-            }
+        return getMeetingRooms(activeOnly, null, currentUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MeetingRoomDto> getMeetingRooms(boolean activeOnly, String department, User currentUser) {
+        if (department != null && !department.isBlank()) {
+            log.info("Filtering meeting rooms by department: '{}'", department);
+            List<MeetingRoom> list = activeOnly
+                    ? meetingRoomRepository.findByDepartmentIgnoreCaseAndIsActiveTrueOrderByNameAsc(department.trim())
+                    : meetingRoomRepository.findByDepartmentIgnoreCaseOrderByNameAsc(department.trim());
+            return list.stream().map(MeetingRoomDto::from).collect(Collectors.toList());
         }
         return getAllMeetingRooms(activeOnly);
     }
@@ -164,11 +167,13 @@ public class MasterDataServiceImpl implements MasterDataService {
         log.info("Creating meeting room: '{}' (by user: {})", request.getName(), currentUser != null ? currentUser.getUsername() : "system");
 
         if (currentUser != null && isSecretary(currentUser)) {
-            String dept = currentUser.getDepartment();
-            if (dept == null || dept.isBlank()) {
-                throw new IllegalArgumentException("Secretary user does not have an assigned department.");
+            String userDept = currentUser.getDepartment();
+            // Default to secretary's department if none was specified in the request
+            if (request.getDepartment() == null || request.getDepartment().isBlank()) {
+                if (userDept != null && !userDept.isBlank()) {
+                    request.setDepartment(userDept.trim());
+                }
             }
-            request.setDepartment(dept.trim());
         }
 
         if (meetingRoomRepository.existsByNameIgnoreCase(request.getName().trim())) {
@@ -206,12 +211,13 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
 
         if (currentUser != null && isSecretary(currentUser)) {
-            String dept = currentUser.getDepartment();
-            if (dept == null || !dept.equalsIgnoreCase(room.getDepartment())) {
-                throw new org.springframework.security.access.AccessDeniedException(
-                        "Access Denied: Secretaries can only update meeting rooms assigned to their department.");
+            String userDept = currentUser.getDepartment();
+            if (userDept != null && !userDept.isBlank()) {
+                if (room.getDepartment() != null && !room.getDepartment().equalsIgnoreCase(userDept.trim())) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "Access Denied: Secretaries can only update meeting rooms assigned to their department ('" + userDept + "').");
+                }
             }
-            request.setDepartment(dept.trim());
         }
 
         if (meetingRoomRepository.existsByNameIgnoreCaseAndIdNot(request.getName().trim(), id)) {
@@ -296,10 +302,12 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .orElseThrow(() -> new IllegalArgumentException("Meeting room not found with ID: " + id));
 
         if (currentUser != null && isSecretary(currentUser)) {
-            String dept = currentUser.getDepartment();
-            if (dept == null || !dept.equalsIgnoreCase(room.getDepartment())) {
-                throw new org.springframework.security.access.AccessDeniedException(
-                        "Access Denied: Secretaries can only delete meeting rooms assigned to their department.");
+            String userDept = currentUser.getDepartment();
+            if (userDept != null && !userDept.isBlank()) {
+                if (room.getDepartment() != null && !room.getDepartment().equalsIgnoreCase(userDept.trim())) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "Access Denied: Secretaries can only delete meeting rooms assigned to their department ('" + userDept + "').");
+                }
             }
         }
         meetingRoomRepository.delete(room);

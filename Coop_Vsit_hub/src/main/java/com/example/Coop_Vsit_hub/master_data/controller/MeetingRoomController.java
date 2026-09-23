@@ -41,13 +41,14 @@ public class MeetingRoomController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "List All Meeting Rooms", description = "Retrieve active meeting rooms. Filtered by department for Secretaries.")
+    @Operation(summary = "List All Meeting Rooms", description = "Retrieve meeting rooms. Can optionally filter by department or active status.")
     public ResponseEntity<List<MeetingRoomDto>> getAllMeetingRooms(
             @RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestParam(required = false) String department,
             Principal principal
     ) {
         User currentUser = resolveCurrentUser(principal);
-        return ResponseEntity.ok(masterDataService.getMeetingRoomsForUser(activeOnly, currentUser));
+        return ResponseEntity.ok(masterDataService.getMeetingRooms(activeOnly, department, currentUser));
     }
 
     @GetMapping("/{id}")

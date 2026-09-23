@@ -448,7 +448,10 @@ public class ActiveDirectoryAuthService {
             // Update staff metadata & synchronize password hash
             user.setFirstName(safeFirst);
             user.setLastName(safeLast);
-            user.setDepartment(safeDept);
+            // Preserve existing admin-linked department! Only take AD department if not yet set
+            if (user.getDepartment() == null || user.getDepartment().isBlank()) {
+                user.setDepartment(safeDept);
+            }
             if (phone != null && !phone.isBlank()) {
                 user.setPhoneNumber(phone);
             }
