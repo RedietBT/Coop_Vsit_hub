@@ -26,6 +26,7 @@ public interface MasterDataService {
     MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request);
     MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request, User currentUser);
     MeetingRoomDto uploadRoomImage(UUID id, MultipartFile file);
+    MeetingRoomDto uploadRoomImage(UUID id, MultipartFile file, User currentUser);
     void deleteMeetingRoom(UUID id);
     void deleteMeetingRoom(UUID id, User currentUser);
 }
