@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleGuard from './RoleGuard';
+import UnauthorizedPage from './UnauthorizedPage';
 import DashboardLayout from '@/core/layouts/DashboardLayout';
 import LoginPage from '@/modules/auth/pages/LoginPage';
 import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage';
@@ -11,6 +12,7 @@ import ExecutiveDashboardPage from '@/modules/analytics/pages/ExecutiveDashboard
 import VisitsListPage from '@/modules/visits/pages/VisitsListPage';
 import VisitCalendarPage from '@/modules/visits/pages/VisitCalendarPage';
 import BookingManagementPage from '@/modules/booking/pages/BookingManagementPage';
+import MeetingRoomsPage from '@/modules/booking/pages/MeetingRoomsPage';
 import SecurityDeskPage from '@/modules/security/pages/SecurityDeskPage';
 import ReportsAnalyticsPage from '@/modules/reports/pages/ReportsAnalyticsPage';
 import OrganizationsPage from '@/modules/organizations/pages/OrganizationsPage';
@@ -25,9 +27,9 @@ import useAuthStore from '@/modules/auth/store/authStore';
 const RootRedirect = () => {
   const { isAuthenticated, hasRole } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (hasRole('ROLE_FRONT_DESK') || hasRole('ROLE_SECURITY_DESK')) return <Navigate to="/admin/front-desk" replace />;
   if (hasRole('ROLE_DIRECTOR')) return <Navigate to="/my-tracking" replace />;
   if (hasRole('ROLE_ADMIN') || hasRole('ROLE_APPROVER')) return <Navigate to="/dashboard" replace />;
-  if (hasRole('ROLE_SECURITY_DESK')) return <Navigate to="/security-desk" replace />;
   if (hasRole('ROLE_SECRETARY')) return <Navigate to="/bookings" replace />;
   return <Navigate to="/my-tracking" replace />;
 };
@@ -104,6 +106,19 @@ export const AppRoutes = () => {
       />
 
       <Route
+        path="/meeting-rooms"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY']}>
+              <DashboardLayout>
+                <MeetingRoomsPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/visits"
         element={
           <ProtectedRoute>
@@ -120,7 +135,20 @@ export const AppRoutes = () => {
         path="/security-desk"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_SECURITY_DESK', 'ROLE_ADMIN']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK']}>
+              <DashboardLayout>
+                <SecurityDeskPage />
+              </DashboardLayout>
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/front-desk"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK']}>
               <DashboardLayout>
                 <SecurityDeskPage />
               </DashboardLayout>
@@ -193,6 +221,20 @@ export const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* Unauthorized Access Route */}
+      <Route
+        path="/unauthorized"
+        element={
+          <DashboardLayout>
+            <UnauthorizedPage />
+          </DashboardLayout>
+        }
+      />
+
+      {/* Admin Route Safeguards & Fallbacks */}
+      <Route path="/admin" element={<RootRedirect />} />
+      <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
 
       {/* Fallback */}
       <Route path="/" element={<RootRedirect />} />

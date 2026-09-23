@@ -26,11 +26,23 @@ export const RoleGuard = ({ allowedRoles = [], children }) => {
           </p>
 
           <div className="pt-2">
-            <Link to="/dashboard">
-              <Button variant="orange" icon={ArrowLeft}>
-                Return to Dashboard
-              </Button>
-            </Link>
+            {(() => {
+              const isFrontDesk = hasAnyRole(['ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK']);
+              const homePath = isFrontDesk
+                ? '/security-desk'
+                : hasAnyRole(['ROLE_ADMIN', 'ROLE_APPROVER'])
+                ? '/dashboard'
+                : '/my-tracking';
+              const homeLabel = isFrontDesk ? 'Return to Front Desk' : 'Return to Dashboard';
+
+              return (
+                <Link to={homePath}>
+                  <Button variant="orange" icon={ArrowLeft}>
+                    {homeLabel}
+                  </Button>
+                </Link>
+              );
+            })()}
           </div>
         </div>
       </div>

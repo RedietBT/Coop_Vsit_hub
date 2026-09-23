@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  Edit2,
 } from 'lucide-react';
 import useUserStore from '../store/userStore';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -29,6 +30,7 @@ export const UserTable = () => {
     isLoading,
     setPage,
     openRolesModal,
+    openEditModal,
     unlockAccount,
     toggleEnableStatus,
     deleteUser,
@@ -142,14 +144,14 @@ export const UserTable = () => {
                     {/* Authorization Roles */}
                     <td className="py-4 px-4">
                       <div className="flex flex-wrap gap-1 max-w-[220px]">
-                        {(u.roles || ['ROLE_EMPLOYEE']).map((r) => {
-                          const roleName = typeof r === 'string' ? r : r.name;
+                        {(Array.isArray(u.roles) ? u.roles : (u.role ? [u.role] : ['ROLE_EMPLOYEE'])).map((r) => {
+                          const roleName = typeof r === 'string' ? r : (r?.name || r?.role || r?.authority || 'EMPLOYEE');
                           return (
                             <span
                               key={roleName}
                               className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase"
                             >
-                              {roleName.replace('ROLE_', '')}
+                              {String(roleName).replace(/^ROLE_/, '')}
                             </span>
                           );
                         })}
@@ -212,7 +214,20 @@ export const UserTable = () => {
                         {/* Dropdown Menu */}
                         {openDropdownId === u.id && (
                           <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-fadeIn text-left">
-                            {/* 1. Assign Roles */}
+                            {/* 1. Edit Staff Profile & Department */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openEditModal(u);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4 text-[#00adef]" />
+                              <span>Edit Profile & Dept</span>
+                            </button>
+
+                            {/* 2. Assign Roles */}
                             <button
                               type="button"
                               onClick={() => {

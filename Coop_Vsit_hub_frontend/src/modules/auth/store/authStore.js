@@ -26,6 +26,13 @@ export const useAuthStore = create(
           // Only store accessToken and user — refreshToken is in HttpOnly cookie
           const { accessToken, user } = response.data;
 
+          if (accessToken) {
+            localStorage.setItem('coop_access_token', accessToken);
+          }
+          if (user) {
+            localStorage.setItem('coop_user', JSON.stringify(user));
+          }
+
           set({
             user,
             accessToken,
@@ -63,6 +70,13 @@ export const useAuthStore = create(
       },
 
       setAuthSession: ({ accessToken, user }) => {
+        if (accessToken) {
+          localStorage.setItem('coop_access_token', accessToken);
+        }
+        if (user) {
+          localStorage.setItem('coop_user', JSON.stringify(user));
+        }
+
         set((state) => ({
           accessToken: accessToken || state.accessToken,
           user: user || state.user,
@@ -72,10 +86,11 @@ export const useAuthStore = create(
 
       fetchCurrentUser: async () => {
         try {
-          const token = get().accessToken;
+          const token = get().accessToken || localStorage.getItem('coop_access_token');
           if (!token) return null;
           const response = await apiClient.get('/api/v1/auth/me');
           if (response?.data) {
+            localStorage.setItem('coop_user', JSON.stringify(response.data));
             set({ user: response.data, isAuthenticated: true });
             return response.data;
           }
@@ -87,7 +102,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          const token = get().accessToken;
+          const token = get().accessToken || localStorage.getItem('coop_access_token');
           if (token) {
             // Server will blacklist JWT and clear the HttpOnly cookie
             await apiClient.post('/api/v1/auth/logout', {});
@@ -102,7 +117,10 @@ export const useAuthStore = create(
             error: null,
             lockoutUntil: null,
           });
+          localStorage.removeItem('coop_access_token');
+          localStorage.removeItem('coop_user');
           localStorage.removeItem('coop_auth_state');
+          sessionStorage.clear();
         }
       },
 
@@ -145,6 +163,14 @@ export const useAuthStore = create(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessToken) {
+          localStorage.setItem('coop_access_token', state.accessToken);
+        }
+        if (state?.user) {
+          localStorage.setItem('coop_user', JSON.stringify(state.user));
+        }
+      },
     }
   )
 );

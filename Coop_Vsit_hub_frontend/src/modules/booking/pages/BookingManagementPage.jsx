@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   CalendarDays,
@@ -278,16 +279,28 @@ export const BookingManagementPage = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {(isAdmin || isSecretary) && (
+              <Link to="/meeting-rooms">
                 <Button
-                  variant="primary"
+                  variant="outline"
                   size="sm"
-                  onClick={() => openMasterModal('rooms')}
-                  icon={Plus}
-                  className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
+                  icon={DoorOpen}
+                  className="shadow-xs"
                 >
-                  Create Meeting Room
+                  Meeting Rooms
                 </Button>
+              </Link>
+
+              {(isAdmin || isSecretary) && (
+                <Link to="/meeting-rooms">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={Plus}
+                    className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
+                  >
+                    Add Room
+                  </Button>
+                </Link>
               )}
 
               <Button

@@ -16,6 +16,7 @@ import useUserStore from '../store/userStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import UserTable from '../components/UserTable';
 import OnboardUserModal from '../components/OnboardUserModal';
+import EditUserModal from '../components/EditUserModal';
 import AssignRolesModal from '../components/AssignRolesModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import Button from '@/shared/components/ui/Button';
@@ -27,7 +28,8 @@ const ROLES = [
   { label: 'Department Secretary', value: 'ROLE_SECRETARY' },
   { label: 'Relationship Manager', value: 'ROLE_RELATIONSHIP_MANAGER' },
   { label: 'Approver', value: 'ROLE_APPROVER' },
-  { label: 'Front Desk Reception', value: 'ROLE_SECURITY_DESK' },
+  { label: 'Front Desk Reception', value: 'ROLE_FRONT_DESK' },
+  { label: 'Security Desk', value: 'ROLE_SECURITY_DESK' },
 ];
 
 export const UsersPage = () => {
@@ -251,6 +253,7 @@ export const UsersPage = () => {
 
       {/* Modals */}
       <OnboardUserModal />
+      <EditUserModal />
       <AssignRolesModal />
       <MasterDataManagementModal />
     </div>

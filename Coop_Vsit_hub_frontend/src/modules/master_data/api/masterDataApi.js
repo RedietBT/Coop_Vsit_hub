@@ -40,7 +40,9 @@ export const masterDataApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await apiClient.post(`/api/v1/meeting-rooms/${id}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: {
+        'Content-Type': undefined, // Let browser set boundary!
+      },
     });
     return response.data;
   },
@@ -48,6 +50,13 @@ export const masterDataApi = {
     const response = await apiClient.delete(`/api/v1/meeting-rooms/${id}`);
     return response.data;
   },
+};
+
+export const handleRoomApiError = (err, defaultMsg = 'Operation failed.') => {
+  if (err?.response?.status === 403) {
+    return 'You are only authorized to manage meeting rooms for your department.';
+  }
+  return err?.response?.data?.message || err?.response?.data?.error || defaultMsg;
 };
 
 export default masterDataApi;

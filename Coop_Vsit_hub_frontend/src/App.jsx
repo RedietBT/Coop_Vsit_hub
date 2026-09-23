@@ -4,17 +4,59 @@ import { Toaster } from 'sonner';
 import AppRoutes from '@/app/routes/AppRoutes';
 import useAuthStore from '@/modules/auth/store/authStore';
 import CookieConsentBanner from '@/shared/components/ui/CookieConsentBanner';
+import { isTokenExpired, clearSession, redirectToLogin, getStoredToken } from '@/core/utils/authUtils';
 
 export function App() {
   const { accessToken, isAuthenticated, fetchCurrentUser, setAuthSession } = useAuthStore();
 
   useEffect(() => {
-    // 1. Re-validate and refresh user profile if session exists
+    // 1. Proactive session check on mount & user activity (button clicks, key presses, tab focus)
+    const checkUserActionSession = () => {
+      // Don't trigger redirect if user is already on auth or public pages
+      const path = window.location.pathname;
+      const isPublicPage =
+        path.includes('/login') ||
+        path.includes('/forgot-password') ||
+        path.includes('/reset-password') ||
+        path.includes('/verify-email') ||
+        path.includes('/feedback') ||
+        path.includes('/survey');
+
+      if (isPublicPage) return;
+
+      const token = getStoredToken();
+      if (token && isTokenExpired(token)) {
+        clearSession();
+        redirectToLogin(true);
+      }
+    };
+
+    // Run check immediately on mount
+    checkUserActionSession();
+
+    // Check on user interactions (any button click or keystroke)
+    window.addEventListener('click', checkUserActionSession);
+    window.addEventListener('keydown', checkUserActionSession);
+
+    // Check when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkUserActionSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 2. Re-validate and refresh user profile if session exists
     if (isAuthenticated && accessToken) {
-      fetchCurrentUser();
+      if (isTokenExpired(accessToken)) {
+        clearSession();
+        redirectToLogin(true);
+      } else {
+        fetchCurrentUser();
+      }
     }
 
-    // 2. Listen to silent token refreshes dispatched by Axios interceptor
+    // 3. Listen to silent token refreshes dispatched by Axios interceptor
     const handleAuthRefreshed = (event) => {
       if (event.detail) {
         setAuthSession(event.detail);
@@ -22,7 +64,12 @@ export function App() {
     };
 
     window.addEventListener('coop_auth_refreshed', handleAuthRefreshed);
-    return () => window.removeEventListener('coop_auth_refreshed', handleAuthRefreshed);
+    return () => {
+      window.removeEventListener('click', checkUserActionSession);
+      window.removeEventListener('keydown', checkUserActionSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('coop_auth_refreshed', handleAuthRefreshed);
+    };
   }, [isAuthenticated, accessToken, fetchCurrentUser, setAuthSession]);
 
   return (

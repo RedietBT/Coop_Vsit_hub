@@ -2,11 +2,15 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 
+import useAuthStore from '@/modules/auth/store/authStore';
+
 const ROUTE_LABELS = {
   dashboard: 'Executive Analytics',
   visits: 'Visits Management',
   calendar: 'Booking Calendar',
-  'security-desk': 'Security Front Desk',
+  'security-desk': 'Front Desk',
+  'front-desk': 'Front Desk',
+  admin: 'Admin Portal',
   organizations: 'Partner Organizations',
   guests: 'Individual Guests',
   'feedback-analytics': 'Customer Feedback',
@@ -16,14 +20,22 @@ const ROUTE_LABELS = {
 
 export const Breadcrumbs = () => {
   const location = useLocation();
+  const { hasAnyRole } = useAuthStore();
   const pathnames = location.pathname.split('/').filter((x) => x);
 
   if (pathnames.length === 0) return null;
 
+  const isFrontDesk = hasAnyRole(['ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK']);
+  const homePath = isFrontDesk
+    ? '/admin/front-desk'
+    : hasAnyRole(['ROLE_ADMIN', 'ROLE_APPROVER'])
+    ? '/dashboard'
+    : '/my-tracking';
+
   return (
     <nav className="flex items-center gap-2 text-xs text-slate-500 mb-4 select-none" aria-label="Breadcrumb">
       <Link
-        to="/dashboard"
+        to={homePath}
         className="flex items-center gap-1 hover:text-[#00adef] transition-colors font-medium"
       >
         <Home className="w-3.5 h-3.5" />

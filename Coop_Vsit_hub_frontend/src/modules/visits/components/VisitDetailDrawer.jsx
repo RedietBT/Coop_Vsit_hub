@@ -48,7 +48,7 @@ export const VisitDetailDrawer = () => {
   const [visitFeedback, setVisitFeedback] = useState(null);
 
   const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
-  const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_ADMIN']);
+  const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_FRONT_DESK', 'ROLE_ADMIN']);
   const isAdmin = hasRole('ROLE_ADMIN');
 
   useEffect(() => {

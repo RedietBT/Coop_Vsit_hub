@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
@@ -47,14 +47,20 @@ const NAV_ITEMS = [
   {
     name: 'Booking Management',
     path: '/bookings',
+    icon: Calendar,
+    roles: ['ROLE_ADMIN', 'ROLE_SECRETARY'],
+  },
+  {
+    name: 'Meeting Rooms',
+    path: '/meeting-rooms',
     icon: DoorOpen,
     roles: ['ROLE_ADMIN', 'ROLE_SECRETARY'],
   },
   {
     name: 'Front Desk',
-    path: '/security-desk',
+    path: '/admin/front-desk',
     icon: UserCheck,
-    roles: ['ROLE_SECURITY_DESK', 'ROLE_ADMIN'],
+    roles: ['ROLE_ADMIN', 'ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK'],
   },
   {
     name: 'Reports & Exports',
@@ -90,6 +96,7 @@ const NAV_ITEMS = [
 
 export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout, hasAnyRole } = useAuthStore();
 
   const handleLogout = async () => {
@@ -97,7 +104,14 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     navigate('/login');
   };
 
+  const isFrontDesk = hasAnyRole(['ROLE_FRONT_DESK', 'ROLE_SECURITY_DESK']);
+  const isAdmin = hasAnyRole(['ROLE_ADMIN']);
+
   const filteredNavItems = NAV_ITEMS.filter((item) => {
+    // For Front Desk staff without Admin privileges, ONLY show Front Desk item
+    if (isFrontDesk && !isAdmin) {
+      return item.roles?.includes('ROLE_FRONT_DESK') || item.roles?.includes('ROLE_SECURITY_DESK');
+    }
     if (!item.roles || item.roles.length === 0) return true;
     return hasAnyRole(item.roles);
   });
@@ -136,13 +150,19 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           <nav className="space-y-1">
             {filteredNavItems.map((item) => {
               const Icon = item.icon;
+              const isItemActive =
+                location.pathname === item.path ||
+                (item.path === '/admin/front-desk' && location.pathname === '/security-desk') ||
+                (item.path === '/security-desk' && location.pathname === '/admin/front-desk') ||
+                (item.path === '/dashboard' && location.pathname === '/admin/dashboard');
+
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className={({ isActive }) =>
+                  className={() =>
                     `flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                      isActive
+                      isItemActive
                         ? 'bg-linear-to-r from-[#e38524] to-[#f59e0b] text-white shadow-md shadow-orange-500/20'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-[#00adef]'
                     } ${isCollapsed ? 'justify-center' : ''}`
@@ -177,7 +197,15 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     : user?.username || 'Staff User'}
                 </p>
                 <p className="text-[10px] text-slate-400 uppercase font-mono tracking-wider truncate">
-                  {user?.roles?.[0]?.replace('ROLE_', '') || 'STAFF'}
+                  {(() => {
+                    const firstRole = Array.isArray(user?.roles) ? user.roles[0] : user?.role;
+                    const roleStr = typeof firstRole === 'object' && firstRole !== null ? firstRole.name || firstRole.role : String(firstRole || '');
+                    const cleanRole = roleStr ? roleStr.replace(/^ROLE_/, '') : 'STAFF';
+                    if (cleanRole === 'SECURITY_DESK' || cleanRole === 'FRONT_DESK') {
+                      return 'FRONT DESK';
+                    }
+                    return cleanRole.replace(/_/g, ' ');
+                  })()}
                 </p>
               </div>
             )}

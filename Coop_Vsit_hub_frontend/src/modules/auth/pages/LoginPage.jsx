@@ -63,30 +63,49 @@ export const LoginPage = () => {
       soundPlayer.playNotificationChime();
       toast.success(`Welcome back, ${result.user?.firstName || result.user?.username || 'User'}!`);
       
-      const roles = Array.isArray(result.user?.roles) ? result.user.roles : [];
-      const checkRole = (target) =>
-        roles.some((r) => {
-          const name = typeof r === 'string' ? r : r?.name;
-          return name === target || name === `ROLE_${target}`;
+      const checkRole = (target) => {
+        const cleanTarget = String(target).replace(/^ROLE_/, '').toUpperCase();
+        const checkItem = (val) => {
+          if (!val) return false;
+          const clean = String(val).replace(/^ROLE_/, '').toUpperCase();
+          return clean === cleanTarget || String(val) === String(target) || String(val) === `ROLE_${cleanTarget}`;
+        };
+        const userRoles = Array.isArray(result.user?.roles)
+          ? result.user.roles
+          : (result.user?.role ? [result.user.role] : []);
+        return userRoles.some((r) => {
+          if (typeof r === 'string') return checkItem(r);
+          if (typeof r === 'object' && r !== null) return checkItem(r.name || r.role || r.authority);
+          return false;
         });
+      };
+
+      const isFrontDesk = checkRole('FRONT_DESK') || checkRole('SECURITY_DESK');
       const isAdmin = checkRole('ADMIN');
-      const isSecurity = checkRole('SECURITY_DESK');
       const isDirector = checkRole('DIRECTOR');
       const isSecretary = checkRole('SECRETARY');
       
       let defaultDestination = '/my-tracking';
-      if (isAdmin) {
+      if (isFrontDesk) {
+        defaultDestination = '/admin/front-desk';
+      } else if (isAdmin) {
         defaultDestination = '/dashboard';
       } else if (isDirector) {
         defaultDestination = '/my-tracking';
       } else if (isSecretary) {
         defaultDestination = '/bookings';
-      } else if (isSecurity) {
-        defaultDestination = '/security-desk';
       }
 
-      const from = location.state?.from?.pathname || defaultDestination;
-      navigate(from, { replace: true });
+      let from = location.state?.from?.pathname;
+      // Safeguard: do not redirect front-desk staff to admin-only pages
+      if (from && isFrontDesk && !isAdmin) {
+        const restrictedForFrontDesk = ['/dashboard', '/users', '/audit-logs', '/reports', '/admin', '/admin/dashboard'];
+        if (restrictedForFrontDesk.some((p) => from === p || from.startsWith('/admin/dashboard') || from.startsWith('/users'))) {
+          from = null;
+        }
+      }
+
+      navigate(from || defaultDestination, { replace: true });
     } else {
       soundPlayer.playNotificationChime();
       if (result.status === 429 || (result.error && result.error.toLowerCase().includes('locked'))) {
@@ -99,7 +118,12 @@ export const LoginPage = () => {
 
   const handleFirstTimeSuccess = () => {
     setShowFirstTimeModal(false);
-    navigate('/visits/calendar', { replace: true });
+    const { hasRole } = useAuthStore.getState();
+    if (hasRole('ROLE_FRONT_DESK') || hasRole('ROLE_SECURITY_DESK')) {
+      navigate('/admin/front-desk', { replace: true });
+    } else {
+      navigate('/visits/calendar', { replace: true });
+    }
   };
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();
