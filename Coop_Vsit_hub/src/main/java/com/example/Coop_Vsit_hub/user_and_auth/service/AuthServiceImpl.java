@@ -101,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
                 .isEnabled(true)
                 .isAccountNonLocked(true)
                 .isEmailVerified(true) // Staff onboarded by admin are immediately pre-verified
-                .mustChangePassword(!hasExplicitPassword && !isAdStaff)
+                .mustChangePassword(false)
                 .failedLoginAttempts(0)
                 .roles(roles)
                 .build();
