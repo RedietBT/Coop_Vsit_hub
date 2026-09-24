@@ -227,7 +227,7 @@ export const LoginPage = () => {
             <div>
               <p className="text-xs font-bold text-slate-800">Active Directory Single Sign-On</p>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                CoopBank employees and front-desk staff can sign in directly using their bank account credentials.
+                CoopBank employees and front-desk staff can sign in directly using their bank account credentials, as well as users added in the admin directory.
               </p>
             </div>
           </div>
@@ -281,7 +281,7 @@ export const LoginPage = () => {
                     Active Directory Single Sign-On
                   </p>
                   <p className="text-[10px] text-blue-700 leading-relaxed">
-                    Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>).
+                    Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>) or credentials created in the admin directory.
                   </p>
                 </div>
               </div>
