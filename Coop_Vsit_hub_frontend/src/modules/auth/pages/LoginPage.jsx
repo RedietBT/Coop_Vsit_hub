@@ -209,7 +209,7 @@ export const LoginPage = () => {
               Access Receptionist & Staff Portal
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed mb-5">
-              Book a meeting room, reserve an executive visit, or check in guest delegations for CoopBank facilities.
+              Book a meeting room or schedule visits for CoopBank facilities.
             </p>
             <div className="flex items-center justify-between pt-2 border-t border-sky-100">
               <span className="text-xs font-bold text-[#00adef] group-hover:underline">
@@ -227,7 +227,7 @@ export const LoginPage = () => {
             <div>
               <p className="text-xs font-bold text-slate-800">Active Directory Single Sign-On</p>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                CoopBank employees and front-desk staff can sign in directly using their bank account credentials, as well as users added in the admin directory.
+                Use your AD credentials to log in.
               </p>
             </div>
           </div>
