@@ -389,6 +389,9 @@ export const MasterDataManagementModal = () => {
                       src={roomForm.imageUrl}
                       alt="Room Preview"
                       className="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                      }}
                     />
                   ) : (
                     <div className="w-16 h-12 rounded-lg bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
@@ -446,6 +449,9 @@ export const MasterDataManagementModal = () => {
                             src={r.imageUrl}
                             alt={r.name}
                             className="w-10 h-8 object-cover rounded-md border border-slate-200"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                            }}
                           />
                         ) : (
                           <div className="w-10 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-400">

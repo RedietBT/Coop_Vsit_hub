@@ -26,6 +26,16 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
           secure: false
+        },
+        '/uploads': {
+          target: apiUrl,
+          changeOrigin: true,
+          secure: false
+        },
+        '/images': {
+          target: apiUrl,
+          changeOrigin: true,
+          secure: false
         }
       }
     }

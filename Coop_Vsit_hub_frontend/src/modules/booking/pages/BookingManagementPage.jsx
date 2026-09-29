@@ -370,6 +370,11 @@ export const BookingManagementPage = () => {
                           }
                           alt={room.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            if (e.target.src !== 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80') {
+                              e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                            }
+                          }}
                         />
                         {room.department && (
                           <div className="absolute top-2.5 left-2.5">
@@ -728,6 +733,11 @@ export const BookingManagementPage = () => {
                   }
                   alt={selectedRoom.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    if (e.target.src !== 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80') {
+                      e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                    }
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent flex items-end p-5">
                   <div className="text-white">
