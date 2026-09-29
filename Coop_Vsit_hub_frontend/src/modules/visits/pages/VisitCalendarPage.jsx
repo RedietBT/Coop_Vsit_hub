@@ -76,39 +76,8 @@ export const VisitCalendarPage = () => {
     }
   }, [fetchMeetingRooms, fetchAllMasterData]);
 
-  // Default rooms fallback if DB has none yet
-  const defaultRooms = [
-    {
-      id: 'default-1',
-      name: 'Executive Boardroom - 4th Floor',
-      capacity: 18,
-      imageUrl:
-        'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'default-2',
-      name: 'FinTech Innovation Room A - 4th Floor',
-      capacity: 12,
-      imageUrl:
-        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'default-3',
-      name: 'Strategic Peering Room B - 4th Floor',
-      capacity: 10,
-      imageUrl:
-        'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'default-4',
-      name: 'CoopBank HQ VIP Lounge - Ground Floor',
-      capacity: 25,
-      imageUrl:
-        'https://images.unsplash.com/photo-1577412647305-991150c7d163?auto=format&fit=crop&w=800&q=80',
-    },
-  ];
-
-  const activeRooms = meetingRooms.length > 0 ? meetingRooms : defaultRooms;
+  // Use real meeting rooms from database
+  const activeRooms = Array.isArray(meetingRooms) ? meetingRooms : [];
 
   // Filter rooms
   const filteredRooms = activeRooms.filter((room) => {
@@ -348,70 +317,94 @@ export const VisitCalendarPage = () => {
             </div>
           </div>
 
-          {/* Room Cards Grid (Matching Reference Image) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredRooms.map((room) => (
-              <div
-                key={room.id}
-                onClick={() => handleSelectRoom(room)}
-                className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
-              >
-                <div>
-                  {/* Room Cover Photo */}
-                  <div className="w-full h-48 rounded-2xl overflow-hidden relative mb-4 bg-slate-100">
-                    <img
-                      src={
-                        room.imageUrl ||
-                        'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
-                      }
-                      alt={room.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {room.department && (
-                      <div className="absolute top-3 left-3">
-                        <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-[#e38524]" />
-                          <span>{room.department}</span>
+          {/* Room Cards Grid */}
+          {filteredRooms.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 shadow-xs max-w-md mx-auto my-6">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#00adef] flex items-center justify-center mx-auto mb-3">
+                <Building2 className="w-7 h-7" />
+              </div>
+              <h3 className="font-heading font-bold text-base text-slate-800">No Meeting Rooms Found</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                {searchQuery || capacityFilter !== 'ALL'
+                  ? 'No meeting rooms match your filter criteria. Try adjusting your search query.'
+                  : 'No meeting rooms have been added to the system yet. Configure rooms in Master Data.'}
+              </p>
+              {typeof openMasterModal === 'function' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openMasterModal('rooms')}
+                  className="mt-4 text-xs font-semibold"
+                >
+                  Configure Meeting Rooms
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredRooms.map((room) => (
+                <div
+                  key={room.id}
+                  onClick={() => handleSelectRoom(room)}
+                  className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Room Cover Photo */}
+                    <div className="w-full h-48 rounded-2xl overflow-hidden relative mb-4 bg-slate-100">
+                      <img
+                        src={
+                          room.imageUrl ||
+                          'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
+                        }
+                        alt={room.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {room.department && (
+                        <div className="absolute top-3 left-3">
+                          <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                            <Building2 className="w-3 h-3 text-[#e38524]" />
+                            <span>{room.department}</span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute top-3 right-3">
+                        <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-xs flex items-center gap-1">
+                          <Users className="w-3 h-3 text-[#00adef]" />
+                          <span>{room.capacity || 12} Seats</span>
                         </span>
                       </div>
-                    )}
-                    <div className="absolute top-3 right-3">
-                      <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-xs flex items-center gap-1">
-                        <Users className="w-3 h-3 text-[#00adef]" />
-                        <span>{room.capacity || 12} Seats</span>
-                      </span>
                     </div>
+
+                    {/* Room Title in CoopBank Blue */}
+                    <h3 className="text-[#00adef] font-bold text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
+                      {room.name}
+                    </h3>
+
+                    {/* Capacity & Details */}
+                    <p className="text-slate-500 text-xs font-medium mt-1 flex items-center gap-1.5 line-clamp-1">
+                      <span>👥 Up to {room.capacity || 12} People</span>
+                      {room.department && (
+                        <>
+                          <span>•</span>
+                          <span className="text-slate-600 font-bold">{room.department}</span>
+                        </>
+                      )}
+                    </p>
                   </div>
 
-                  {/* Room Title in CoopBank Blue */}
-                  <h3 className="text-[#00adef] font-bold text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
-                    {room.name}
-                  </h3>
-
-                  {/* Capacity & Details */}
-                  <p className="text-slate-500 text-xs font-medium mt-1 flex items-center gap-1.5 line-clamp-1">
-                    <span>👥 Up to {room.capacity || 12} People</span>
-                    {room.department && (
-                      <>
-                        <span>•</span>
-                        <span className="text-slate-600 font-bold">{room.department}</span>
-                      </>
-                    )}
-                  </p>
+                  {/* Footer Action */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700">
+                      Available for Booking
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-[#00adef] group-hover:translate-x-0.5 transition-transform">
+                      Book Room →
+                    </span>
+                  </div>
                 </div>
-
-                {/* Footer Action */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700">
-                    Available for Booking
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[#00adef] group-hover:translate-x-0.5 transition-transform">
-                    Book Room →
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         /* ========================================================================= */

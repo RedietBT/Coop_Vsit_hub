@@ -87,7 +87,7 @@ public class ReportServiceImpl implements ReportService {
                 .filter(v -> v.getLocationRoom() != null && !v.getLocationRoom().isBlank())
                 .collect(Collectors.groupingBy(v -> v.getLocationRoom().trim(), Collectors.counting()));
 
-        String topRoom = "Executive Boardroom";
+        String topRoom = "None";
         long topRoomCount = 0;
         if (!roomCounts.isEmpty()) {
             Map.Entry<String, Long> topRoomEntry = Collections.max(roomCounts.entrySet(), Map.Entry.comparingByValue());

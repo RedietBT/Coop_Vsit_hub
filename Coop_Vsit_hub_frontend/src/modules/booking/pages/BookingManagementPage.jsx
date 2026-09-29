@@ -176,32 +176,7 @@ export const BookingManagementPage = () => {
   };
 
   // Filtered rooms for directory
-  const activeRooms = meetingRooms && meetingRooms.length > 0 ? meetingRooms : [
-    {
-      id: '1',
-      name: 'Executive Boardroom',
-      capacity: 20,
-      imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: '2',
-      name: 'CoopBank HQ VIP Lounge',
-      capacity: 12,
-      imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: '3',
-      name: 'FinTech Innovation Lab',
-      capacity: 16,
-      imageUrl: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: '4',
-      name: 'Strategic Operations Room',
-      capacity: 10,
-      imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
-    },
-  ];
+  const activeRooms = Array.isArray(meetingRooms) ? meetingRooms : [];
 
   const filteredRooms = activeRooms.filter((room) => {
     const matchesSearch =

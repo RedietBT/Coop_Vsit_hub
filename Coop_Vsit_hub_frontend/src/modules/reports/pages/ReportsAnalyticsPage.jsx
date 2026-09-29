@@ -251,7 +251,7 @@ export const ReportsAnalyticsPage = () => {
               Most Visited Room
             </p>
             <h3 className="font-heading font-black text-sm text-[#000000] mt-0.5 truncate max-w-[160px]">
-              {summary && summary.topMeetingRoom ? summary.topMeetingRoom : 'Executive Boardroom'}
+              {summary && summary.topMeetingRoom ? summary.topMeetingRoom : 'None'}
             </h3>
             <p className="text-[10px] text-purple-600 font-bold mt-0.5">
               {summary && summary.topMeetingRoomVisitorsCount ? summary.topMeetingRoomVisitorsCount : 0} Reservations

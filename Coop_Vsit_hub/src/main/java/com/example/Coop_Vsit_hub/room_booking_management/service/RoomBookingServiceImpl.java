@@ -9,6 +9,7 @@ import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingSlotResp
 import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus;
 import com.example.coop_vsit_hub.room_booking_management.model.RoomBooking;
 import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository;
+import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingSpecification;
 import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +50,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     public RoomBookingResponse createBooking(CreateRoomBookingRequest request, User currentUser) {
         String bookingCode = generateBookingCode();
 
-        String roomName = StringUtils.hasText(request.getRoomName()) ? request.getRoomName().trim() : "Executive Boardroom";
+        if (!StringUtils.hasText(request.getRoomName())) {
+            throw new IllegalArgumentException("A valid meeting room name must be provided.");
+        }
+        String roomName = request.getRoomName().trim();
         String title = StringUtils.hasText(request.getMeetingTitle()) ? request.getMeetingTitle().trim() : "Internal Strategy Meeting";
         String department = StringUtils.hasText(request.getHostDepartment()) 
                 ? request.getHostDepartment().trim() 
@@ -256,7 +260,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         return roomBookingRepository.findAll(
-                com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingSpecification.filterBookings(cleanRoom, cleanSearch, status),
+                RoomBookingSpecification.filterBookings(cleanRoom, cleanSearch, status),
                 pageable
         ).map(this::mapToResponse);
     }
