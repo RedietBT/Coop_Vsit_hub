@@ -390,7 +390,7 @@ export const MasterDataManagementModal = () => {
                       alt="Room Preview"
                       className="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
                       onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                        e.target.style.display = 'none';
                       }}
                     />
                   ) : (
@@ -450,7 +450,7 @@ export const MasterDataManagementModal = () => {
                             alt={r.name}
                             className="w-10 h-8 object-cover rounded-md border border-slate-200"
                             onError={(e) => {
-                              e.target.src = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
+                              e.target.style.display = 'none';
                             }}
                           />
                         ) : (

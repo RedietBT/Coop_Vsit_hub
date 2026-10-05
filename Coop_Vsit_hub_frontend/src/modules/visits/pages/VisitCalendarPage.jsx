@@ -31,6 +31,7 @@ import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
 import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
+import RoomCardImage from '@/modules/booking/components/RoomCardImage';
 
 export const VisitCalendarPage = () => {
   const navigate = useNavigate();
@@ -351,14 +352,7 @@ export const VisitCalendarPage = () => {
                   <div>
                     {/* Room Cover Photo */}
                     <div className="w-full h-48 rounded-2xl overflow-hidden relative mb-4 bg-slate-100">
-                      <img
-                        src={
-                          room.imageUrl ||
-                          'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
-                        }
-                        alt={room.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      <RoomCardImage room={room} />
                       {room.department && (
                         <div className="absolute top-3 left-3">
                           <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
@@ -455,12 +449,8 @@ export const VisitCalendarPage = () => {
             <div className="lg:col-span-6 space-y-6">
               {/* Room Image Showcase */}
               <div className="w-full h-56 rounded-3xl overflow-hidden relative border border-slate-200 shadow-xs bg-slate-100">
-                <img
-                  src={
-                    selectedRoom.imageUrl ||
-                    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'
-                  }
-                  alt={selectedRoom.name}
+                <RoomCardImage
+                  room={selectedRoom}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent flex items-end p-5">

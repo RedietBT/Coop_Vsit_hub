@@ -25,78 +25,11 @@ import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import masterDataApi from '@/modules/master_data/api/masterDataApi';
 import AddEditRoomModal from '../components/AddEditRoomModal';
 import DeleteRoomConfirmModal from '../components/DeleteRoomConfirmModal';
+import RoomCardImage from '../components/RoomCardImage';
 import Button from '@/shared/components/ui/Button';
 import Spinner from '@/shared/components/ui/Spinner';
 
-const DEFAULT_ROOM_IMAGES = [
-  'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80',
-];
 
-const resolveRoomImageUrl = (url) => {
-  if (!url || typeof url !== 'string') return null;
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
-    return trimmed;
-  }
-  const apiBase = import.meta.env.VITE_API_URL || '';
-  if (apiBase && !window.location.origin.includes('localhost:3000')) {
-    return `${apiBase.replace(/\/$/, '')}/${trimmed.replace(/^\//, '')}`;
-  }
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-};
-
-const RoomCardImage = ({ room }) => {
-  const defaultFallback = useMemo(() => {
-    const seed = (room.id || room.name || '').toString();
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = (hash << 5) - hash + seed.charCodeAt(i);
-      hash |= 0;
-    }
-    const index = Math.abs(hash) % DEFAULT_ROOM_IMAGES.length;
-    return DEFAULT_ROOM_IMAGES[index];
-  }, [room.id, room.name]);
-
-  const [imgSrc, setImgSrc] = useState(() => resolveRoomImageUrl(room.imageUrl) || defaultFallback);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setImgSrc(resolveRoomImageUrl(room.imageUrl) || defaultFallback);
-    setHasError(false);
-  }, [room.imageUrl, defaultFallback]);
-
-  const handleError = () => {
-    if (imgSrc !== defaultFallback) {
-      setImgSrc(defaultFallback);
-    } else {
-      setHasError(true);
-    }
-  };
-
-  if (hasError) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100">
-        <DoorOpen className="w-10 h-10 mb-1 opacity-40 text-slate-500" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          CoopBank Facility
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={imgSrc}
-      alt={room.name}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-      onError={handleError}
-    />
-  );
-};
 
 export const MeetingRoomsPage = () => {
   const { user, hasRole } = useAuthStore();
