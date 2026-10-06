@@ -56,6 +56,11 @@ public class TrustAllSSLSocketFactory extends SSLSocketFactory {
     }
 
     @Override
+    public Socket createSocket() throws IOException {
+        return factory.createSocket();
+    }
+
+    @Override
     public Socket createSocket(Socket s, String host, int port, boolean autoClose) throws IOException {
         return factory.createSocket(s, host, port, autoClose);
     }

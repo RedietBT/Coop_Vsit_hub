@@ -97,6 +97,28 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(org.springframework.web.multipart.MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        log.warn("Uploaded file exceeds max limit: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(buildErrorResponse(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                "Payload Too Large",
+                "File size exceeds the allowed limit (max 10MB). Please choose a file smaller than 10MB.",
+                request.getRequestURI()
+        ));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MultipartException.class)
+    public ResponseEntity<Map<String, Object>> handleMultipartException(org.springframework.web.multipart.MultipartException ex, HttpServletRequest request) {
+        log.warn("Multipart request parsing failed: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "Invalid multipart file request: " + ex.getMessage(),
+                request.getRequestURI()
+        ));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         log.error("Unhandled internal server error: {}", ex.getMessage(), ex);

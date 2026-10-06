@@ -6,7 +6,7 @@ public interface EmailService {
 
     void sendPasswordResetEmail(String recipientEmail, String recipientName, String resetToken);
 
-    void sendStaffOnboardingEmail(String recipientEmail, String recipientName, String username, String tempPassword, String verificationToken);
+    void sendStaffOnboardingEmail(String recipientEmail, String recipientName, String username, String password, String roleSummary, String roleDetails);
 
     void sendRoomBookingAdminNotification(
             String adminEmail,

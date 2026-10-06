@@ -19,12 +19,14 @@ public interface MasterDataService {
     // --- Meeting Rooms ---
     List<MeetingRoomDto> getAllMeetingRooms(boolean activeOnly);
     List<MeetingRoomDto> getMeetingRoomsForUser(boolean activeOnly, User currentUser);
+    List<MeetingRoomDto> getMeetingRooms(boolean activeOnly, String department, User currentUser);
     MeetingRoomDto getMeetingRoomById(UUID id);
     MeetingRoomDto createMeetingRoom(CreateMeetingRoomRequest request);
     MeetingRoomDto createMeetingRoom(CreateMeetingRoomRequest request, User currentUser);
     MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request);
     MeetingRoomDto updateMeetingRoom(UUID id, UpdateMeetingRoomRequest request, User currentUser);
     MeetingRoomDto uploadRoomImage(UUID id, MultipartFile file);
+    MeetingRoomDto uploadRoomImage(UUID id, MultipartFile file, User currentUser);
     void deleteMeetingRoom(UUID id);
     void deleteMeetingRoom(UUID id, User currentUser);
 }

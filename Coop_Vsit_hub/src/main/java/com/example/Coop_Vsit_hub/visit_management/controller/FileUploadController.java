@@ -30,7 +30,7 @@ public class FileUploadController {
     @Value("${coopbank.files.upload-dir:uploads/attachments/}")
     private String uploadDir;
 
-    private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
+    private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             "pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx", "txt", "csv"
     );

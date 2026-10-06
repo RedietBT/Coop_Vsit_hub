@@ -41,13 +41,14 @@ public class MeetingRoomController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "List All Meeting Rooms", description = "Retrieve active meeting rooms. Filtered by department for Secretaries.")
+    @Operation(summary = "List All Meeting Rooms", description = "Retrieve meeting rooms. Can optionally filter by department or active status.")
     public ResponseEntity<List<MeetingRoomDto>> getAllMeetingRooms(
             @RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestParam(required = false) String department,
             Principal principal
     ) {
         User currentUser = resolveCurrentUser(principal);
-        return ResponseEntity.ok(masterDataService.getMeetingRoomsForUser(activeOnly, currentUser));
+        return ResponseEntity.ok(masterDataService.getMeetingRooms(activeOnly, department, currentUser));
     }
 
     @GetMapping("/{id}")
@@ -76,24 +77,40 @@ public class MeetingRoomController {
     @Operation(summary = "Upload Meeting Room Photo (Admin & Secretary)", description = "Uploads a photo for a meeting room facility.")
     public ResponseEntity<MeetingRoomDto> uploadRoomImage(
             @PathVariable UUID id,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            Principal principal
     ) {
-        return ResponseEntity.ok(masterDataService.uploadRoomImage(id, file));
+        User currentUser = resolveCurrentUser(principal);
+        return ResponseEntity.ok(masterDataService.uploadRoomImage(id, file, currentUser));
     }
 
     @GetMapping("/images/{filename:.+}")
-    @Operation(summary = "Serve Uploaded Room Image (Public)", description = "Streams uploaded room photo file.")
+    @Operation(summary = "Serve Uploaded Room Image (Public)", description = "Streams uploaded room photo file securely.")
     public ResponseEntity<Resource> serveRoomImage(@PathVariable String filename) {
-        File file = new File("uploads/rooms/" + filename);
-        if (!file.exists()) {
+        try {
+            // Prevent directory traversal attacks
+            String safeFileName = java.nio.file.Paths.get(filename).getFileName().toString();
+            java.nio.file.Path baseDir = java.nio.file.Paths.get("uploads/rooms").toAbsolutePath().normalize();
+            java.nio.file.Path filePath = baseDir.resolve(safeFileName).normalize();
+
+            if (!filePath.startsWith(baseDir)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            File file = filePath.toFile();
+            if (!file.exists() || !file.isFile()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new FileSystemResource(file);
+            String contentType = filename.toLowerCase().endsWith(".png") ? MediaType.IMAGE_PNG_VALUE : MediaType.IMAGE_JPEG_VALUE;
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
+                    .body(resource);
+        } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
-        Resource resource = new FileSystemResource(file);
-        String contentType = filename.toLowerCase().endsWith(".png") ? MediaType.IMAGE_PNG_VALUE : MediaType.IMAGE_JPEG_VALUE;
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
-                .body(resource);
     }
 
     @PutMapping("/{id}")

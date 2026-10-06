@@ -1,6 +1,7 @@
 package com.example.coop_vsit_hub.user_and_auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 /**
@@ -29,6 +30,7 @@ public class AuthResponse {
     @JsonIgnore
     private String rawRefreshToken;
 
+    @JsonProperty("isEmailVerified")
     private boolean isEmailVerified;
 
     private boolean mustChangePassword;
@@ -36,4 +38,20 @@ public class AuthResponse {
     private String message;
 
     private UserProfileResponse user;
+
+    @JsonProperty("isEmailVerified")
+    public boolean isEmailVerified() {
+        return isEmailVerified;
+    }
+
+    @JsonProperty("isEmailVerified")
+    public void setEmailVerified(boolean isEmailVerified) {
+        this.isEmailVerified = isEmailVerified;
+    }
+
+    @JsonProperty("emailVerified")
+    public boolean getEmailVerified() {
+        return isEmailVerified;
+    }
 }
+

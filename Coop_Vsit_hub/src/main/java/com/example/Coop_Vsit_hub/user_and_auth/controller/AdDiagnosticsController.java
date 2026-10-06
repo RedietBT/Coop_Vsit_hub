@@ -48,7 +48,7 @@ public class AdDiagnosticsController {
      * @param email the staff email address or sAMAccountName to look up
      */
     @GetMapping("/lookup")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN) or hasRole('ADMIN')")
     @Operation(
         summary = "Look up staff user in Active Directory",
         description = "Searches Active Directory for a user by email or username using the service bind account. " +
