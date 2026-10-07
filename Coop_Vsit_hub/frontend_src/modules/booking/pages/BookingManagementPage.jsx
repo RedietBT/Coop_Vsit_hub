@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Shield,
   Layers,
   Filter,
@@ -64,7 +66,7 @@ export const BookingManagementPage = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
   // Ledger Filters
@@ -170,6 +172,9 @@ export const BookingManagementPage = () => {
       await roomBookingApi.cancelBooking(cancellingBooking.id);
       toast.success(`Booking ${cancellingBooking.bookingCode} cancelled successfully.`);
       setCancellingBooking(null);
+      if (inspectingBooking?.id === cancellingBooking.id) {
+        setInspectingBooking(null);
+      }
       fetchBookings();
       if (selectedRoom) {
         loadRoomSlots(selectedRoom.name);
@@ -303,7 +308,7 @@ export const BookingManagementPage = () => {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Inspect meeting rooms, view detailed calendar schedules, and manage your reservations.
+                  Inspect meeting rooms, view live calendar schedules, and manage your reservations.
                 </p>
               </div>
             </div>
@@ -450,7 +455,7 @@ export const BookingManagementPage = () => {
                       </p>
 
                       {room.contactEmail && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400 font-mono truncate">
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500 font-mono truncate bg-slate-50 p-1.5 rounded-lg border border-slate-100">
                           <Mail className="w-3 h-3 text-[#00adef] shrink-0" />
                           <span className="truncate">{room.contactEmail}</span>
                         </div>
@@ -494,7 +499,7 @@ export const BookingManagementPage = () => {
                     setLedgerViewTab('ALL');
                     setCurrentPage(0);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     ledgerViewTab === 'ALL'
                       ? 'bg-white text-[#00adef] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -508,7 +513,7 @@ export const BookingManagementPage = () => {
                     setLedgerViewTab('MY');
                     setCurrentPage(0);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     ledgerViewTab === 'MY'
                       ? 'bg-white text-emerald-600 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -538,7 +543,7 @@ export const BookingManagementPage = () => {
                   {ledgerSearch && (
                     <button
                       onClick={() => setLedgerSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -573,6 +578,22 @@ export const BookingManagementPage = () => {
                   <option value="CONFIRMED">Confirmed</option>
                   <option value="CANCELLED">Cancelled</option>
                 </select>
+
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 pl-2">
+                  <span>Show:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(0);
+                    }}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-semibold"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -585,6 +606,7 @@ export const BookingManagementPage = () => {
                       <th className="py-3.5 px-5">Booking Reference</th>
                       <th className="py-3.5 px-4">Room & Meeting</th>
                       <th className="py-3.5 px-4">Reserved Schedule</th>
+                      <th className="py-3.5 px-4">Booked On</th>
                       <th className="py-3.5 px-4">Booked By</th>
                       <th className="py-3.5 px-4">Affiliated Party</th>
                       <th className="py-3.5 px-4">Status</th>
@@ -594,14 +616,14 @@ export const BookingManagementPage = () => {
                   <tbody className="divide-y divide-slate-100 text-xs">
                     {isLoadingBookings ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <td colSpan={8} className="py-12 text-center text-slate-400">
                           <Spinner size="lg" className="mx-auto text-[#00adef] mb-2" />
                           <p className="font-medium text-xs">Loading reservations...</p>
                         </td>
                       </tr>
                     ) : bookings.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <td colSpan={8} className="py-12 text-center text-slate-400">
                           <DoorOpen className="w-10 h-10 mx-auto text-slate-300 mb-1.5" />
                           <p className="font-bold text-xs text-slate-700">
                             {ledgerViewTab === 'MY'
@@ -632,6 +654,20 @@ export const BookingManagementPage = () => {
                           : '';
                         const eTime = booking.scheduledEndTime
                           ? new Date(booking.scheduledEndTime).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '';
+
+                        const bookedOnDate = booking.createdAt
+                          ? new Date(booking.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
+                          : '—';
+                        const bookedOnTime = booking.createdAt
+                          ? new Date(booking.createdAt).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })
@@ -674,6 +710,16 @@ export const BookingManagementPage = () => {
                                 <span>
                                   {sTime} - {eTime}
                                 </span>
+                              </div>
+                            </td>
+
+                            {/* Booked On (Date & Time when reservation was made) */}
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-slate-800">
+                                {bookedOnDate}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                {bookedOnTime}
                               </div>
                             </td>
 
@@ -725,7 +771,7 @@ export const BookingManagementPage = () => {
                               >
                                 <button
                                   onClick={() => setInspectingBooking(booking)}
-                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer"
                                   title="View Details"
                                 >
                                   <Info className="w-4 h-4" />
@@ -734,7 +780,7 @@ export const BookingManagementPage = () => {
                                 {canCancel && (
                                   <button
                                     onClick={() => setCancellingBooking(booking)}
-                                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors"
+                                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
                                     title="Cancel Reservation"
                                   >
                                     Cancel
@@ -750,31 +796,79 @@ export const BookingManagementPage = () => {
                 </table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="p-3.5 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
-                    Page <span className="font-bold text-slate-800">{currentPage + 1}</span> of{' '}
-                    <span className="font-bold text-slate-800">{totalPages}</span> ({totalElements} total)
-                  </span>
+              {/* Complete Pagination Controls */}
+              <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-xs text-slate-500">
+                  Showing <span className="font-bold text-slate-800">{totalElements > 0 ? (currentPage * pageSize) + 1 : 0}</span> to{' '}
+                  <span className="font-bold text-slate-800">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> of{' '}
+                  <span className="font-bold text-slate-800">{totalElements}</span> reservations
+                </span>
 
+                {totalPages > 1 && (
                   <div className="flex items-center gap-1">
+                    {/* First Page */}
+                    <button
+                      onClick={() => setCurrentPage(0)}
+                      disabled={currentPage === 0 || isLoadingBookings}
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="First Page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Previous Page */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                       disabled={currentPage === 0 || isLoadingBookings}
-                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Previous Page"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                      let pageNum = currentPage - 2 + idx;
+                      if (pageNum < 0) pageNum = idx;
+                      if (pageNum >= totalPages) return null;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                            currentPage === pageNum
+                              ? 'bg-[#00adef] text-white shadow-xs'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    })}
+
+                    {/* Next Page */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
                       disabled={currentPage >= totalPages - 1 || isLoadingBookings}
-                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Next Page"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
+
+                    {/* Last Page */}
+                    <button
+                      onClick={() => setCurrentPage(totalPages - 1)}
+                      disabled={currentPage >= totalPages - 1 || isLoadingBookings}
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Last Page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1182,7 +1276,7 @@ export const BookingManagementPage = () => {
 
             <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Date & Time</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Scheduled Time</p>
                 <p className="font-bold text-slate-800 mt-0.5">
                   {inspectingBooking.scheduledStartTime
                     ? new Date(inspectingBooking.scheduledStartTime).toLocaleDateString('en-US', {
@@ -1210,9 +1304,23 @@ export const BookingManagementPage = () => {
               </div>
 
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Expected Headcount</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Booked On / Created</p>
                 <p className="font-bold text-slate-800 mt-0.5">
-                  {inspectingBooking.expectedAttendees || 1} Attendees
+                  {inspectingBooking.createdAt
+                    ? new Date(inspectingBooking.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'N/A'}
+                </p>
+                <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                  {inspectingBooking.createdAt
+                    ? new Date(inspectingBooking.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : ''}
                 </p>
               </div>
             </div>
@@ -1255,7 +1363,23 @@ export const BookingManagementPage = () => {
               </div>
             )}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              {checkCanCancel(inspectingBooking) ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    const toCancel = inspectingBooking;
+                    setInspectingBooking(null);
+                    setCancellingBooking(toCancel);
+                  }}
+                >
+                  Cancel This Reservation
+                </Button>
+              ) : (
+                <div />
+              )}
+
               <Button
                 variant="ghost"
                 size="md"

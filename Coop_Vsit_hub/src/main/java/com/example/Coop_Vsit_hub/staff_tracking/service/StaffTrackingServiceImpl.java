@@ -5,6 +5,7 @@ import com.example.coop_vsit_hub.feedback_management.repository.VisitFeedbackRep
 import com.example.coop_vsit_hub.individual_guest_management.dto.IndividualGuestSummaryResponse;
 import com.example.coop_vsit_hub.individual_guest_management.model.IndividualGuest;
 import com.example.coop_vsit_hub.organization_management.dto.OrganizationSummaryResponse;
+import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.room_booking_management.model.RoomBooking;
 import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository;
 import com.example.coop_vsit_hub.staff_tracking.dto.TrackedStaffOverviewResponse;
@@ -50,6 +51,7 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
         List<IndividualGuestSummaryResponse> guestDtos = extractMatchedGuests(matchedVisits);
 
         List<RoomBooking> bookings = resolveStaffBookings(staffUser, staffIdentifier);
+        List<RoomBookingResponse> bookingDtos = bookings.stream().map(this::mapBookingToResponse).toList();
 
         long totalCompletedVisits = matchedVisits.stream()
                 .filter(v -> v.getStatus() == VisitStatus.COMPLETED)
@@ -80,6 +82,7 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
                 .averageDirectorRating(averageDirectorRating)
                 .pendingDirectorReviewsCount(pendingDirectorReviewsCount)
                 .visits(visitDtos)
+                .roomBookings(bookingDtos)
                 .organizations(orgDtos)
                 .individualGuests(guestDtos)
                 .build();
@@ -91,6 +94,14 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
         User staffUser = findStaffUser(staffIdentifier);
         List<Visit> matchedVisits = resolveMatchedVisits(staffUser, staffIdentifier);
         return mapVisitsToDto(matchedVisits);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomBookingResponse> getStaffTrackedRoomBookings(String staffIdentifier) {
+        User staffUser = findStaffUser(staffIdentifier);
+        List<RoomBooking> bookings = resolveStaffBookings(staffUser, staffIdentifier);
+        return bookings.stream().map(this::mapBookingToResponse).toList();
     }
 
     @Override
@@ -126,7 +137,7 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
 
     private User findStaffUser(String identifier) {
         if (!StringUtils.hasText(identifier)) return null;
-        return userRepository.findByUsernameOrEmail(identifier.trim()).orElse(null);
+        return userRepository.findByUsernameOrEmailIgnoreCase(identifier.trim()).orElse(null);
     }
 
     private List<RoomBooking> resolveStaffBookings(User staffUser, String identifier) {
@@ -139,11 +150,24 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
                 bookingsSet.addAll(roomBookingRepository.findByBookedByUsernameIgnoreCaseOrBookedByEmailIgnoreCase(
                         staffUser.getUsername(), staffUser.getEmail()));
             }
+            if (StringUtils.hasText(staffUser.getEmail())) {
+                bookingsSet.addAll(roomBookingRepository.findByBookedByUsernameIgnoreCaseOrBookedByEmailIgnoreCase(
+                        staffUser.getEmail(), staffUser.getEmail()));
+            }
         }
         if (StringUtils.hasText(identifier)) {
             bookingsSet.addAll(roomBookingRepository.findByBookedByUsernameIgnoreCaseOrBookedByEmailIgnoreCase(identifier, identifier));
         }
-        return new ArrayList<>(bookingsSet);
+        List<RoomBooking> list = new ArrayList<>(bookingsSet);
+        list.sort((a, b) -> {
+            Instant tA = a.getScheduledStartTime() != null ? a.getScheduledStartTime() : a.getCreatedAt();
+            Instant tB = b.getScheduledStartTime() != null ? b.getScheduledStartTime() : b.getCreatedAt();
+            if (tA == null && tB == null) return 0;
+            if (tA == null) return 1;
+            if (tB == null) return -1;
+            return tB.compareTo(tA);
+        });
+        return list;
     }
 
     private List<Visit> resolveMatchedVisits(User staffUser, String identifier) {
@@ -291,6 +315,30 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
             }
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    private RoomBookingResponse mapBookingToResponse(RoomBooking b) {
+        return RoomBookingResponse.builder()
+                .id(b.getId())
+                .bookingCode(b.getBookingCode())
+                .roomName(b.getRoomName())
+                .meetingTitle(b.getMeetingTitle())
+                .hostDepartment(b.getHostDepartment())
+                .bookedByUserId(b.getBookedByUserId())
+                .bookedByName(b.getBookedByName())
+                .bookedByUsername(b.getBookedByUsername())
+                .bookedByEmail(b.getBookedByEmail())
+                .guestOrganizationName(b.getGuestOrganizationName())
+                .guestName(b.getGuestName())
+                .expectedAttendees(b.getExpectedAttendees())
+                .meetingAgenda(b.getMeetingAgenda())
+                .scheduledStartTime(b.getScheduledStartTime())
+                .scheduledEndTime(b.getScheduledEndTime())
+                .status(b.getStatus())
+                .linkedVisitId(b.getLinkedVisitId())
+                .createdAt(b.getCreatedAt())
+                .updatedAt(b.getUpdatedAt())
+                .build();
     }
 
     private List<OrganizationSummaryResponse> extractMatchedOrganizations(List<Visit> visits) {

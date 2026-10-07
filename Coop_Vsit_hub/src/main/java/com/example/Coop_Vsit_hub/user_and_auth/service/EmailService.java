@@ -67,4 +67,17 @@ public interface EmailService {
             boolean isCancellation,
             String cancelledBy
     );
+
+    void sendRoomBookingBookerConfirmation(
+            String recipientEmail,
+            String recipientName,
+            String roomName,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            String hostDept
+    );
 }

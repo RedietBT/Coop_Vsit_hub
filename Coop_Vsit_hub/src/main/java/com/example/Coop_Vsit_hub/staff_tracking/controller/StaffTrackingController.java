@@ -50,6 +50,17 @@ public class StaffTrackingController {
         return ResponseEntity.ok(visits);
     }
 
+    @GetMapping("/my-bookings")
+    @Operation(summary = "Get Staff Tracked Room Bookings", description = "Returns room reservations created by the current staff user.")
+    public ResponseEntity<List<RoomBookingResponse>> getMyBookings(
+            Principal principal,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String username = principal != null ? principal.getName() : (userDetails != null ? userDetails.getUsername() : "admin");
+        List<RoomBookingResponse> bookings = staffTrackingService.getStaffTrackedRoomBookings(username);
+        return ResponseEntity.ok(bookings);
+    }
+
     @GetMapping("/my-organizations")
     @Operation(summary = "Get Staff Tracked Organizations", description = "Returns organizations linked to the current staff user's meetings and visits.")
     public ResponseEntity<List<OrganizationSummaryResponse>> getMyOrganizations(

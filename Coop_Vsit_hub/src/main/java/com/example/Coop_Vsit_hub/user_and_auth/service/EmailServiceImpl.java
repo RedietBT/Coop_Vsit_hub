@@ -381,4 +381,73 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to send room contact notification email to {}: {}", contactEmail, e.getMessage(), e);
         }
     }
+
+    @Override
+    public void sendRoomBookingBookerConfirmation(
+            String recipientEmail,
+            String recipientName,
+            String roomName,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            String hostDept
+    ) {
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            return;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
+            helper.setTo(recipientEmail);
+            helper.setSubject("🎉 [Reservation Confirmed] " + (roomName != null ? roomName : "Meeting Space") + " (Ref: " + (bookingCode != null ? bookingCode : "Booking") + ")");
+
+            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
+            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
+                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Meeting Space Reservation Confirmation</p>"
+                    + "</div>"
+                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
+                    + "<p style='margin-top: 0;'>Dear <strong>" + (recipientName != null && !recipientName.isBlank() ? recipientName : "Colleague") + "</strong>,</p>"
+                    + "<p>Your room reservation has been successfully <strong style='color: #0284c7;'>CONFIRMED</strong>. The meeting room has been locked for your scheduled session.</p>"
+                    + "<div style='background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
+                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #047857; font-weight: bold;'>" + (roomName != null ? roomName : "Meeting Room") + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>🏛️ Department:</strong> " + (hostDept != null ? hostDept : "Staff Hub") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
+                    + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
+                    + (purpose != null && !purpose.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + purpose + "</p>"
+                        : "")
+                    + "</div>"
+                    + "<div style='text-align: center; margin: 24px 0;'>"
+                    + "<a href='" + frontendUrl + "/my-tracking' style='background: linear-gradient(135deg, #00adef, #0072bc); color: #ffffff; padding: 11px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; display: inline-block;'>View in My Meetings & Bookings</a>"
+                    + "</div>"
+                    + "<p style='font-size: 12px; color: #64748b;'>Need to make changes or cancel? You can manage your reservation directly in your <a href='" + frontendUrl + "/my-tracking' style='color: #00adef; text-decoration: none; font-weight: bold;'>Personal Tracker</a> or the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Booking Management Portal</a>.</p>"
+                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
+                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Facility Notification</p>"
+                    + "</div>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+
+            log.info("Room booking confirmation email sent to booker '{}' for room '{}', booking '{}'", recipientEmail, roomName, bookingCode);
+        } catch (Exception e) {
+            log.error("Failed to send booking confirmation email to {}: {}", recipientEmail, e.getMessage(), e);
+        }
+    }
 }

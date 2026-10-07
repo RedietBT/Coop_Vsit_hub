@@ -2,6 +2,7 @@ package com.example.coop_vsit_hub.staff_tracking.service;
 
 import com.example.coop_vsit_hub.individual_guest_management.dto.IndividualGuestSummaryResponse;
 import com.example.coop_vsit_hub.organization_management.dto.OrganizationSummaryResponse;
+import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.staff_tracking.dto.TrackedStaffOverviewResponse;
 import com.example.coop_vsit_hub.visit_management.dto.VisitSummaryResponse;
 
@@ -13,6 +14,8 @@ public interface StaffTrackingService {
     TrackedStaffOverviewResponse getStaffTrackedOverview(String staffIdentifier);
 
     List<VisitSummaryResponse> getStaffTrackedVisits(String staffIdentifier);
+
+    List<RoomBookingResponse> getStaffTrackedRoomBookings(String staffIdentifier);
 
     List<OrganizationSummaryResponse> getStaffTrackedOrganizations(String staffIdentifier);
 
