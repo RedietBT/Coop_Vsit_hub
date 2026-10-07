@@ -132,17 +132,19 @@ public class SecurityConfig {
                     "/api/v1/auth/reset-password",
                     "/api/v1/auth/verify-email/**"
                 ).permitAll()
-                // Public Feedback Endpoints & Room Images
+                // Public Feedback Endpoints, Room Images & Uploads
                 .requestMatchers(
                     "/api/v1/feedback/verify/**",
                     "/api/v1/feedback/submit",
                     "/api/v1/meeting-rooms/images/**",
-                    "/api/v1/files/**"
+                    "/api/v1/files/**",
+                    "/uploads/**",
+                    "/rooms/**"
                 ).permitAll()
                 // Health Check / Keep-Alive Pings
                 .requestMatchers("/health", "/api/v1/health", "/ping").permitAll()
                 // Static assets
-                .requestMatchers("/error", "/favicon.ico").permitAll()
+                .requestMatchers("/error", "/favicon.ico", "/static/**").permitAll()
                 // All other endpoints require JWT
                 .anyRequest().authenticated()
             )

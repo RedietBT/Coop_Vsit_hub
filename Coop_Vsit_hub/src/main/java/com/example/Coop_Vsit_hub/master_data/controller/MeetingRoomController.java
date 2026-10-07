@@ -38,6 +38,9 @@ public class MeetingRoomController {
     private final MasterDataService masterDataService;
     private final UserRepository userRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${coopbank.rooms.upload-dir:uploads/rooms/}")
+    private String roomsUploadDir;
+
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @SecurityRequirement(name = "bearerAuth")
@@ -90,27 +93,69 @@ public class MeetingRoomController {
         try {
             // Prevent directory traversal attacks
             String safeFileName = java.nio.file.Paths.get(filename).getFileName().toString();
-            java.nio.file.Path baseDir = java.nio.file.Paths.get("uploads/rooms").toAbsolutePath().normalize();
+
+            // Check primary configured upload directory
+            String uploadBase = (roomsUploadDir != null && !roomsUploadDir.isBlank()) ? roomsUploadDir : "uploads/rooms/";
+            java.nio.file.Path baseDir = java.nio.file.Paths.get(uploadBase).toAbsolutePath().normalize();
             java.nio.file.Path filePath = baseDir.resolve(safeFileName).normalize();
 
-            if (!filePath.startsWith(baseDir)) {
-                return ResponseEntity.badRequest().build();
+            File targetFile = filePath.toFile();
+
+            // Fallback 1: check relative "uploads/rooms/"
+            if (!targetFile.exists() || !targetFile.isFile()) {
+                File relFile = java.nio.file.Paths.get("uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
+                if (relFile.exists() && relFile.isFile()) {
+                    targetFile = relFile;
+                }
             }
 
-            File file = filePath.toFile();
-            if (!file.exists() || !file.isFile()) {
+            // Fallback 2: check nested child "Coop_Vsit_hub/uploads/rooms/"
+            if (!targetFile.exists() || !targetFile.isFile()) {
+                File nestedFile = java.nio.file.Paths.get("Coop_Vsit_hub/uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
+                if (nestedFile.exists() && nestedFile.isFile()) {
+                    targetFile = nestedFile;
+                }
+            }
+
+            // Fallback 3: check classpath static resources
+            if (!targetFile.exists() || !targetFile.isFile()) {
+                org.springframework.core.io.ClassPathResource classPathResource =
+                        new org.springframework.core.io.ClassPathResource("static/rooms/" + safeFileName);
+                if (classPathResource.exists() && classPathResource.isReadable()) {
+                    String contentType = resolveContentType(safeFileName, null);
+                    return ResponseEntity.ok()
+                            .contentType(MediaType.parseMediaType(contentType))
+                            .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
+                            .body(classPathResource);
+                }
                 return ResponseEntity.notFound().build();
             }
 
-            Resource resource = new FileSystemResource(file);
-            String contentType = filename.toLowerCase().endsWith(".png") ? MediaType.IMAGE_PNG_VALUE : MediaType.IMAGE_JPEG_VALUE;
+            Resource resource = new FileSystemResource(targetFile);
+            String contentType = resolveContentType(safeFileName, targetFile);
+
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
                     .body(resource);
         } catch (Exception e) {
+            log.warn("Could not serve room image '{}': {}", filename, e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+
+    private String resolveContentType(String filename, File file) {
+        if (file != null) {
+            try {
+                String probed = java.nio.file.Files.probeContentType(file.toPath());
+                if (probed != null && !probed.isBlank()) return probed;
+            } catch (Exception ignored) {}
+        }
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG_VALUE;
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        return MediaType.IMAGE_JPEG_VALUE;
     }
 
     @PutMapping("/{id}")

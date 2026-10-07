@@ -26,6 +26,9 @@ public class MasterDataServiceImpl implements MasterDataService {
     private final DepartmentRepository departmentRepository;
     private final MeetingRoomRepository meetingRoomRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${coopbank.rooms.upload-dir:uploads/rooms/}")
+    private String roomsUploadDir;
+
     // =========================================================================
     // 1. DEPARTMENTS
     // =========================================================================
@@ -275,39 +278,44 @@ public class MasterDataServiceImpl implements MasterDataService {
             throw new IllegalArgumentException("Uploaded image file cannot be empty.");
         }
 
-        // Limit file size to 5MB
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new IllegalArgumentException("Image file size exceeds 5MB limit.");
+        // Limit file size to 15MB (supports raw smartphone camera captures)
+        if (file.getSize() > 15 * 1024 * 1024) {
+            throw new IllegalArgumentException("Image file size exceeds 15MB limit. Please upload a photo smaller than 15MB.");
         }
 
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        } else if (file.getContentType() != null) {
+            if (file.getContentType().contains("png")) extension = "png";
+            else if (file.getContentType().contains("webp")) extension = "webp";
+            else extension = "jpg";
         }
 
-        java.util.Set<String> allowedExtensions = java.util.Set.of("jpg", "jpeg", "png", "webp");
+        java.util.Set<String> allowedExtensions = java.util.Set.of("jpg", "jpeg", "png", "webp", "jfif", "heic", "heif", "svg");
         if (!allowedExtensions.contains(extension)) {
-            throw new IllegalArgumentException("Invalid image format '." + extension + "'. Only JPG, JPEG, PNG, and WEBP formats are allowed.");
+            throw new IllegalArgumentException("Invalid image format '." + extension + "'. Allowed formats: JPG, JPEG, PNG, WEBP, JFIF, HEIC, SVG.");
         }
 
         try {
-            // Save file in static uploads directory
-            String uploadsDir = "uploads/rooms/";
-            java.io.File directory = new java.io.File(uploadsDir);
+            // Save file in configurable uploads directory
+            String uploadBase = (roomsUploadDir != null && !roomsUploadDir.isBlank()) ? roomsUploadDir : "uploads/rooms/";
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadBase).toAbsolutePath().normalize();
+            java.io.File directory = uploadPath.toFile();
             if (!directory.exists()) {
                 directory.mkdirs();
             }
 
             String filename = "room_" + id + "_" + System.currentTimeMillis() + "." + extension;
-            java.nio.file.Path targetPath = java.nio.file.Paths.get(uploadsDir + filename).toAbsolutePath().normalize();
+            java.nio.file.Path targetPath = uploadPath.resolve(filename).normalize();
             java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
             String fileUrl = "/api/v1/meeting-rooms/images/" + filename;
             room.setImageUrl(fileUrl);
 
             MeetingRoom saved = meetingRoomRepository.save(room);
-            log.info("Room image saved successfully: {}", fileUrl);
+            log.info("Room image saved successfully: {} -> {}", fileUrl, targetPath);
             return MeetingRoomDto.from(saved);
         } catch (Exception e) {
             log.error("Failed to upload room image: {}", e.getMessage(), e);

@@ -22,12 +22,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${coopbank.files.upload-dir:uploads/attachments/}")
     private String uploadDir;
 
+    @Value("${coopbank.rooms.upload-dir:uploads/rooms/}")
+    private String roomsUploadDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Resolve upload dir to absolute path
+        // 1. Attachments upload directory
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
-
-        // Ensure the upload directory exists
         File dir = uploadPath.toFile();
         if (!dir.exists()) {
             boolean created = dir.mkdirs();
@@ -38,11 +39,24 @@ public class WebMvcConfig implements WebMvcConfigurer {
             }
         }
 
-        // Map /api/v1/files/download/** → uploadDir so the controller's UrlResource works
-        // Also expose /uploads/** as a direct static resource path for convenience
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadPath + File.separator);
 
+        // 2. Room images upload directory & static fallback
+        Path roomsPath = Paths.get(roomsUploadDir).toAbsolutePath();
+        File roomsDir = roomsPath.toFile();
+        if (!roomsDir.exists()) {
+            roomsDir.mkdirs();
+        }
+
+        registry.addResourceHandler("/rooms/**", "/uploads/rooms/**")
+                .addResourceLocations(
+                        "file:" + roomsPath + File.separator,
+                        "classpath:/static/rooms/",
+                        "classpath:/static/"
+                );
+
         log.info("File upload directory resolved to: {}", uploadPath);
+        log.info("Room photos directory resolved to: {}", roomsPath);
     }
 }
