@@ -42,4 +42,4 @@ build/
 ### VS Code ###
 .vscode/
 
-uploads/
+# uploads/

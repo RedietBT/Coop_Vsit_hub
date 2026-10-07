@@ -30,9 +30,9 @@ public class FileUploadController {
     @Value("${coopbank.files.upload-dir:uploads/attachments/}")
     private String uploadDir;
 
-    private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit
+    private static final long MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB limit
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            "pdf", "png", "jpg", "jpeg", "doc", "docx", "xls", "xlsx", "txt", "csv"
+            "pdf", "png", "jpg", "jpeg", "webp", "jfif", "heic", "doc", "docx", "xls", "xlsx", "txt", "csv"
     );
 
     @PostConstruct
@@ -51,20 +51,20 @@ public class FileUploadController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload Supporting Document (Max 5MB)",
+    @Operation(summary = "Upload Supporting Document (Max 15MB)",
                description = "Uploads an optional attachment (PDF, Word, Excel, Image) for visits, organizations, or individual guests.")
     public ResponseEntity<?> uploadFile(
-            @Parameter(description = "File to upload (max 5MB)")
+            @Parameter(description = "File to upload (max 15MB)")
             @RequestParam("file") MultipartFile file
     ) {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty or not provided."));
         }
 
-        // File size restriction: 5MB
+        // File size restriction: 15MB
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Map.of(
-                    "error", "File size exceeds 5MB limit. Please upload a file smaller than 5MB.",
+                    "error", "File size exceeds 15MB limit. Please upload a file smaller than 15MB.",
                     "maxSizeBytes", MAX_FILE_SIZE_BYTES,
                     "actualSizeBytes", file.getSize()
             ));

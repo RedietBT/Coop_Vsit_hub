@@ -103,7 +103,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(buildErrorResponse(
                 HttpStatus.PAYLOAD_TOO_LARGE,
                 "Payload Too Large",
-                "File size exceeds the allowed limit (max 10MB). Please choose a file smaller than 10MB.",
+                "File size exceeds the allowed limit (max 15MB). Please choose a file smaller than 15MB.",
                 request.getRequestURI()
         ));
     }
