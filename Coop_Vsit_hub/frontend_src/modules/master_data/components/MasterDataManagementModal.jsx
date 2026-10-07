@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Upload,
   Lock,
+  Mail,
 } from 'lucide-react';
 import Modal from '@/shared/components/ui/Modal';
 import Button from '@/shared/components/ui/Button';
@@ -51,6 +52,7 @@ export const MasterDataManagementModal = () => {
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
+    contactEmail: '',
   });
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -68,7 +70,7 @@ export const MasterDataManagementModal = () => {
   const handleClose = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
     closeMasterModal();
   };
 
@@ -94,6 +96,7 @@ export const MasterDataManagementModal = () => {
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
+      contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
     };
 
     if (editingId) {
@@ -102,7 +105,7 @@ export const MasterDataManagementModal = () => {
     } else {
       await createMeetingRoom(payload);
     }
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -297,7 +300,7 @@ export const MasterDataManagementModal = () => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 2: MEETING ROOMS & SPACES (3 STRICT FIELDS + PHOTO UPLOAD) */}
+        {/* TAB 2: MEETING ROOMS & SPACES */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'rooms' && (
           <div className="space-y-4">
@@ -312,7 +315,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', capacity: 18, imageUrl: '' });
+                      setRoomForm({ name: '', capacity: 18, imageUrl: '', contactEmail: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -379,6 +382,25 @@ export const MasterDataManagementModal = () => {
                 </div>
               </div>
 
+              {/* Designated Room Contact Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-emerald-100">
+                <div>
+                  <Input
+                    label="Designated Room Contact Email"
+                    type="email"
+                    placeholder="e.g. dept.secretary@coopbankoromia.com.et"
+                    value={roomForm.contactEmail || ''}
+                    onChange={(e) => setRoomForm({ ...roomForm, contactEmail: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center text-[11px] text-slate-500 pt-3 sm:pt-0">
+                  <div className="bg-sky-50 border border-sky-200 rounded-lg p-2.5 flex items-start gap-2">
+                    <Mail className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
+                    <span>This contact receives instant email & in-app alerts when this room is reserved or cancelled, and is authorized to cancel reservations.</span>
+                  </div>
+                </div>
+              </div>
+
               {/* 4. Room Image & Photo Upload */}
               <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-2">
                 <label className="text-xs font-bold text-slate-700 block">
@@ -438,6 +460,7 @@ export const MasterDataManagementModal = () => {
                     <th className="py-2.5 pl-4">Photo</th>
                     <th className="py-2.5 px-3">Room Name & Floor</th>
                     <th className="py-2.5 px-3">Managing Department</th>
+                    <th className="py-2.5 px-3">Contact Email</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
                     <th className="py-2.5 pr-4 text-right">Actions</th>
                   </tr>
@@ -468,6 +491,16 @@ export const MasterDataManagementModal = () => {
                           {r.department || 'General Facility'}
                         </span>
                       </td>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                        {r.contactEmail ? (
+                          <span className="flex items-center gap-1 text-slate-700">
+                            <Mail className="w-3 h-3 text-[#00adef]" />
+                            <span>{r.contactEmail}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">Unassigned</span>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">{r.capacity} Seats</td>
                       <td className="py-2.5 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -489,6 +522,7 @@ export const MasterDataManagementModal = () => {
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
+                                contactEmail: r.contactEmail || '',
                               });
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"

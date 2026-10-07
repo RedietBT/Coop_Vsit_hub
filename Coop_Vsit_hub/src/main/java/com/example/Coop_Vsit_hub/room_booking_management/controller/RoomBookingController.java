@@ -35,7 +35,7 @@ public class RoomBookingController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create Room Booking", description = "Books a meeting room with instant confirmation and sends alert to System Admin.")
+    @Operation(summary = "Create Room Booking", description = "Books a meeting room with conflict detection and alerts admins and room contacts.")
     public ResponseEntity<RoomBookingResponse> createBooking(
             @RequestBody CreateRoomBookingRequest request,
             Principal principal
@@ -70,6 +70,28 @@ public class RoomBookingController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get My Room Bookings", description = "Paginated list of room bookings made by the authenticated user.")
+    public ResponseEntity<Page<RoomBookingResponse>> getMyBookings(
+            @RequestParam(required = false) String roomName,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) RoomBookingStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size,
+            @RequestParam(defaultValue = "scheduledStartTime") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Principal principal
+    ) {
+        User currentUser = null;
+        if (principal != null) {
+            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+        }
+        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Page<RoomBookingResponse> result = roomBookingService.getMyBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/slots")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get Room Reserved Slots", description = "Fetches booked time slots for an interactive calendar.")
@@ -100,8 +122,8 @@ public class RoomBookingController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_RELATIONSHIP_MANAGER')")
-    @Operation(summary = "Cancel Room Booking", description = "Cancels a room reservation.")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Cancel Room Booking", description = "Cancels a room reservation. Allowed for Admin, Relationship Manager, Secretary, Room Contact, or the user who created it.")
     public ResponseEntity<RoomBookingResponse> cancelBooking(
             @PathVariable UUID id,
             Principal principal

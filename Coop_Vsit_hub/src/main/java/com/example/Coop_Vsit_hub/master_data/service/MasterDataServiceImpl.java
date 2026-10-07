@@ -189,6 +189,7 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .capacity(request.getCapacity() != null ? request.getCapacity() : 10)
                 .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
+                .contactEmail(request.getContactEmail() != null && !request.getContactEmail().isBlank() ? request.getContactEmail().trim() : null)
                 .isActive(true)
                 .build();
 
@@ -239,6 +240,9 @@ public class MasterDataServiceImpl implements MasterDataService {
             room.setImageUrl(request.getImageUrl());
         }
         room.setDescription(request.getDescription());
+        if (request.getContactEmail() != null) {
+            room.setContactEmail(request.getContactEmail().isBlank() ? null : request.getContactEmail().trim());
+        }
         if (request.getIsActive() != null) {
             room.setIsActive(request.getIsActive());
         }

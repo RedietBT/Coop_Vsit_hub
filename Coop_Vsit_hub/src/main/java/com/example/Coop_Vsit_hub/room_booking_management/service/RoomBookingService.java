@@ -20,6 +20,8 @@ public interface RoomBookingService {
 
     Page<RoomBookingResponse> getBookings(String roomName, String search, RoomBookingStatus status, Pageable pageable, User currentUser);
 
+    Page<RoomBookingResponse> getMyBookings(String roomName, String search, RoomBookingStatus status, Pageable pageable, User currentUser);
+
     List<RoomBookingSlotResponse> getRoomSlots(String roomName, Instant fromDate, Instant toDate);
 
     List<RoomBookingResponse> getActiveBookingsForDate(Instant fromDate, Instant toDate);

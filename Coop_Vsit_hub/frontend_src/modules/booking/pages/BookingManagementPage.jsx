@@ -25,6 +25,7 @@ import {
   Check,
   Sparkles,
   Plus,
+  BookmarkCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import roomBookingApi from '../api/roomBookingApi';
@@ -55,6 +56,9 @@ export const BookingManagementPage = () => {
   const [roomSearch, setRoomSearch] = useState('');
   const [roomCapacityFilter, setRoomCapacityFilter] = useState('ALL');
 
+  // Ledger Tab View: 'ALL' (All/Department Bookings) vs 'MY' (My Personal Bookings)
+  const [ledgerViewTab, setLedgerViewTab] = useState('ALL');
+
   // Recent Bookings Ledger State
   const [bookings, setBookings] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -77,12 +81,14 @@ export const BookingManagementPage = () => {
 
   const isAdmin = hasRole('ROLE_ADMIN');
   const isSecretary = hasRole('ROLE_SECRETARY');
+  const isRM = hasRole('ROLE_RELATIONSHIP_MANAGER');
 
-  // Fetch recent bookings ledger
+  // Fetch recent bookings ledger (supports All vs My Bookings)
   const fetchBookings = useCallback(async () => {
     setIsLoadingBookings(true);
     try {
-      const data = await roomBookingApi.getBookings({
+      const apiFn = ledgerViewTab === 'MY' ? roomBookingApi.getMyBookings : roomBookingApi.getBookings;
+      const data = await apiFn({
         search: ledgerSearch.trim() || undefined,
         roomName: ledgerRoomFilter || undefined,
         status: ledgerStatusFilter || undefined,
@@ -100,7 +106,7 @@ export const BookingManagementPage = () => {
     } finally {
       setIsLoadingBookings(false);
     }
-  }, [ledgerSearch, ledgerRoomFilter, ledgerStatusFilter, currentPage, pageSize]);
+  }, [ledgerViewTab, ledgerSearch, ledgerRoomFilter, ledgerStatusFilter, currentPage, pageSize]);
 
   // Load booked slots for the selected room
   const loadRoomSlots = useCallback(async (roomName) => {
@@ -169,10 +175,33 @@ export const BookingManagementPage = () => {
         loadRoomSlots(selectedRoom.name);
       }
     } catch (e) {
-      toast.error('Failed to cancel room booking.');
+      const errMsg = e.response?.data?.message || 'Failed to cancel room booking.';
+      toast.error(errMsg);
     } finally {
       setIsCancelling(false);
     }
+  };
+
+  // Check if current user has authority to cancel a specific booking
+  const checkCanCancel = (booking) => {
+    if (!booking || booking.status !== 'CONFIRMED') return false;
+    if (isAdmin || isRM) return true;
+    if (user?.id && booking.bookedByUserId && user.id === booking.bookedByUserId) return true;
+    if (user?.email && booking.bookedByEmail && user.email.toLowerCase() === booking.bookedByEmail.toLowerCase()) return true;
+    if (user?.username && booking.bookedByUsername && user.username.toLowerCase() === booking.bookedByUsername.toLowerCase()) return true;
+
+    // Department Secretary match
+    if (isSecretary && user?.department && booking.hostDepartment && user.department.toLowerCase() === booking.hostDepartment.toLowerCase()) {
+      return true;
+    }
+
+    // Designated room contact match
+    const matchingRoom = meetingRooms.find((r) => r.name?.toLowerCase() === booking.roomName?.toLowerCase());
+    if (matchingRoom?.contactEmail && user?.email && matchingRoom.contactEmail.toLowerCase() === user.email.toLowerCase()) {
+      return true;
+    }
+
+    return false;
   };
 
   // Filtered rooms for directory
@@ -205,7 +234,8 @@ export const BookingManagementPage = () => {
 
   const filteredRooms = activeRooms.filter((room) => {
     const matchesSearch =
-      !roomSearch || room.name?.toLowerCase().includes(roomSearch.toLowerCase());
+      !roomSearch || room.name?.toLowerCase().includes(roomSearch.toLowerCase()) ||
+      (room.contactEmail && room.contactEmail.toLowerCase().includes(roomSearch.toLowerCase()));
     const matchesCap =
       roomCapacityFilter === 'ALL' ||
       (roomCapacityFilter === 'SMALL' && room.capacity <= 10) ||
@@ -264,7 +294,7 @@ export const BookingManagementPage = () => {
                     Booking Management
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold">
-                    {totalElements} Total Bookings
+                    {totalElements} Bookings
                   </span>
                   {isSecretary && user?.department && (
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-[#e38524] border border-amber-200 text-xs font-bold">
@@ -273,7 +303,7 @@ export const BookingManagementPage = () => {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Inspect meeting rooms, view detailed calendar schedules, and audit who booked each facility.
+                  Inspect meeting rooms, view detailed calendar schedules, and manage your reservations.
                 </p>
               </div>
             </div>
@@ -288,7 +318,7 @@ export const BookingManagementPage = () => {
                     icon={DoorOpen}
                     className="border-slate-300 text-slate-700 hover:bg-slate-50"
                   >
-                    Meeting Rooms Tab
+                    Manage Rooms
                   </Button>
                   <Button
                     variant="primary"
@@ -309,7 +339,7 @@ export const BookingManagementPage = () => {
                 disabled={isLoadingBookings}
                 icon={RotateCcw}
               >
-                Refresh Data
+                Refresh
               </Button>
             </div>
           </div>
@@ -335,7 +365,7 @@ export const BookingManagementPage = () => {
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search rooms..."
+                    placeholder="Search rooms or contact..."
                     value={roomSearch}
                     onChange={(e) => setRoomSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef]"
@@ -418,6 +448,13 @@ export const BookingManagementPage = () => {
                       <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">
                         {room.department ? `Dept: ${room.department}` : (room.description || 'Executive boardroom & meeting suite')}
                       </p>
+
+                      {room.contactEmail && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400 font-mono truncate">
+                          <Mail className="w-3 h-3 text-[#00adef] shrink-0" />
+                          <span className="truncate">{room.contactEmail}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -435,16 +472,52 @@ export const BookingManagementPage = () => {
             )}
           </div>
 
-          {/* SECTION 2: MOST RECENT BOOKINGS LEDGER */}
+          {/* SECTION 2: BOOKINGS LEDGER (WITH ALL VS MY BOOKINGS TABS) */}
           <div className="space-y-4 pt-4 border-t border-slate-200">
-            <div>
-              <h2 className="font-heading font-bold text-lg text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#00adef]" />
-                <span>Most Recent Bookings Ledger</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Central register of all recent room bookings across the bank.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-heading font-bold text-lg text-slate-900 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-[#00adef]" />
+                  <span>Bookings Ledger & History</span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {ledgerViewTab === 'MY'
+                    ? 'Showing your personal room reservations. You can cancel active reservations here.'
+                    : 'Central register of room bookings across the bank.'}
+                </p>
+              </div>
+
+              {/* View Toggle Tabs */}
+              <div className="flex items-center p-1 bg-slate-100 rounded-2xl">
+                <button
+                  onClick={() => {
+                    setLedgerViewTab('ALL');
+                    setCurrentPage(0);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    ledgerViewTab === 'ALL'
+                      ? 'bg-white text-[#00adef] shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>All Reservations</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setLedgerViewTab('MY');
+                    setCurrentPage(0);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    ledgerViewTab === 'MY'
+                      ? 'bg-white text-emerald-600 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <BookmarkCheck className="w-3.5 h-3.5" />
+                  <span>My Bookings</span>
+                </button>
+              </div>
             </div>
 
             {/* Filter Bar */}
@@ -512,7 +585,7 @@ export const BookingManagementPage = () => {
                       <th className="py-3.5 px-5">Booking Reference</th>
                       <th className="py-3.5 px-4">Room & Meeting</th>
                       <th className="py-3.5 px-4">Reserved Schedule</th>
-                      <th className="py-3.5 px-4">Booked By (Staff / AD)</th>
+                      <th className="py-3.5 px-4">Booked By</th>
                       <th className="py-3.5 px-4">Affiliated Party</th>
                       <th className="py-3.5 px-4">Status</th>
                       <th className="py-3.5 px-5 text-right">Actions</th>
@@ -530,7 +603,16 @@ export const BookingManagementPage = () => {
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-slate-400">
                           <DoorOpen className="w-10 h-10 mx-auto text-slate-300 mb-1.5" />
-                          <p className="font-bold text-xs text-slate-700">No room bookings found</p>
+                          <p className="font-bold text-xs text-slate-700">
+                            {ledgerViewTab === 'MY'
+                              ? 'You have not made any room reservations yet.'
+                              : 'No room bookings found'}
+                          </p>
+                          {ledgerViewTab === 'MY' && (
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Select a meeting room above or book a room from the New Visit form to see it listed here.
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ) : (
@@ -556,7 +638,7 @@ export const BookingManagementPage = () => {
                           : '';
 
                         const isConfirmed = booking.status === 'CONFIRMED';
-                        const canCancel = isConfirmed && (isAdmin || isSecretary || user?.id === booking.bookedByUserId);
+                        const canCancel = checkCanCancel(booking);
 
                         return (
                           <tr
@@ -652,7 +734,7 @@ export const BookingManagementPage = () => {
                                 {canCancel && (
                                   <button
                                     onClick={() => setCancellingBooking(booking)}
-                                    className="px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors"
+                                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors"
                                     title="Cancel Reservation"
                                   >
                                     Cancel
@@ -721,6 +803,12 @@ export const BookingManagementPage = () => {
                     <Users className="w-3 h-3 mr-1" />
                     {selectedRoom.capacity || 12} Seats
                   </Badge>
+                  {selectedRoom.contactEmail && (
+                    <Badge variant="neutral">
+                      <Mail className="w-3 h-3 mr-1 text-[#00adef]" />
+                      {selectedRoom.contactEmail}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Inspect confirmed reservations, schedules, and staff bookings for this room.
@@ -958,7 +1046,7 @@ export const BookingManagementPage = () => {
 
                   <div className="space-y-3">
                     {selectedDateBookings.map((b) => {
-                      const canCancel = isAdmin || isSecretary || user?.id === b.bookedByUserId;
+                      const canCancel = checkCanCancel(b);
 
                       return (
                         <div
@@ -1202,7 +1290,7 @@ export const BookingManagementPage = () => {
             </div>
 
             <p className="text-slate-600 text-xs">
-              Cancelling will immediately release the room slot on the calendar for other staff members.
+              Cancelling will immediately release the room slot on the calendar and notify all parties via email and in-app alerts.
             </p>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">

@@ -18,6 +18,14 @@ export const roomBookingApi = {
   },
 
   /**
+   * List personal room bookings for the authenticated user (paginated).
+   */
+  getMyBookings: async (params = {}) => {
+    const response = await apiClient.get('/api/v1/room-bookings/my', { params });
+    return response.data;
+  },
+
+  /**
    * Get reserved time slots for a specific room across a date range.
    */
   getRoomSlots: async (roomName, fromDate, toDate) => {

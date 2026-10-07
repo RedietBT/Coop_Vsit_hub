@@ -9,6 +9,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -126,8 +128,8 @@ public class EmailServiceImpl implements EmailService {
             String visitTitle,
             String guestName,
             String organizationName,
-            java.time.Instant startTime,
-            java.time.Instant endTime,
+            Instant startTime,
+            Instant endTime,
             String purpose,
             int visitorCount
     ) {
@@ -186,8 +188,8 @@ public class EmailServiceImpl implements EmailService {
             String visitTitle,
             String guestName,
             String organizationName,
-            java.time.Instant startTime,
-            java.time.Instant endTime,
+            Instant startTime,
+            Instant endTime,
             String purpose,
             int visitorCount
     ) {
@@ -234,5 +236,149 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to dispatch room booking notification email to secretary {}: {}", secretaryEmail, e.getMessage(), e);
         }
     }
-}
 
+    @Override
+    public void sendRoomBookingCancellationNotification(
+            String recipientEmail,
+            String recipientName,
+            String roomName,
+            String bookedByName,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String cancelledBy,
+            String cancellationReason
+    ) {
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            return;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
+            helper.setTo(recipientEmail);
+            helper.setSubject("❌ [Booking Cancelled] " + (roomName != null ? roomName : "Meeting Room") + " - " + (bookingCode != null ? bookingCode : "Reservation"));
+
+            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
+            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #fecaca; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
+                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #fee2e2; margin: 4px 0 0 0; font-size: 13px;'>Room Booking Cancellation Notice</p>"
+                    + "</div>"
+                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
+                    + "<p style='margin-top: 0;'>Dear <strong>" + (recipientName != null && !recipientName.isBlank() ? recipientName : "Staff Member") + "</strong>,</p>"
+                    + "<p>This is to inform you that the following room reservation has been <strong style='color: #dc2626;'>CANCELLED</strong>:</p>"
+                    + "<div style='background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #ef4444; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
+                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #b91c1c; font-weight: bold;'>" + (roomName != null ? roomName : "Meeting Room") + "</span></p>"
+                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Room Reservation") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>👤 Originally Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> <span style='font-weight: bold; color: #991b1b;'>" + (cancelledBy != null ? cancelledBy : "Administrator") + "</span></p>"
+                    + (cancellationReason != null && !cancellationReason.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>💬 Cancellation Reason:</strong> " + cancellationReason + "</p>"
+                        : "")
+                    + "</div>"
+                    + "<p style='font-size: 12px; color: #64748b;'>If you need to reschedule, please visit the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
+                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
+                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated System Notification</p>"
+                    + "</div>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+
+            log.info("Room booking cancellation email sent to '{}' for room '{}', booking '{}'", recipientEmail, roomName, bookingCode);
+        } catch (Exception e) {
+            log.error("Failed to send booking cancellation email to {}: {}", recipientEmail, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendRoomBookingContactNotification(
+            String contactEmail,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            boolean isCancellation,
+            String cancelledBy
+    ) {
+        if (contactEmail == null || contactEmail.isBlank()) {
+            return;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
+            helper.setTo(contactEmail);
+
+            String statusPrefix = isCancellation ? "❌ [Room Notice - Cancelled] " : "🏢 [Room Notice - New Booking] ";
+            helper.setSubject(statusPrefix + (roomName != null ? roomName : "Meeting Room") + " - " + (bookingCode != null ? bookingCode : "Reservation"));
+
+            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
+            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+
+            String headerGradient = isCancellation ? "linear-gradient(135deg, #ef4444, #b91c1c)" : "linear-gradient(135deg, #0284c7, #0f766e)";
+            String boxBg = isCancellation ? "#fff1f2" : "#f0fdf4";
+            String boxBorder = isCancellation ? "#fecdd3" : "#bbf7d0";
+            String boxLeft = isCancellation ? "#ef4444" : "#10b981";
+
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='background: " + headerGradient + "; padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
+                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Designated Room Contact Notification — " + (roomName != null ? roomName : "Facility") + "</p>"
+                    + "</div>"
+                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
+                    + "<p style='margin-top: 0;'>Hello <strong>Room Representative</strong>,</p>"
+                    + "<p>" + (isCancellation
+                        ? "A reservation for your room <strong>" + roomName + "</strong> has been <strong style='color:#dc2626;'>CANCELLED</strong>."
+                        : "A new reservation has been scheduled for your room <strong>" + roomName + "</strong>.") + "</p>"
+                    + "<div style='background-color: " + boxBg + "; border: 1px solid " + boxBorder + "; border-left: 4px solid " + boxLeft + "; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
+                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> " + (roomName != null ? roomName : "Meeting Room") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>📋 Title / Subject:</strong> " + (meetingTitle != null ? meetingTitle : "Executive Meeting") + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
+                    + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
+                    + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
+                    + "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
+                    + (isCancellation
+                        ? "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> " + (cancelledBy != null ? cancelledBy : "System User") + "</p>"
+                        : "")
+                    + "</div>"
+                    + "<p style='font-size: 12px; color: #64748b;'>As the designated room contact, you can manage or oversee this facility in the <a href='" + frontendUrl + "/bookings' style='color: #0284c7; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
+                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
+                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Facility Management</p>"
+                    + "</div>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+
+            log.info("Room booking designated contact notification email sent to '{}' for room '{}', booking '{}', isCancellation={}",
+                    contactEmail, roomName, bookingCode, isCancellation);
+        } catch (Exception e) {
+            log.error("Failed to send room contact notification email to {}: {}", contactEmail, e.getMessage(), e);
+        }
+    }
+}

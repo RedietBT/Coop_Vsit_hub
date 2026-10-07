@@ -31,4 +31,8 @@ public class CreateMeetingRoomRequest {
     private String imageUrl;
 
     private String description;
+
+    @jakarta.validation.constraints.Email(message = "Contact email must be a valid email address.")
+    @Size(max = 200, message = "Contact email cannot exceed 200 characters.")
+    private String contactEmail;
 }

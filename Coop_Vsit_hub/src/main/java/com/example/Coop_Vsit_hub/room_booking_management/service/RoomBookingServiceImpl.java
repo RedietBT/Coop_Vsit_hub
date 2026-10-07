@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -48,8 +49,6 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @Transactional
     public RoomBookingResponse createBooking(CreateRoomBookingRequest request, User currentUser) {
-        String bookingCode = generateBookingCode();
-
         if (!StringUtils.hasText(request.getRoomName())) {
             throw new IllegalArgumentException("A valid meeting room name must be provided.");
         }
@@ -68,7 +67,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             meetingRoomRepository.findByNameIgnoreCase(roomName).ifPresent(room -> {
                 if (room.getDepartment() != null && !room.getDepartment().isBlank()
                         && !room.getDepartment().equalsIgnoreCase(secretaryDept)) {
-                    throw new org.springframework.security.access.AccessDeniedException(
+                    throw new AccessDeniedException(
                             String.format("Access Denied: Secretaries can only book rooms assigned to their department ('%s'). Target room belongs to '%s'.",
                                     secretaryDept, room.getDepartment()));
                 }
@@ -78,6 +77,24 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         Instant startTime = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : Instant.now();
         Instant endTime = request.getScheduledEndTime() != null ? request.getScheduledEndTime() : startTime.plusSeconds(3600);
+
+        if (endTime.isBefore(startTime) || endTime.equals(startTime)) {
+            throw new IllegalArgumentException("Scheduled end time must be after start time.");
+        }
+
+        // Overlap validation: Ensure room is not already booked during this time window
+        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(roomName, startTime, endTime);
+        if (!overlapping.isEmpty()) {
+            RoomBooking conflict = overlapping.get(0);
+            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledStartTime());
+            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledEndTime());
+            throw new IllegalStateException(String.format(
+                    "Meeting room '%s' is already booked from %s to %s UTC for '%s' (Ref: %s). Please select a different time window or room.",
+                    roomName, conflictStart, conflictEnd, conflict.getMeetingTitle(), conflict.getBookingCode()
+            ));
+        }
+
+        String bookingCode = generateBookingCode();
 
         // Populate staff data directly from Active Directory / Authenticated User
         UUID bookedById = currentUser != null ? currentUser.getId() : null;
@@ -105,7 +122,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         RoomBooking saved = roomBookingRepository.save(booking);
 
-        // Notify System Admins via MailHog / In-App Notification
+        // Notify System Admins via Email / In-App Notification
         if (notificationService != null) {
             try {
                 String dateStr = DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(startTime);
@@ -220,6 +237,48 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                             }
                         }
                     }
+
+                    // Dispatch notification to designated room Contact Email
+                    if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail())) {
+                        String contactEmail = roomOpt.get().getContactEmail().trim();
+                        log.info("Dispatching room booking notification to designated contact email '{}' for room '{}'",
+                                contactEmail, saved.getRoomName());
+
+                        emailService.sendRoomBookingContactNotification(
+                                contactEmail,
+                                saved.getRoomName(),
+                                saved.getBookedByName(),
+                                saved.getHostDepartment(),
+                                saved.getBookingCode(),
+                                saved.getMeetingTitle(),
+                                saved.getScheduledStartTime(),
+                                saved.getScheduledEndTime(),
+                                saved.getMeetingAgenda(),
+                                saved.getExpectedAttendees(),
+                                false,
+                                null
+                        );
+
+                        // If designated contact email belongs to a registered user, send in-app notification too
+                        userRepository.findByEmailIgnoreCase(contactEmail).ifPresent(contactUser -> {
+                            if (notificationService != null) {
+                                String contactMsg = String.format(
+                                        "A new reservation has been scheduled for your room '%s' by %s (%s) for '%s'. Ref: %s.",
+                                        saved.getRoomName(), saved.getBookedByName(), saved.getHostDepartment(),
+                                        saved.getMeetingTitle(), saved.getBookingCode()
+                                );
+                                notificationService.notifyUser(
+                                        contactUser,
+                                        "Room Reserved: " + saved.getRoomName(),
+                                        contactMsg,
+                                        NotificationType.VISIT_APPROVED,
+                                        saved.getId(),
+                                        saved.getBookingCode(),
+                                        false
+                                );
+                            }
+                        });
+                    }
                 }
             } catch (Exception e) {
                 log.warn("Failed to dispatch booking notification: {}", e.getMessage(), e);
@@ -265,9 +324,40 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         ).map(this::mapToResponse);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RoomBookingResponse> getMyBookings(String roomName, String search, RoomBookingStatus status, Pageable pageable, User currentUser) {
+        if (currentUser == null) {
+            throw new AccessDeniedException("Authentication required to view your personal bookings.");
+        }
+
+        String cleanRoom = StringUtils.hasText(roomName) ? roomName.trim() : null;
+        String cleanSearch = StringUtils.hasText(search) ? search.trim() : null;
+
+        return roomBookingRepository.findMyBookingsWithFilters(
+                currentUser.getId(),
+                currentUser.getEmail(),
+                currentUser.getUsername(),
+                cleanRoom,
+                cleanSearch,
+                status,
+                pageable
+        ).map(this::mapToResponse);
+    }
+
     private boolean isSecretary(User user) {
-        return user.getRoles() != null && user.getRoles().stream()
+        return user != null && user.getRoles() != null && user.getRoles().stream()
                 .anyMatch(r -> r.getName() == RoleName.ROLE_SECRETARY);
+    }
+
+    private boolean isAdmin(User user) {
+        return user != null && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN || r.getName().name().contains("ADMIN"));
+    }
+
+    private boolean isRelationshipManager(User user) {
+        return user != null && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_RELATIONSHIP_MANAGER);
     }
 
     @Override
@@ -308,8 +398,132 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         RoomBooking booking = roomBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Room booking not found with ID: " + bookingId));
 
+        if (booking.getStatus() == RoomBookingStatus.CANCELLED) {
+            return mapToResponse(booking);
+        }
+
+        // Authorization check: Who is allowed to cancel this booking?
+        // 1. Admins
+        // 2. Relationship Managers
+        // 3. The original booker
+        // 4. Department Secretary for this room's department
+        // 5. Designated room Contact Person
+        var roomOpt = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName());
+        boolean isOwner = currentUser != null && (
+                (booking.getBookedByUserId() != null && booking.getBookedByUserId().equals(currentUser.getId()))
+                || (StringUtils.hasText(booking.getBookedByEmail()) && booking.getBookedByEmail().equalsIgnoreCase(currentUser.getEmail()))
+                || (StringUtils.hasText(booking.getBookedByUsername()) && booking.getBookedByUsername().equalsIgnoreCase(currentUser.getUsername()))
+        );
+        boolean isRoomContact = currentUser != null && roomOpt.isPresent()
+                && StringUtils.hasText(roomOpt.get().getContactEmail())
+                && roomOpt.get().getContactEmail().trim().equalsIgnoreCase(currentUser.getEmail());
+        boolean isDeptSecretary = currentUser != null && isSecretary(currentUser) && (
+                (StringUtils.hasText(currentUser.getDepartment()) && currentUser.getDepartment().equalsIgnoreCase(booking.getHostDepartment()))
+                || (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getDepartment()) && roomOpt.get().getDepartment().equalsIgnoreCase(currentUser.getDepartment()))
+        );
+
+        if (!isAdmin(currentUser) && !isRelationshipManager(currentUser) && !isOwner && !isRoomContact && !isDeptSecretary) {
+            throw new AccessDeniedException("Access Denied: You do not have permission to cancel this meeting room booking.");
+        }
+
         booking.setStatus(RoomBookingStatus.CANCELLED);
         RoomBooking updated = roomBookingRepository.save(booking);
+
+        String cancelledByName = currentUser != null ? currentUser.getFullName() : "Administrator";
+
+        // Dispatch notifications on cancellation
+        try {
+            String dateStr = DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(booking.getScheduledStartTime());
+            String timeStr = String.format("%s - %s UTC",
+                    DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(booking.getScheduledStartTime()),
+                    DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(booking.getScheduledEndTime()));
+
+            // 1. Notify the original booker (In-App + Email) if cancelled by someone else or confirmation
+            if (StringUtils.hasText(booking.getBookedByEmail()) && emailService != null) {
+                log.info("Sending cancellation email to booker '{}' for room '{}', booking '{}'",
+                        booking.getBookedByEmail(), booking.getRoomName(), booking.getBookingCode());
+                emailService.sendRoomBookingCancellationNotification(
+                        booking.getBookedByEmail(),
+                        booking.getBookedByName(),
+                        booking.getRoomName(),
+                        booking.getBookedByName(),
+                        booking.getBookingCode(),
+                        booking.getMeetingTitle(),
+                        booking.getScheduledStartTime(),
+                        booking.getScheduledEndTime(),
+                        cancelledByName,
+                        "Room reservation was cancelled in Visit Hub."
+                );
+            }
+
+            if (notificationService != null) {
+                User bookerUser = null;
+                if (booking.getBookedByUserId() != null) {
+                    bookerUser = userRepository.findById(booking.getBookedByUserId()).orElse(null);
+                }
+                if (bookerUser == null && StringUtils.hasText(booking.getBookedByEmail())) {
+                    bookerUser = userRepository.findByEmailIgnoreCase(booking.getBookedByEmail()).orElse(null);
+                }
+
+                if (bookerUser != null) {
+                    String cancelMsg = String.format(
+                            "Your reservation for room '%s' (%s) on %s (%s) has been cancelled by %s. Ref: %s.",
+                            booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, booking.getBookingCode()
+                    );
+                    notificationService.notifyUser(
+                            bookerUser,
+                            "Room Booking Cancelled: " + booking.getRoomName(),
+                            cancelMsg,
+                            NotificationType.SYSTEM_ALERT,
+                            booking.getId(),
+                            booking.getBookingCode(),
+                            false
+                    );
+                }
+            }
+
+            // 2. Notify the designated room Contact Email
+            if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail()) && emailService != null) {
+                String contactEmail = roomOpt.get().getContactEmail().trim();
+                log.info("Sending cancellation email to room contact '{}' for room '{}', booking '{}'",
+                        contactEmail, booking.getRoomName(), booking.getBookingCode());
+
+                emailService.sendRoomBookingContactNotification(
+                        contactEmail,
+                        booking.getRoomName(),
+                        booking.getBookedByName(),
+                        booking.getHostDepartment(),
+                        booking.getBookingCode(),
+                        booking.getMeetingTitle(),
+                        booking.getScheduledStartTime(),
+                        booking.getScheduledEndTime(),
+                        booking.getMeetingAgenda(),
+                        booking.getExpectedAttendees(),
+                        true,
+                        cancelledByName
+                );
+
+                userRepository.findByEmailIgnoreCase(contactEmail).ifPresent(contactUser -> {
+                    if (notificationService != null && (currentUser == null || !contactUser.getId().equals(currentUser.getId()))) {
+                        String contactMsg = String.format(
+                                "The booking for room '%s' (%s) on %s (%s) was cancelled by %s. Ref: %s.",
+                                booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, booking.getBookingCode()
+                        );
+                        notificationService.notifyUser(
+                                contactUser,
+                                "Room Reservation Cancelled: " + booking.getRoomName(),
+                                contactMsg,
+                                NotificationType.SYSTEM_ALERT,
+                                booking.getId(),
+                                booking.getBookingCode(),
+                                false
+                        );
+                    }
+                });
+            }
+        } catch (Exception e) {
+            log.warn("Failed to dispatch cancellation notifications for booking {}: {}", bookingId, e.getMessage(), e);
+        }
 
         // Security Audit Log
         auditLoggerService.logEvent(
@@ -320,8 +534,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 null,
                 null,
                 String.format("Room booking '%s' for room '%s' was CANCELLED by %s",
-                        updated.getBookingCode(), updated.getRoomName(),
-                        currentUser != null ? currentUser.getFullName() : "Administrator")
+                        updated.getBookingCode(), updated.getRoomName(), cancelledByName)
         );
 
         return mapToResponse(updated);

@@ -40,6 +40,13 @@ public class MeetingRoom {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Designated department contact who receives booking/cancellation notifications
+     * for this room and has authority to cancel meetings.
+     */
+    @Column(name = "contact_email", length = 200)
+    private String contactEmail;
+
     @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
