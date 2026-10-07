@@ -280,15 +280,26 @@ export const BookingManagementPage = () => {
 
             <div className="flex items-center gap-2">
               {(isAdmin || isSecretary) && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => openMasterModal('rooms')}
-                  icon={Plus}
-                  className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
-                >
-                  Create Meeting Room
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openMasterModal('rooms')}
+                    icon={DoorOpen}
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    Meeting Rooms Tab
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => openMasterModal('rooms')}
+                    icon={Plus}
+                    className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
+                  >
+                    Add Room
+                  </Button>
+                </>
               )}
 
               <Button

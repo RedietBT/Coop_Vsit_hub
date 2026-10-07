@@ -148,9 +148,9 @@ export const MasterDataManagementModal = () => {
       maxWidth="max-w-4xl"
     >
       <div className="space-y-6 text-left">
-        {/* Navigation Tabs (Only shown to full Admin) */}
-        {!isSecretary && (
-          <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
+          {!isSecretary && (
             <button
               type="button"
               onClick={() => {
@@ -166,24 +166,24 @@ export const MasterDataManagementModal = () => {
               <Building2 className="w-4 h-4" />
               <span>Bank Departments ({departments.length})</span>
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('rooms');
-                setEditingId(null);
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'rooms'
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <DoorOpen className="w-4 h-4" />
-              <span>Meeting Rooms & Spaces ({meetingRooms.length})</span>
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('rooms');
+              setEditingId(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'rooms'
+                ? 'bg-white text-emerald-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <DoorOpen className="w-4 h-4" />
+            <span>Meeting Rooms & Boardrooms ({meetingRooms.length})</span>
+          </button>
+        </div>
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: DEPARTMENTS */}

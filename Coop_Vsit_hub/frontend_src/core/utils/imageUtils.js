@@ -1,7 +1,17 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+function getApiBase() {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim();
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return `http://${window.location.hostname}:8080`;
+  }
+  return 'http://localhost:8080';
+}
 
 /**
- * Resolves room image URLs to ensure uploaded backend images load correctly across all environments.
+ * Resolves room image URLs to ensure uploaded backend images load correctly across all environments
+ * (localhost, local LAN IP 10.8.101.150, or production).
  * - Automatically prepends the backend API host when the image path starts with `/api/` or `/uploads/`.
  * - Preserves public frontend assets like `/rooms/...` and full URLs (http/https, data, blob).
  * - Provides an authentic CoopBank facility fallback if the URL is empty.
@@ -29,7 +39,8 @@ export function resolveImageUrl(url, fallback = '/rooms/executive-boardroom.jpg'
 
   // If backend endpoint (e.g. /api/v1/meeting-rooms/images/... or /uploads/...)
   if (trimmed.startsWith('/api') || trimmed.startsWith('/uploads')) {
-    const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+    const apiBase = getApiBase();
+    const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
     return `${base}${trimmed}`;
   }
 
