@@ -26,7 +26,11 @@ public interface RoomBookingService {
 
     List<RoomBookingResponse> getActiveBookingsForDate(Instant fromDate, Instant toDate);
 
-    RoomBookingResponse cancelBooking(UUID bookingId, User currentUser);
+    RoomBookingResponse cancelBooking(UUID bookingId, String cancellationReason, User currentUser);
+
+    default RoomBookingResponse cancelBooking(UUID bookingId, User currentUser) {
+        return cancelBooking(bookingId, null, currentUser);
+    }
 
     RoomBookingResponse getBookingById(UUID bookingId);
 }

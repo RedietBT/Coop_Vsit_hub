@@ -76,6 +76,15 @@ public class RoomBooking {
     @Column(length = 30, nullable = false)
     private RoomBookingStatus status = RoomBookingStatus.CONFIRMED;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
+    @Column(name = "cancelled_by_name", length = 150)
+    private String cancelledByName;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
     @Column(name = "linked_visit_id")
     private UUID linkedVisitId;
 

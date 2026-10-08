@@ -122,7 +122,7 @@ export const AppRoutes = () => {
         path="/visits"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_DIRECTOR', 'ROLE_APPROVER']}>
               <DashboardLayout>
                 <VisitsListPage />
               </DashboardLayout>

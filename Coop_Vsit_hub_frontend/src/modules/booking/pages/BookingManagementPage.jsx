@@ -126,6 +126,7 @@ export const BookingManagementPage = () => {
 
   // Cancel Modal State
   const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Detail Modal State
@@ -215,11 +216,16 @@ export const BookingManagementPage = () => {
 
   const handleCancelConfirm = async () => {
     if (!cancellingBooking) return;
+    if (!cancelReason.trim()) {
+      toast.error('Please specify a reason for cancellation.');
+      return;
+    }
     setIsCancelling(true);
     try {
-      await roomBookingApi.cancelBooking(cancellingBooking.id);
+      await roomBookingApi.cancelBooking(cancellingBooking.id, cancelReason.trim());
       toast.success(`Booking ${cancellingBooking.bookingCode} cancelled successfully.`);
       setCancellingBooking(null);
+      setCancelReason('');
       fetchBookings();
       if (selectedRoom) {
         loadRoomSlots(selectedRoom.name);
@@ -1019,7 +1025,13 @@ export const BookingManagementPage = () => {
 
                   <div className="space-y-3">
                     {selectedDateBookings.map((b) => {
-                      const canCancel = isAdmin || isSecretary || user?.id === b.bookedByUserId;
+                      const isOwner = user && (
+                        (b.bookedByUserId && user.id && String(b.bookedByUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                        (b.bookedByEmail && user.email && b.bookedByEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                        (b.bookedByUsername && user.username && b.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                        (b.bookedByName && user.fullName && b.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
+                      );
+                      const canCancel = isAdmin || isSecretary || isOwner;
 
                       return (
                         <div
@@ -1266,11 +1278,40 @@ export const BookingManagementPage = () => {
               Cancelling will immediately release the room slot on the calendar for other staff members.
             </p>
 
+            {/* Cancellation Reason Input */}
+            <div className="space-y-1.5 text-left">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Reason for Cancellation <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="State reason for cancellation (e.g., meeting postponed, client rescheduled)..."
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00adef]/20 focus:border-[#00adef] bg-slate-50 focus:bg-white placeholder:text-slate-400 resize-none transition-all"
+              />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {['Meeting Postponed', 'Client Rescheduled', 'Moved to Virtual Call', 'Emergency / Illness', 'Room Conflict'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setCancelReason(preset)}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors font-medium cursor-pointer"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setCancellingBooking(null)}
+                onClick={() => {
+                  setCancellingBooking(null);
+                  setCancelReason('');
+                }}
                 disabled={isCancelling}
               >
                 Keep Booking
@@ -1279,6 +1320,7 @@ export const BookingManagementPage = () => {
                 variant="danger"
                 size="sm"
                 onClick={handleCancelConfirm}
+                disabled={isCancelling || !cancelReason.trim()}
                 isLoading={isCancelling}
               >
                 Confirm Cancellation

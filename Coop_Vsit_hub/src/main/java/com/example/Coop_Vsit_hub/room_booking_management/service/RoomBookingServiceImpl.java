@@ -102,11 +102,17 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String bookingCode = generateBookingCode();
 
-        // Populate staff data directly from Active Directory / Authenticated User
+        // Populate staff data directly from Active Directory / Authenticated User with request fallbacks
         UUID bookedById = currentUser != null ? currentUser.getId() : null;
-        String bookedByName = currentUser != null ? currentUser.getFullName() : "Coop Staff Member";
-        String bookedByUsername = currentUser != null ? currentUser.getUsername() : "staff";
-        String bookedByEmail = currentUser != null ? currentUser.getEmail() : null;
+        String bookedByName = currentUser != null && StringUtils.hasText(currentUser.getFullName())
+                ? currentUser.getFullName()
+                : (StringUtils.hasText(request.getBookedByName()) ? request.getBookedByName().trim() : "Coop Staff Member");
+        String bookedByUsername = currentUser != null && StringUtils.hasText(currentUser.getUsername())
+                ? currentUser.getUsername()
+                : (StringUtils.hasText(request.getBookedByUsername()) ? request.getBookedByUsername().trim() : "staff");
+        String bookedByEmail = currentUser != null && StringUtils.hasText(currentUser.getEmail())
+                ? currentUser.getEmail()
+                : (StringUtils.hasText(request.getBookedByEmail()) ? request.getBookedByEmail().trim() : null);
 
         RoomBooking booking = RoomBooking.builder()
                 .bookingCode(bookingCode)
@@ -480,7 +486,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Override
     @Transactional
-    public RoomBookingResponse cancelBooking(UUID bookingId, User currentUser) {
+    public RoomBookingResponse cancelBooking(UUID bookingId, String cancellationReason, User currentUser) {
         RoomBooking booking = roomBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Room booking not found with ID: " + bookingId));
 
@@ -491,14 +497,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         // Authorization check: Who is allowed to cancel this booking?
         // 1. Admins
         // 2. Relationship Managers
-        // 3. The original booker (by user ID, email, or username)
+        // 3. The original booker (by user ID, email, username, or name)
         // 4. Department Secretary for this room's department
         // 5. Designated room Contact Person
         var roomOpt = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName());
         boolean isOwner = currentUser != null && (
-                (booking.getBookedByUserId() != null && booking.getBookedByUserId().equals(currentUser.getId()))
-                || (StringUtils.hasText(booking.getBookedByEmail()) && booking.getBookedByEmail().equalsIgnoreCase(currentUser.getEmail()))
-                || (StringUtils.hasText(booking.getBookedByUsername()) && booking.getBookedByUsername().equalsIgnoreCase(currentUser.getUsername()))
+                (booking.getBookedByUserId() != null && currentUser.getId() != null && booking.getBookedByUserId().equals(currentUser.getId()))
+                || (StringUtils.hasText(booking.getBookedByEmail()) && StringUtils.hasText(currentUser.getEmail()) && booking.getBookedByEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
+                || (StringUtils.hasText(booking.getBookedByUsername()) && StringUtils.hasText(currentUser.getUsername()) && booking.getBookedByUsername().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
+                || (StringUtils.hasText(booking.getBookedByName()) && StringUtils.hasText(currentUser.getFullName()) && booking.getBookedByName().trim().equalsIgnoreCase(currentUser.getFullName().trim()))
         );
         boolean isRoomContact = currentUser != null && roomOpt.isPresent()
                 && StringUtils.hasText(roomOpt.get().getContactEmail())
@@ -512,10 +519,16 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             throw new AccessDeniedException("Access Denied: You do not have permission to cancel this meeting room booking.");
         }
 
-        booking.setStatus(RoomBookingStatus.CANCELLED);
-        RoomBooking updated = roomBookingRepository.save(booking);
+        String reason = StringUtils.hasText(cancellationReason) ? cancellationReason.trim() : "Room reservation cancelled by user.";
+        String cancelledByName = currentUser != null && StringUtils.hasText(currentUser.getFullName())
+                ? currentUser.getFullName()
+                : "Administrator";
 
-        String cancelledByName = currentUser != null ? currentUser.getFullName() : "Administrator";
+        booking.setStatus(RoomBookingStatus.CANCELLED);
+        booking.setCancellationReason(reason);
+        booking.setCancelledByName(cancelledByName);
+        booking.setCancelledAt(Instant.now());
+        RoomBooking updated = roomBookingRepository.save(booking);
 
         // Dispatch notifications on cancellation
         try {
@@ -524,7 +537,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                     DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(booking.getScheduledStartTime()),
                     DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(booking.getScheduledEndTime()));
 
-            // Resolve booker's email and user object
+            // Resolve booker's email and user object comprehensively
             String bookerEmail = booking.getBookedByEmail();
             String bookerName = booking.getBookedByName();
 
@@ -533,10 +546,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 bookerUser = userRepository.findById(booking.getBookedByUserId()).orElse(null);
             }
             if (bookerUser == null && StringUtils.hasText(bookerEmail)) {
-                bookerUser = userRepository.findByEmailIgnoreCase(bookerEmail).orElse(null);
+                bookerUser = userRepository.findByEmailIgnoreCase(bookerEmail.trim()).orElse(null);
             }
             if (bookerUser == null && StringUtils.hasText(booking.getBookedByUsername())) {
-                bookerUser = userRepository.findByUsername(booking.getBookedByUsername()).orElse(null);
+                bookerUser = userRepository.findByUsername(booking.getBookedByUsername().trim()).orElse(null);
+            }
+            if (bookerUser == null && StringUtils.hasText(booking.getBookedByName())) {
+                bookerUser = userRepository.findAll().stream()
+                        .filter(u -> u.getFullName() != null && u.getFullName().trim().equalsIgnoreCase(booking.getBookedByName().trim()))
+                        .findFirst().orElse(null);
             }
 
             if (bookerUser != null) {
@@ -548,22 +566,30 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 }
             }
 
+            // Fallback: If currentUser is cancelling and booking didn't have email, or currentUser is the owner
+            if (!StringUtils.hasText(bookerEmail) && currentUser != null && isOwner) {
+                bookerEmail = currentUser.getEmail();
+                if (!StringUtils.hasText(bookerName)) {
+                    bookerName = currentUser.getFullName();
+                }
+            }
+
             // 1. Send Cancellation Email to Booker
             if (StringUtils.hasText(bookerEmail) && emailService != null) {
-                log.info("Sending cancellation email to booker '{}' for room '{}', booking '{}'",
-                        bookerEmail, booking.getRoomName(), booking.getBookingCode());
+                log.info("Sending cancellation email to booker '{}' for room '{}', booking '{}', reason: '{}'",
+                        bookerEmail, booking.getRoomName(), booking.getBookingCode(), reason);
                 try {
                     emailService.sendRoomBookingCancellationNotification(
-                            bookerEmail,
-                            bookerName,
+                            bookerEmail.trim(),
+                            StringUtils.hasText(bookerName) ? bookerName.trim() : "Colleague",
                             booking.getRoomName(),
-                            bookerName,
+                            StringUtils.hasText(booking.getBookedByName()) ? booking.getBookedByName() : (bookerName != null ? bookerName : "Staff Member"),
                             booking.getBookingCode(),
                             booking.getMeetingTitle(),
                             booking.getScheduledStartTime(),
                             booking.getScheduledEndTime(),
                             cancelledByName,
-                            "Room reservation was cancelled in Visit Hub."
+                            reason
                     );
                 } catch (Exception e) {
                     log.warn("Failed to send cancellation email to booker {} for {}: {}",
@@ -574,8 +600,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             // 2. Send In-App Notification to Booker
             if (notificationService != null && bookerUser != null) {
                 String cancelMsg = String.format(
-                        "Your reservation for room '%s' (%s) scheduled for %s (%s) has been cancelled by %s. Ref: %s.",
-                        booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, booking.getBookingCode()
+                        "Your reservation for room '%s' (%s) scheduled for %s (%s) has been cancelled by %s. Reason: %s. Ref: %s.",
+                        booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, reason, booking.getBookingCode()
                 );
                 try {
                     notificationService.notifyUser(
@@ -688,7 +714,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 booking.getScheduledStartTime(),
                                 booking.getScheduledEndTime(),
                                 cancelledByName,
-                                "Reservation for room in your department was cancelled."
+                                reason
                         );
                     } catch (Exception e) {
                         log.warn("Failed to send department cancellation email to {} for {}: {}",
@@ -773,6 +799,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .scheduledStartTime(b.getScheduledStartTime())
                 .scheduledEndTime(b.getScheduledEndTime())
                 .status(b.getStatus())
+                .cancellationReason(b.getCancellationReason())
+                .cancelledByName(b.getCancelledByName())
+                .cancelledAt(b.getCancelledAt())
                 .linkedVisitId(b.getLinkedVisitId())
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())

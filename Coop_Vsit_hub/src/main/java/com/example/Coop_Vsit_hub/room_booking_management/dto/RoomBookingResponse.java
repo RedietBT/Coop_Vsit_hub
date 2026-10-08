@@ -31,6 +31,9 @@ public class RoomBookingResponse {
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
     private RoomBookingStatus status;
+    private String cancellationReason;
+    private String cancelledByName;
+    private Instant cancelledAt;
     private UUID linkedVisitId;
     private String linkedVisitCode;
     private Instant createdAt;

@@ -42,7 +42,7 @@ const NAV_ITEMS = [
     name: 'Visits Management',
     path: '/visits',
     icon: Calendar,
-    roles: ['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER'],
+    roles: ['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_DIRECTOR', 'ROLE_APPROVER'],
   },
   {
     name: 'Booking Management',

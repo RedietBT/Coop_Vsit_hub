@@ -2,6 +2,7 @@ package com.example.coop_vsit_hub.room_booking_management.controller;
 
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
+import com.example.coop_vsit_hub.room_booking_management.dto.CancelBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.dto.CreateRoomBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingSlotResponse;
@@ -41,11 +42,12 @@ public class RoomBookingController {
             Principal principal
     ) {
         User currentUser = null;
-        if (principal != null) {
-            // Depending on the authentication provider, Principal#getName may be
-            // either the staff username or their email address. Resolve both so
-            // the booking is always linked to the creator for personal tracking.
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
+        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
+            String pName = principal.getName().trim();
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
+                    .or(() -> userRepository.findByUsername(pName))
+                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
+                    .orElse(null);
         }
         RoomBookingResponse response = roomBookingService.createBooking(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -65,8 +67,12 @@ public class RoomBookingController {
             Principal principal
     ) {
         User currentUser = null;
-        if (principal != null) {
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
+        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
+            String pName = principal.getName().trim();
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
+                    .or(() -> userRepository.findByUsername(pName))
+                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
+                    .orElse(null);
         }
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
@@ -87,8 +93,12 @@ public class RoomBookingController {
             Principal principal
     ) {
         User currentUser = null;
-        if (principal != null) {
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
+        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
+            String pName = principal.getName().trim();
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
+                    .or(() -> userRepository.findByUsername(pName))
+                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
+                    .orElse(null);
         }
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getMyBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
@@ -126,15 +136,29 @@ public class RoomBookingController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Cancel Room Booking", description = "Cancels a room reservation. Allowed for Admin, Relationship Manager, Secretary, Room Contact, or the user who created it.")
+    @Operation(summary = "Cancel Room Booking", description = "Cancels a room reservation with cancellation reason. Allowed for Admin, Relationship Manager, Secretary, Room Contact, or the user who created it.")
     public ResponseEntity<RoomBookingResponse> cancelBooking(
             @PathVariable UUID id,
+            @RequestParam(value = "reason", required = false) String reasonParam,
+            @RequestBody(required = false) CancelBookingRequest requestBody,
             Principal principal
     ) {
         User currentUser = null;
-        if (principal != null) {
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
+        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
+            String pName = principal.getName().trim();
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
+                    .or(() -> userRepository.findByUsername(pName))
+                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
+                    .orElse(null);
         }
-        return ResponseEntity.ok(roomBookingService.cancelBooking(id, currentUser));
+
+        String reason = null;
+        if (requestBody != null && org.springframework.util.StringUtils.hasText(requestBody.getCancellationReason())) {
+            reason = requestBody.getCancellationReason().trim();
+        } else if (org.springframework.util.StringUtils.hasText(reasonParam)) {
+            reason = reasonParam.trim();
+        }
+
+        return ResponseEntity.ok(roomBookingService.cancelBooking(id, reason, currentUser));
     }
 }

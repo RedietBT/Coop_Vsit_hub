@@ -27,6 +27,7 @@ import useGuestStore from '@/modules/guests/store/guestStore';
 import Badge from '@/shared/components/ui/Badge';
 import DirectorReviewModal from '@/modules/visits/components/DirectorReviewModal';
 import Pagination from '@/shared/components/ui/Pagination';
+import RoomBookingsTable from '@/modules/visits/components/RoomBookingsTable';
 
 export const StaffTrackerPage = () => {
   const { user } = useAuthStore();
@@ -42,7 +43,7 @@ export const StaffTrackerPage = () => {
   const { openProfileDrawer: openOrgDrawer } = useOrganizationStore();
   const { openProfileDrawer: openGuestDrawer } = useGuestStore();
 
-  const [activeTab, setActiveTab] = useState('visits'); // 'visits' | 'organizations' | 'guests'
+  const [activeTab, setActiveTab] = useState('visits'); // 'visits' | 'organizations' | 'guests' | 'rooms'
   const [searchTerm, setSearchTerm] = useState('');
   const [reviewModalVisit, setReviewModalVisit] = useState(null);
 
@@ -185,8 +186,11 @@ export const StaffTrackerPage = () => {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+        <div
+          onClick={() => setActiveTab('rooms')}
+          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4 cursor-pointer hover:border-emerald-300 hover:shadow-sm transition-all group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
             <DoorOpen className="w-6 h-6" />
           </div>
           <div>
@@ -272,18 +276,30 @@ export const StaffTrackerPage = () => {
           >
             My Individual Guests ({trackedGuests.length})
           </button>
+          <button
+            onClick={() => setActiveTab('rooms')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'rooms'
+                ? 'bg-white text-[#00adef] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            My Room Bookings ({overview?.activeReservationsCount ?? 0})
+          </button>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder={`Search ${activeTab}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00adef]/20 focus:border-[#00adef]"
-          />
-        </div>
+        {activeTab !== 'rooms' && (
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00adef]/20 focus:border-[#00adef]"
+            />
+          </div>
+        )}
       </div>
 
       {/* Tab 1: Matched Visits Table */}
@@ -629,6 +645,11 @@ export const StaffTrackerPage = () => {
             />
           )}
         </div>
+      )}
+
+      {/* Tab 4: My Room Bookings & Reservations */}
+      {activeTab === 'rooms' && (
+        <RoomBookingsTable />
       )}
 
       {/* Reusable Profile Drawers */}

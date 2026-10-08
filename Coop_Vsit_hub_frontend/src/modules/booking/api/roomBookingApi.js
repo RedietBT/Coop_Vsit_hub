@@ -18,6 +18,14 @@ export const roomBookingApi = {
   },
 
   /**
+   * Get personal room bookings made by the currently authenticated user.
+   */
+  getMyBookings: async (params = {}) => {
+    const response = await apiClient.get('/api/v1/room-bookings/my', { params });
+    return response.data;
+  },
+
+  /**
    * Get reserved time slots for a specific room across a date range.
    */
   getRoomSlots: async (roomName, fromDate, toDate) => {
@@ -38,10 +46,14 @@ export const roomBookingApi = {
   },
 
   /**
-   * Cancel an existing room booking.
+   * Cancel an existing room booking with a reason.
    */
-  cancelBooking: async (id) => {
-    const response = await apiClient.delete(`/api/v1/room-bookings/${id}`);
+  cancelBooking: async (id, reason = '') => {
+    const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+    const response = await apiClient.delete(`/api/v1/room-bookings/${id}`, {
+      data: { cancellationReason: trimmedReason },
+      params: trimmedReason ? { reason: trimmedReason } : undefined,
+    });
     return response.data;
   },
 

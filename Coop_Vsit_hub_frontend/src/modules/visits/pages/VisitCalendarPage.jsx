@@ -84,6 +84,7 @@ const getConflictingBooking = (dateStr, startStr, endStr, slotsList) => {
 };
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
+import Modal from '@/shared/components/ui/Modal';
 import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import RoomCardImage from '@/modules/booking/components/RoomCardImage';
@@ -102,6 +103,34 @@ export const VisitCalendarPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [capacityFilter, setCapacityFilter] = useState('ALL');
   const [isAdminRosterOpen, setIsAdminRosterOpen] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingBooking) return;
+    if (!cancelReason.trim()) {
+      toast.error('Please specify a reason for cancellation.');
+      return;
+    }
+    setIsCancelling(true);
+    try {
+      await roomBookingApi.cancelBooking(cancellingBooking.id, cancelReason.trim());
+      soundPlayer.playNotificationChime();
+      toast.success(
+        `Reservation ${cancellingBooking.bookingCode || ''} cancelled successfully.`
+      );
+      setCancellingBooking(null);
+      setCancelReason('');
+      if (selectedRoom) {
+        loadRoomSlots(selectedRoom.name);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel reservation.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Calendar & Booking State (for detailed view)
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -283,6 +312,9 @@ export const VisitCalendarPage = () => {
         meetingAgenda: formData.visitObjective.trim() || 'Internal boardroom session',
         guestOrganizationName: formData.guestName?.trim() || null,
         guestName: formData.guestName?.trim() || null,
+        bookedByName: user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username,
+        bookedByEmail: user?.email,
+        bookedByUsername: user?.username,
       };
 
       const result = await roomBookingApi.createBooking(payload);
@@ -353,6 +385,15 @@ export const VisitCalendarPage = () => {
                   Manage Rooms
                 </Button>
               )}
+
+              <Button
+                variant="outline-cyan"
+                size="sm"
+                onClick={() => navigate('/visits?tab=rooms')}
+                icon={CalendarDays}
+              >
+                My Reservations
+              </Button>
 
               <Button
                 variant="ghost"
@@ -507,13 +548,25 @@ export const VisitCalendarPage = () => {
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedRoom(null)}
-            >
-              Choose Different Room
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline-cyan"
+                size="sm"
+                onClick={() => navigate('/visits?tab=rooms')}
+                icon={CalendarDays}
+              >
+                My Reservations
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedRoom(null)}
+                icon={ArrowLeft}
+              >
+                Choose Different Room
+              </Button>
+            </div>
           </div>
 
           {/* 50/50 Split Container */}
@@ -676,23 +729,51 @@ export const VisitCalendarPage = () => {
                         formData.endTime === slot.end;
 
                       if (isOccupied) {
+                        const isOwner = user && conflict && (
+                          (conflict.bookedByUserId && user.id && String(conflict.bookedByUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                          (conflict.bookedByEmail && user.email && conflict.bookedByEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                          (conflict.bookedByUsername && user.username && conflict.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                          (conflict.bookedByName && user.fullName && conflict.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
+                        );
+                        const canCancelSlot = isAdmin || isSecretary || isOwner;
+
                         return (
                           <div
                             key={slot.label}
-                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-700 text-xs font-semibold opacity-75 select-none cursor-not-allowed"
+                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-700 text-xs font-semibold select-none"
                             title={`Occupied: ${conflict.meetingTitle || 'Reserved'} (${conflict.timeFormatted || slot.label})`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                              <span className="font-mono line-through">{slot.label}</span>
-                              <span className="text-[11px] text-rose-600 truncate max-w-[170px]">
+                              <span className="font-mono line-through text-rose-600">{slot.label}</span>
+                              <span className="text-[11px] text-rose-600 truncate max-w-[150px]">
                                 • {conflict.meetingTitle || 'Booked Session'}
                               </span>
+                              {isOwner && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-rose-200 text-rose-800">
+                                  You
+                                </span>
+                              )}
                             </div>
-                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold uppercase shrink-0 flex items-center gap-1">
-                              <Lock className="w-2.5 h-2.5" />
-                              Occupied (Disabled)
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold uppercase flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5" />
+                                Occupied
+                              </span>
+                              {canCancelSlot && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCancellingBooking(conflict);
+                                  }}
+                                  className="px-2 py-0.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase transition-colors cursor-pointer shadow-xs"
+                                  title="Cancel this reservation"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       }
@@ -1059,6 +1140,96 @@ export const VisitCalendarPage = () => {
 
       {/* Master Data Management Modal (for Admins) */}
       <MasterDataManagementModal />
+
+      {/* Cancel Room Booking Confirmation Modal */}
+      {cancellingBooking && (
+        <Modal
+          isOpen={true}
+          onClose={() => !isCancelling && setCancellingBooking(null)}
+          title={`Cancel Reservation • ${cancellingBooking.bookingCode || 'Room Booking'}`}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-rose-900 text-sm">
+                  Cancel This Room Reservation?
+                </p>
+                <p className="text-[11px] text-rose-700 leading-relaxed">
+                  Are you sure you want to cancel this booking for "{selectedRoom?.name || cancellingBooking.roomName}"? The slot will immediately open up for other staff meetings.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="text-slate-400 font-medium">Meeting Title:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[200px]">
+                  {cancellingBooking.meetingTitle || 'Scheduled Meeting'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="text-slate-400 font-medium">Time Window:</span>
+                <span className="font-mono text-slate-900">
+                  {cancellingBooking.timeFormatted || `${cancellingBooking.scheduledStartTime || ''}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Cancellation Reason Input */}
+            <div className="space-y-1.5 text-left">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Reason for Cancellation <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Please state why this booking is being cancelled..."
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00adef]/20 focus:border-[#00adef] bg-slate-50 focus:bg-white placeholder:text-slate-400 resize-none transition-all"
+              />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {['Meeting Postponed', 'Client Rescheduled', 'Moved to Virtual Call', 'Emergency / Illness', 'Room Conflict'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setCancelReason(preset)}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors font-medium cursor-pointer"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCancellingBooking(null);
+                  setCancelReason('');
+                }}
+                disabled={isCancelling}
+              >
+                Keep Booking
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmCancel}
+                disabled={isCancelling || !cancelReason.trim()}
+                className="font-bold shadow-md"
+              >
+                {isCancelling ? 'Cancelling...' : 'Confirm & Release Room'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

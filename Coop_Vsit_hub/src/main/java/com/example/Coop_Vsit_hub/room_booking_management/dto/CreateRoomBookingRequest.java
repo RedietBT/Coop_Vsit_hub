@@ -22,4 +22,7 @@ public class CreateRoomBookingRequest {
     private String meetingAgenda;
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
+    private String bookedByName;
+    private String bookedByEmail;
+    private String bookedByUsername;
 }

@@ -10,6 +10,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,18 @@ public class EmailServiceImpl implements EmailService {
 
     @Value("${coopbank.app.frontend-url:https://coop-vsit-hub.vercel.app}")
     private String frontendUrl;
+
+    private static final DateTimeFormatter EMAIL_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy 'at' hh:mm a")
+            .withZone(ZoneId.of("Africa/Addis_Ababa"));
+
+    private String formatEmailDate(Instant instant) {
+        if (instant == null) return "N/A";
+        try {
+            return EMAIL_DATE_FORMATTER.format(instant) + " (EAT)";
+        } catch (Exception e) {
+            return instant.toString();
+        }
+    }
 
     @Override
     public void sendPasswordResetEmail(String recipientEmail, String recipientName, String resetToken) {
@@ -265,8 +279,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(recipientEmail);
             helper.setSubject("❌ [Booking Cancelled] " + (roomName != null ? roomName : "Meeting Room") + " - " + (bookingCode != null ? bookingCode : "Reservation"));
 
-            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
-            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+            String formattedStart = formatEmailDate(startTime);
+            String formattedEnd = formatEmailDate(endTime);
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #fecaca; border-radius: 12px; background-color: #ffffff;'>"
                     + "<div style='background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
@@ -335,8 +349,8 @@ public class EmailServiceImpl implements EmailService {
             String statusPrefix = isCancellation ? "❌ [Room Notice - Cancelled] " : "🏢 [Room Notice - New Booking] ";
             helper.setSubject(statusPrefix + (roomName != null ? roomName : "Meeting Room") + " - " + (bookingCode != null ? bookingCode : "Reservation"));
 
-            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
-            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+            String formattedStart = formatEmailDate(startTime);
+            String formattedEnd = formatEmailDate(endTime);
 
             String headerGradient = isCancellation ? "linear-gradient(135deg, #ef4444, #b91c1c)" : "linear-gradient(135deg, #0284c7, #0f766e)";
             String boxBg = isCancellation ? "#fff1f2" : "#f0fdf4";
@@ -410,8 +424,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(recipientEmail);
             helper.setSubject("🎉 [Reservation Confirmed] " + (roomName != null ? roomName : "Meeting Space") + " (Ref: " + (bookingCode != null ? bookingCode : "Booking") + ")");
 
-            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Start";
-            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled End";
+            String formattedStart = formatEmailDate(startTime);
+            String formattedEnd = formatEmailDate(endTime);
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
                     + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
