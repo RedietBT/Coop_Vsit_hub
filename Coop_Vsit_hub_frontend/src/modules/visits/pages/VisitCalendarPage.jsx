@@ -20,6 +20,8 @@ import {
   Check,
   Building2,
   FileText,
+  AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -27,6 +29,59 @@ import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import visitApi from '../api/visitApi';
 import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
+
+const STANDARD_BUSINESS_SLOTS = [
+  { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
+  { start: '09:00', end: '10:00', label: '09:00 - 10:00' },
+  { start: '10:00', end: '11:00', label: '10:00 - 11:00' },
+  { start: '11:00', end: '12:00', label: '11:00 - 12:00' },
+  { start: '12:00', end: '13:00', label: '12:00 - 13:00' },
+  { start: '13:00', end: '14:00', label: '13:00 - 14:00' },
+  { start: '14:00', end: '15:00', label: '14:00 - 15:00' },
+  { start: '15:00', end: '16:00', label: '15:00 - 16:00' },
+  { start: '16:00', end: '17:00', label: '16:00 - 17:00' },
+  { start: '17:00', end: '18:00', label: '17:00 - 18:00' },
+];
+
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+};
+
+const getLocalDateString = (d) => {
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getConflictingBooking = (dateStr, startStr, endStr, slotsList) => {
+  if (!dateStr || !startStr || !endStr) return null;
+  const startMin = parseTimeToMinutes(startStr);
+  const endMin = parseTimeToMinutes(endStr);
+  if (startMin >= endMin) return null;
+
+  return (slotsList || []).find((b) => {
+    if (!b.scheduledStartTime || !b.scheduledEndTime) return false;
+    let bDate = b.date;
+    if (!bDate && b.scheduledStartTime) {
+      bDate = b.scheduledStartTime.split('T')[0];
+    }
+    const bLocalDate = getLocalDateString(new Date(b.scheduledStartTime));
+    if (bDate !== dateStr && bLocalDate !== dateStr) return false;
+
+    const bStartDate = new Date(b.scheduledStartTime);
+    const bEndDate = new Date(b.scheduledEndTime);
+    const bStartMin = bStartDate.getHours() * 60 + bStartDate.getMinutes();
+    const bEndMin = bEndDate.getHours() * 60 + bEndDate.getMinutes();
+
+    return startMin < bEndMin && endMin > bStartMin;
+  });
+};
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
 import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
@@ -172,10 +227,17 @@ export const VisitCalendarPage = () => {
   const activeHoverDateStr = hoveredDate
     ? formatDateKey(hoveredDate)
     : selectedDate
-    ? selectedDate.toISOString().split('T')[0]
+    ? getLocalDateString(selectedDate)
     : null;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
+
+  const activeFormConflict = getConflictingBooking(
+    formData.date,
+    formData.startTime,
+    formData.endTime,
+    roomSlots
+  );
 
   // Form Submit: Instant direct booking without approvals!
   const handleSubmitBooking = async (e) => {
@@ -190,6 +252,19 @@ export const VisitCalendarPage = () => {
     }
     if (formData.startTime >= formData.endTime) {
       toast.error('End time must be after start time.');
+      return;
+    }
+
+    const conflict = getConflictingBooking(
+      formData.date,
+      formData.startTime,
+      formData.endTime,
+      roomSlots
+    );
+    if (conflict) {
+      toast.error(
+        `Selected time overlaps with an existing booking: ${conflict.meetingTitle || 'Reserved'} (${conflict.timeFormatted || ''})`
+      );
       return;
     }
 
@@ -566,48 +641,103 @@ export const VisitCalendarPage = () => {
                   })}
                 </div>
 
-                {/* Interactive Hourly Availability Box (Locked Stable Height - No Jitter) */}
-                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl h-32 flex flex-col justify-between overflow-hidden">
-                  <div className="flex items-center justify-between mb-1.5 shrink-0">
+                {/* Interactive Hourly Availability Box (Occupied times disabled) */}
+                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between mb-2 shrink-0">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
-                      Schedule on{' '}
-                      {activeHoverDateStr
-                        ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString(
-                            'en-US',
-                            { month: 'short', day: 'numeric', year: 'numeric' }
-                          )
-                        : 'Selected Date'}
+                      <span>
+                        Hourly Schedule on{' '}
+                        {activeHoverDateStr
+                          ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString(
+                              'en-US',
+                              { month: 'short', day: 'numeric', year: 'numeric' }
+                            )
+                          : 'Selected Date'}
+                      </span>
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      (Hover over calendar days to inspect)
+                      (Occupied hours are disabled)
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    {activeDateSlots.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {activeDateSlots.map((slot, idx) => (
+                  <div className="max-h-48 overflow-y-auto pr-1 space-y-1.5">
+                    {STANDARD_BUSINESS_SLOTS.map((slot) => {
+                      const conflict = getConflictingBooking(
+                        activeHoverDateStr,
+                        slot.start,
+                        slot.end,
+                        roomSlots
+                      );
+                      const isOccupied = Boolean(conflict);
+                      const isCurrentFormSlot =
+                        formData.date === activeHoverDateStr &&
+                        formData.startTime === slot.start &&
+                        formData.endTime === slot.end;
+
+                      if (isOccupied) {
+                        return (
                           <div
-                            key={idx}
-                            className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
+                            key={slot.label}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-700 text-xs font-semibold opacity-75 select-none cursor-not-allowed"
+                            title={`Occupied: ${conflict.meetingTitle || 'Reserved'} (${conflict.timeFormatted || slot.label})`}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-red-500" />
-                              <span>{slot.timeFormatted || 'Reserved Hours'}</span>
+                              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                              <span className="font-mono line-through">{slot.label}</span>
+                              <span className="text-[11px] text-rose-600 truncate max-w-[170px]">
+                                • {conflict.meetingTitle || 'Booked Session'}
+                              </span>
                             </div>
-                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
-                              Booked
+                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold uppercase shrink-0 flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" />
+                              Occupied (Disabled)
                             </span>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Entire day is currently open. No scheduled bookings yet.</span>
-                      </div>
-                    )}
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={slot.label}
+                          onClick={() => {
+                            if (activeHoverDateStr) {
+                              const [y, m, d] = activeHoverDateStr.split('-').map(Number);
+                              setSelectedDate(new Date(y, m - 1, d));
+                              setFormData((prev) => ({
+                                ...prev,
+                                date: activeHoverDateStr,
+                                startTime: slot.start,
+                                endTime: slot.end,
+                              }));
+                            }
+                          }}
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                            isCurrentFormSlot
+                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
+                              : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300'
+                          }`}
+                          title={`Available: Click to select ${slot.label}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${isCurrentFormSlot ? 'bg-white' : 'bg-emerald-500'}`} />
+                            <span className="font-mono">{slot.label}</span>
+                            <span className={`text-[11px] ${isCurrentFormSlot ? 'text-white/90' : 'text-emerald-700'}`}>
+                              • Available
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase shrink-0 ${
+                              isCurrentFormSlot
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {isCurrentFormSlot ? 'Selected' : 'Open • Select'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -649,23 +779,110 @@ export const VisitCalendarPage = () => {
                   />
                 </div>
 
-                {/* Date & Times (Multi-slot booking support) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Reservation Date
+                {/* Date Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Reservation Date <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, date: e.target.value })
+                    <span className="text-[11px] text-slate-400">
+                      Synchronized with calendar view
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setFormData((prev) => ({ ...prev, date: newDate }));
+                      if (newDate) {
+                        const [y, m, d] = newDate.split('-').map(Number);
+                        setSelectedDate(new Date(y, m - 1, d));
+                        setCalendarDate(new Date(y, m - 1, 1));
                       }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
-                    />
+                    }}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef] focus:outline-none transition-all"
+                  />
+                </div>
+
+                {/* Quick Time Slots (Occupied Times Disabled) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Select Standard Time Slot <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Occupied slots are locked & disabled
+                    </span>
                   </div>
 
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {STANDARD_BUSINESS_SLOTS.map((slot) => {
+                      const conflict = getConflictingBooking(
+                        formData.date,
+                        slot.start,
+                        slot.end,
+                        roomSlots
+                      );
+                      const isOccupied = Boolean(conflict);
+                      const isSelectedSlot =
+                        formData.startTime === slot.start &&
+                        formData.endTime === slot.end;
+
+                      if (isOccupied) {
+                        return (
+                          <button
+                            key={slot.label}
+                            type="button"
+                            disabled={true}
+                            title={`Unavailable: Already booked for "${conflict.meetingTitle || 'Meeting'}" (${conflict.timeFormatted || slot.label})`}
+                            className="p-2 rounded-xl border border-rose-200 bg-rose-50/70 text-rose-500 text-[11px] font-mono font-medium flex flex-col items-center justify-center gap-1 cursor-not-allowed opacity-75 select-none transition-all"
+                          >
+                            <span className="line-through">{slot.label}</span>
+                            <span className="flex items-center gap-0.5 text-[9px] font-bold text-rose-600 uppercase bg-rose-100/90 px-1 py-0.2 rounded">
+                              <Lock className="w-2.5 h-2.5" />
+                              Occupied
+                            </span>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={slot.label}
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              startTime: slot.start,
+                              endTime: slot.end,
+                            }))
+                          }
+                          className={`p-2 rounded-xl border text-[11px] font-mono font-medium flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
+                            isSelectedSlot
+                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs font-bold ring-2 ring-[#00adef]/30'
+                              : 'bg-emerald-50/80 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100 hover:border-emerald-300'
+                          }`}
+                        >
+                          <span>{slot.label}</span>
+                          <span
+                            className={`text-[9px] font-bold uppercase px-1 py-0.2 rounded ${
+                              isSelectedSlot
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {isSelectedSlot ? 'Selected' : 'Open'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Start & End Time Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Start Time
@@ -677,7 +894,11 @@ export const VisitCalendarPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, startTime: e.target.value })
                       }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                      className={`w-full px-3 py-2 text-xs rounded-xl border transition-all focus:outline-none ${
+                        activeFormConflict
+                          ? 'border-rose-400 bg-rose-50/60 text-rose-900 focus:border-rose-500'
+                          : 'border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef]'
+                      }`}
                     />
                   </div>
 
@@ -692,10 +913,37 @@ export const VisitCalendarPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, endTime: e.target.value })
                       }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                      className={`w-full px-3 py-2 text-xs rounded-xl border transition-all focus:outline-none ${
+                        activeFormConflict
+                          ? 'border-rose-400 bg-rose-50/60 text-rose-900 focus:border-rose-500'
+                          : 'border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef]'
+                      }`}
                     />
                   </div>
                 </div>
+
+                {/* Overlap / Occupied Warning Banner */}
+                {activeFormConflict && (
+                  <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2.5 animate-fadeIn">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-rose-900">
+                        Selected Time Is Occupied & Disabled
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-rose-700">
+                        This room is already reserved for{' '}
+                        <span className="font-bold text-rose-900">
+                          "{activeFormConflict.meetingTitle || 'Staff Meeting'}"
+                        </span>{' '}
+                        (
+                        <span className="font-mono font-bold">
+                          {activeFormConflict.timeFormatted || `${formData.startTime} - ${formData.endTime}`}
+                        </span>
+                        ). Please choose an unoccupied time slot above.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Department & Expected Attendees */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -779,12 +1027,20 @@ export const VisitCalendarPage = () => {
                 <div className="pt-2">
                   <Button
                     type="submit"
-                    variant="orange"
+                    variant={activeFormConflict ? 'outline' : 'orange'}
                     size="lg"
-                    disabled={isSubmitting}
-                    className="w-full justify-center py-3 text-sm font-bold shadow-md hover:shadow-lg"
+                    disabled={isSubmitting || Boolean(activeFormConflict)}
+                    className={`w-full justify-center py-3 text-sm font-bold shadow-md transition-all ${
+                      activeFormConflict
+                        ? 'opacity-60 cursor-not-allowed border-rose-300 text-rose-600 bg-rose-50 hover:bg-rose-50'
+                        : 'hover:shadow-lg'
+                    }`}
                   >
-                    {isSubmitting ? 'Booking Room...' : `Confirm & Book ${selectedRoom.name}`}
+                    {isSubmitting
+                      ? 'Booking Room...'
+                      : activeFormConflict
+                      ? 'Time Slot Occupied (Disabled)'
+                      : `Confirm & Book ${selectedRoom.name}`}
                   </Button>
                 </div>
               </form>

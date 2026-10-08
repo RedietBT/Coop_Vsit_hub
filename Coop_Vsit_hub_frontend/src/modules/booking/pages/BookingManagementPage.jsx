@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   CalendarDays,
@@ -26,6 +26,7 @@ import {
   Check,
   Sparkles,
   Plus,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import roomBookingApi from '../api/roomBookingApi';
@@ -38,7 +39,61 @@ import Spinner from '@/shared/components/ui/Spinner';
 import Modal from '@/shared/components/ui/Modal';
 import RoomCardImage from '../components/RoomCardImage';
 
+const STANDARD_BUSINESS_SLOTS = [
+  { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
+  { start: '09:00', end: '10:00', label: '09:00 - 10:00' },
+  { start: '10:00', end: '11:00', label: '10:00 - 11:00' },
+  { start: '11:00', end: '12:00', label: '11:00 - 12:00' },
+  { start: '12:00', end: '13:00', label: '12:00 - 13:00' },
+  { start: '13:00', end: '14:00', label: '13:00 - 14:00' },
+  { start: '14:00', end: '15:00', label: '14:00 - 15:00' },
+  { start: '15:00', end: '16:00', label: '15:00 - 16:00' },
+  { start: '16:00', end: '17:00', label: '16:00 - 17:00' },
+  { start: '17:00', end: '18:00', label: '17:00 - 18:00' },
+];
+
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+};
+
+const getLocalDateString = (d) => {
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getConflictingBooking = (dateStr, startStr, endStr, slotsList) => {
+  if (!dateStr || !startStr || !endStr) return null;
+  const startMin = parseTimeToMinutes(startStr);
+  const endMin = parseTimeToMinutes(endStr);
+  if (startMin >= endMin) return null;
+
+  return (slotsList || []).find((b) => {
+    if (!b.scheduledStartTime || !b.scheduledEndTime) return false;
+    let bDate = b.date;
+    if (!bDate && b.scheduledStartTime) {
+      bDate = b.scheduledStartTime.split('T')[0];
+    }
+    const bLocalDate = getLocalDateString(new Date(b.scheduledStartTime));
+    if (bDate !== dateStr && bLocalDate !== dateStr) return false;
+
+    const bStartDate = new Date(b.scheduledStartTime);
+    const bEndDate = new Date(b.scheduledEndTime);
+    const bStartMin = bStartDate.getHours() * 60 + bStartDate.getMinutes();
+    const bEndMin = bEndDate.getHours() * 60 + bEndDate.getMinutes();
+
+    return startMin < bEndMin && endMin > bStartMin;
+  });
+};
+
 export const BookingManagementPage = () => {
+  const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
   const { meetingRooms, fetchAllMasterData, openMasterModal } = useMasterDataStore();
 
@@ -214,11 +269,11 @@ export const BookingManagementPage = () => {
   const activeHoverDateStr = hoveredDate
     ? formatDateKey(hoveredDate)
     : selectedDate
-    ? selectedDate.toISOString().split('T')[0]
+    ? getLocalDateString(selectedDate)
     : null;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
-  const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : '';
+  const selectedDateStr = selectedDate ? getLocalDateString(selectedDate) : '';
   const selectedDateBookings = selectedDateStr ? getSlotsForDate(selectedDateStr) : [];
 
   return (
@@ -697,14 +752,26 @@ export const BookingManagementPage = () => {
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedRoom(null)}
-              icon={ArrowLeft}
-            >
-              Choose Different Room
-            </Button>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate('/visits/calendar')}
+                icon={CalendarDays}
+                className="shadow-xs"
+              >
+                Instant Book Room
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedRoom(null)}
+                icon={ArrowLeft}
+              >
+                Choose Different Room
+              </Button>
+            </div>
           </div>
 
           {/* 50/50 Split Container */}
@@ -823,12 +890,12 @@ export const BookingManagementPage = () => {
                   })}
                 </div>
 
-                {/* Locked Stable Height Availability Inspector */}
-                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl h-32 flex flex-col justify-between overflow-hidden">
-                  <div className="flex items-center justify-between mb-1.5 shrink-0">
+                {/* Locked Stable Height Availability Inspector with Disabled Occupied Times */}
+                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between mb-2 shrink-0">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
-                      Schedule on{' '}
+                      Hourly Schedule on{' '}
                       {activeHoverDateStr
                         ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString('en-US', {
                             month: 'short',
@@ -838,34 +905,64 @@ export const BookingManagementPage = () => {
                         : 'Selected Date'}
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      (Click date to see full staff details)
+                      (Occupied hours are disabled)
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    {activeDateSlots.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {activeDateSlots.map((slot, idx) => (
+                  <div className="max-h-56 overflow-y-auto pr-1 space-y-1.5">
+                    {STANDARD_BUSINESS_SLOTS.map((slot) => {
+                      const conflict = getConflictingBooking(
+                        activeHoverDateStr,
+                        slot.start,
+                        slot.end,
+                        roomSlots
+                      );
+                      const isOccupied = Boolean(conflict);
+
+                      if (isOccupied) {
+                        return (
                           <div
-                            key={idx}
-                            className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
+                            key={slot.label}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-700 text-xs font-semibold opacity-75 select-none cursor-not-allowed"
+                            title={`Occupied: ${conflict.meetingTitle || 'Reserved'} (${conflict.timeFormatted || slot.label})`}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-red-500" />
-                              <span>{slot.timeFormatted || 'Reserved Hours'}</span>
+                              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                              <span className="font-mono line-through">{slot.label}</span>
+                              <span className="text-[11px] text-rose-600 truncate max-w-45">
+                                • {conflict.meetingTitle || 'Booked Session'}
+                              </span>
                             </div>
-                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
-                              Booked by {slot.bookedByName}
+                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold uppercase shrink-0 flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" />
+                              Occupied (Disabled)
                             </span>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Entire day is currently open. No scheduled bookings.</span>
-                      </div>
-                    )}
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={slot.label}
+                          className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 text-xs font-semibold"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="font-mono">{slot.label}</span>
+                            <span className="text-[11px] text-emerald-700">
+                              • Available
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/visits/calendar')}
+                            className="px-2 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold uppercase shrink-0 transition-colors cursor-pointer"
+                          >
+                            Open • Book
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
