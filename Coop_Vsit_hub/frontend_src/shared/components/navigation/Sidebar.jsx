@@ -48,7 +48,7 @@ const NAV_ITEMS = [
     name: 'Meeting Rooms & Bookings',
     path: '/bookings',
     icon: DoorOpen,
-    roles: ['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_DIRECTOR', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK'],
+    roles: ['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_DIRECTOR', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK', 'ROLE_FRONT_DESK'],
   },
   {
     name: 'Front Desk',

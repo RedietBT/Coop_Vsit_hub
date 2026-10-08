@@ -24,7 +24,7 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
 
     Optional<RoomBooking> findTopByOrderByCreatedAtDesc();
 
-    @Query("SELECT b FROM RoomBooking b WHERE b.roomName = :roomName " +
+    @Query("SELECT b FROM RoomBooking b WHERE LOWER(b.roomName) = LOWER(:roomName) " +
            "AND b.status = 'CONFIRMED' " +
            "AND b.scheduledStartTime < :endTime " +
            "AND b.scheduledEndTime > :startTime")

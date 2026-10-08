@@ -42,7 +42,10 @@ public class RoomBookingController {
     ) {
         User currentUser = null;
         if (principal != null) {
-            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+            // Depending on the authentication provider, Principal#getName may be
+            // either the staff username or their email address. Resolve both so
+            // the booking is always linked to the creator for personal tracking.
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
         }
         RoomBookingResponse response = roomBookingService.createBooking(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -63,7 +66,7 @@ public class RoomBookingController {
     ) {
         User currentUser = null;
         if (principal != null) {
-            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
         }
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
@@ -85,7 +88,7 @@ public class RoomBookingController {
     ) {
         User currentUser = null;
         if (principal != null) {
-            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
         }
         Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getMyBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
@@ -130,7 +133,7 @@ public class RoomBookingController {
     ) {
         User currentUser = null;
         if (principal != null) {
-            currentUser = userRepository.findByUsername(principal.getName()).orElse(null);
+            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(principal.getName()).orElse(null);
         }
         return ResponseEntity.ok(roomBookingService.cancelBooking(id, currentUser));
     }

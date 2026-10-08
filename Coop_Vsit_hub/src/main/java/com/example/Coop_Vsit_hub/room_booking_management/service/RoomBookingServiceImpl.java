@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +53,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (!StringUtils.hasText(request.getRoomName())) {
             throw new IllegalArgumentException("A valid meeting room name must be provided.");
         }
-        String roomName = request.getRoomName().trim();
+        String requestedRoomName = request.getRoomName().trim();
+        // Store the registered spelling so availability and the database constraint
+        // treat different casing of the same room as one resource.
+        String roomName = meetingRoomRepository.findByNameIgnoreCase(requestedRoomName)
+                .map(room -> room.getName().trim())
+                .orElse(requestedRoomName);
         String title = StringUtils.hasText(request.getMeetingTitle()) ? request.getMeetingTitle().trim() : "Internal Strategy Meeting";
         String department = StringUtils.hasText(request.getHostDepartment()) 
                 ? request.getHostDepartment().trim() 
@@ -120,10 +126,19 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .status(RoomBookingStatus.CONFIRMED)
                 .build();
 
-        RoomBooking saved = roomBookingRepository.save(booking);
+        final RoomBooking saved;
+        try {
+            saved = roomBookingRepository.saveAndFlush(booking);
+        } catch (DataIntegrityViolationException ex) {
+            // V20 backs up the pre-check with a database-level exclusion
+            // constraint, protecting against simultaneous booking requests.
+            throw new IllegalStateException(String.format(
+                    "Meeting room '%s' is already booked for the selected time window. Please choose another slot.",
+                    roomName), ex);
+        }
 
         // Notify System Admins via Email / In-App Notification
-        if (notificationService != null) {
+        if (notificationService != null || emailService != null) {
             try {
                 String dateStr = DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(startTime);
                 String timeStr = String.format("%s - %s UTC",
@@ -135,15 +150,21 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         bookedByName, (bookedByEmail != null ? bookedByEmail : "No email"), department, roomName, title, dateStr, timeStr, bookingCode
                 );
 
-                notificationService.notifyRoles(
-                        List.of(RoleName.ROLE_ADMIN),
-                        "Room Reservation Confirmed: " + roomName,
-                        adminMessage,
-                        NotificationType.VISIT_APPROVED,
-                        saved.getId(),
-                        bookingCode,
-                        true
-                );
+                if (notificationService != null) {
+                    try {
+                        notificationService.notifyRoles(
+                                List.of(RoleName.ROLE_ADMIN),
+                                "Room Reservation Confirmed: " + roomName,
+                                adminMessage,
+                                NotificationType.VISIT_APPROVED,
+                                saved.getId(),
+                                bookingCode,
+                                true
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send admin in-app room booking alert for {}: {}", bookingCode, e.getMessage());
+                    }
+                }
 
                 if (emailService != null) {
                     List<String> adminEmails = new ArrayList<>(userRepository.findAll().stream()
@@ -167,36 +188,44 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                             saved.getRoomName(), adminEmails.size(), adminEmails);
 
                     for (String aEmail : adminEmails) {
-                        emailService.sendRoomBookingAdminNotification(
-                                aEmail,
-                                saved.getRoomName(),
-                                saved.getBookedByName(),
-                                saved.getHostDepartment(),
-                                saved.getBookingCode(),
-                                saved.getMeetingTitle(),
-                                saved.getGuestName(),
-                                saved.getGuestOrganizationName(),
-                                saved.getScheduledStartTime(),
-                                saved.getScheduledEndTime(),
-                                saved.getMeetingAgenda(),
-                                saved.getExpectedAttendees()
-                        );
+                        try {
+                            emailService.sendRoomBookingAdminNotification(
+                                    aEmail,
+                                    saved.getRoomName(),
+                                    saved.getBookedByName(),
+                                    saved.getHostDepartment(),
+                                    saved.getBookingCode(),
+                                    saved.getMeetingTitle(),
+                                    saved.getGuestName(),
+                                    saved.getGuestOrganizationName(),
+                                    saved.getScheduledStartTime(),
+                                    saved.getScheduledEndTime(),
+                                    saved.getMeetingAgenda(),
+                                    saved.getExpectedAttendees()
+                            );
+                        } catch (Exception e) {
+                            log.warn("Failed to send admin room booking email to {} for {}: {}", aEmail, bookingCode, e.getMessage());
+                        }
                     }
 
                     // 1. Dispatch booking confirmation to the booker
                     if (StringUtils.hasText(saved.getBookedByEmail())) {
-                        emailService.sendRoomBookingBookerConfirmation(
-                                saved.getBookedByEmail().trim(),
-                                saved.getBookedByName(),
-                                saved.getRoomName(),
-                                saved.getBookingCode(),
-                                saved.getMeetingTitle(),
-                                saved.getScheduledStartTime(),
-                                saved.getScheduledEndTime(),
-                                saved.getMeetingAgenda(),
-                                saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
-                                saved.getHostDepartment()
-                        );
+                        try {
+                            emailService.sendRoomBookingBookerConfirmation(
+                                    saved.getBookedByEmail().trim(),
+                                    saved.getBookedByName(),
+                                    saved.getRoomName(),
+                                    saved.getBookingCode(),
+                                    saved.getMeetingTitle(),
+                                    saved.getScheduledStartTime(),
+                                    saved.getScheduledEndTime(),
+                                    saved.getMeetingAgenda(),
+                                    saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
+                                    saved.getHostDepartment()
+                            );
+                        } catch (Exception e) {
+                            log.warn("Failed to send booker confirmation for {}: {}", bookingCode, e.getMessage());
+                        }
                     }
 
                     // 2. Dispatch notifications to all concerned department staff / secretaries / directors
@@ -211,7 +240,6 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
                     List<User> concernedUsers = userRepository.findAll().stream()
                             .filter(u -> u.isEnabled() && u.isAccountNonLocked())
-                            .filter(u -> StringUtils.hasText(u.getEmail()))
                             .filter(u -> {
                                 if (StringUtils.hasText(u.getDepartment())) {
                                     String uDept = u.getDepartment().trim().toLowerCase();
@@ -233,41 +261,54 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
                     for (User deptUser : concernedUsers) {
                         // Skip booker if they booked their own room to avoid duplicate emails
-                        if (saved.getBookedByEmail() != null && deptUser.getEmail().equalsIgnoreCase(saved.getBookedByEmail().trim())) {
+                        if (StringUtils.hasText(saved.getBookedByEmail()) && StringUtils.hasText(deptUser.getEmail())
+                                && deptUser.getEmail().equalsIgnoreCase(saved.getBookedByEmail().trim())) {
                             continue;
                         }
 
-                        emailService.sendRoomBookingSecretaryNotification(
-                                deptUser.getEmail(),
-                                deptUser.getFullName(),
-                                finalDept,
-                                saved.getRoomName(),
-                                saved.getBookedByName(),
-                                saved.getHostDepartment(),
-                                saved.getBookingCode(),
-                                saved.getMeetingTitle(),
-                                saved.getGuestName(),
-                                saved.getGuestOrganizationName(),
-                                saved.getScheduledStartTime(),
-                                saved.getScheduledEndTime(),
-                                saved.getMeetingAgenda(),
-                                saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1
-                        );
+                        if (emailService != null && StringUtils.hasText(deptUser.getEmail())) {
+                            try {
+                                emailService.sendRoomBookingSecretaryNotification(
+                                        deptUser.getEmail(),
+                                        deptUser.getFullName(),
+                                        finalDept,
+                                        saved.getRoomName(),
+                                        saved.getBookedByName(),
+                                        saved.getHostDepartment(),
+                                        saved.getBookingCode(),
+                                        saved.getMeetingTitle(),
+                                        saved.getGuestName(),
+                                        saved.getGuestOrganizationName(),
+                                        saved.getScheduledStartTime(),
+                                        saved.getScheduledEndTime(),
+                                        saved.getMeetingAgenda(),
+                                        saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1
+                                );
+                            } catch (Exception e) {
+                                log.warn("Failed to send department room booking email to {} for {}: {}",
+                                        deptUser.getEmail(), bookingCode, e.getMessage());
+                            }
+                        }
 
                         if (notificationService != null) {
                             String deptMessage = String.format(
                                     "Meeting space '%s' under your department (%s) has been booked for '%s' by %s. Ref: %s.",
                                     saved.getRoomName(), finalDept, saved.getMeetingTitle(), saved.getBookedByName(), saved.getBookingCode()
                             );
-                            notificationService.notifyUser(
-                                    deptUser,
-                                    "Department Space Booked: " + saved.getRoomName(),
-                                    deptMessage,
-                                    NotificationType.VISIT_APPROVED,
-                                    saved.getId(),
-                                    saved.getBookingCode(),
-                                    false
-                            );
+                            try {
+                                notificationService.notifyUser(
+                                        deptUser,
+                                        "Department Space Booked: " + saved.getRoomName(),
+                                        deptMessage,
+                                        NotificationType.VISIT_APPROVED,
+                                        saved.getId(),
+                                        saved.getBookingCode(),
+                                        false
+                                );
+                            } catch (Exception e) {
+                                log.warn("Failed to send department in-app room booking alert to {} for {}: {}",
+                                        deptUser.getUsername(), bookingCode, e.getMessage());
+                            }
                         }
                     }
 
@@ -277,20 +318,27 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         log.info("Dispatching room booking notification to designated contact email '{}' for room '{}'",
                                 contactEmail, saved.getRoomName());
 
-                        emailService.sendRoomBookingContactNotification(
-                                contactEmail,
-                                saved.getRoomName(),
-                                saved.getBookedByName(),
-                                saved.getHostDepartment(),
-                                saved.getBookingCode(),
-                                saved.getMeetingTitle(),
-                                saved.getScheduledStartTime(),
-                                saved.getScheduledEndTime(),
-                                saved.getMeetingAgenda(),
-                                saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
-                                false,
-                                null
-                        );
+                        if (emailService != null) {
+                            try {
+                                emailService.sendRoomBookingContactNotification(
+                                        contactEmail,
+                                        saved.getRoomName(),
+                                        saved.getBookedByName(),
+                                        saved.getHostDepartment(),
+                                        saved.getBookingCode(),
+                                        saved.getMeetingTitle(),
+                                        saved.getScheduledStartTime(),
+                                        saved.getScheduledEndTime(),
+                                        saved.getMeetingAgenda(),
+                                        saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
+                                        false,
+                                        null
+                                );
+                            } catch (Exception e) {
+                                log.warn("Failed to send room contact booking email to {} for {}: {}",
+                                        contactEmail, bookingCode, e.getMessage());
+                            }
+                        }
 
                         // If designated contact email belongs to a registered user, send in-app notification too
                         userRepository.findByEmailIgnoreCase(contactEmail).ifPresent(contactUser -> {
@@ -300,15 +348,20 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getRoomName(), saved.getBookedByName(), saved.getHostDepartment(),
                                         saved.getMeetingTitle(), saved.getBookingCode()
                                 );
-                                notificationService.notifyUser(
-                                        contactUser,
-                                        "Room Reserved: " + saved.getRoomName(),
-                                        contactMsg,
-                                        NotificationType.VISIT_APPROVED,
-                                        saved.getId(),
-                                        saved.getBookingCode(),
-                                        false
-                                );
+                                try {
+                                    notificationService.notifyUser(
+                                            contactUser,
+                                            "Room Reserved: " + saved.getRoomName(),
+                                            contactMsg,
+                                            NotificationType.VISIT_APPROVED,
+                                            saved.getId(),
+                                            saved.getBookingCode(),
+                                            false
+                                    );
+                                } catch (Exception e) {
+                                    log.warn("Failed to send room contact in-app alert to {} for {}: {}",
+                                            contactEmail, bookingCode, e.getMessage());
+                                }
                             }
                         });
                     }
@@ -499,18 +552,23 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             if (StringUtils.hasText(bookerEmail) && emailService != null) {
                 log.info("Sending cancellation email to booker '{}' for room '{}', booking '{}'",
                         bookerEmail, booking.getRoomName(), booking.getBookingCode());
-                emailService.sendRoomBookingCancellationNotification(
-                        bookerEmail,
-                        bookerName,
-                        booking.getRoomName(),
-                        bookerName,
-                        booking.getBookingCode(),
-                        booking.getMeetingTitle(),
-                        booking.getScheduledStartTime(),
-                        booking.getScheduledEndTime(),
-                        cancelledByName,
-                        "Room reservation was cancelled in Visit Hub."
-                );
+                try {
+                    emailService.sendRoomBookingCancellationNotification(
+                            bookerEmail,
+                            bookerName,
+                            booking.getRoomName(),
+                            bookerName,
+                            booking.getBookingCode(),
+                            booking.getMeetingTitle(),
+                            booking.getScheduledStartTime(),
+                            booking.getScheduledEndTime(),
+                            cancelledByName,
+                            "Room reservation was cancelled in Visit Hub."
+                    );
+                } catch (Exception e) {
+                    log.warn("Failed to send cancellation email to booker {} for {}: {}",
+                            bookerEmail, booking.getBookingCode(), e.getMessage());
+                }
             }
 
             // 2. Send In-App Notification to Booker
@@ -519,37 +577,49 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         "Your reservation for room '%s' (%s) scheduled for %s (%s) has been cancelled by %s. Ref: %s.",
                         booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, booking.getBookingCode()
                 );
-                notificationService.notifyUser(
-                        bookerUser,
-                        "Room Booking Cancelled: " + booking.getRoomName(),
-                        cancelMsg,
-                        NotificationType.SYSTEM_ALERT,
-                        booking.getId(),
-                        booking.getBookingCode(),
-                        false
-                );
+                try {
+                    notificationService.notifyUser(
+                            bookerUser,
+                            "Room Booking Cancelled: " + booking.getRoomName(),
+                            cancelMsg,
+                            NotificationType.SYSTEM_ALERT,
+                            booking.getId(),
+                            booking.getBookingCode(),
+                            false
+                    );
+                } catch (Exception e) {
+                    log.warn("Failed to send cancellation alert to booker for {}: {}",
+                            booking.getBookingCode(), e.getMessage());
+                }
             }
 
             // 3. Notify the designated room Contact Email (if present)
-            if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail()) && emailService != null) {
+            if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail())) {
                 String contactEmail = roomOpt.get().getContactEmail().trim();
                 log.info("Sending cancellation email to room contact '{}' for room '{}', booking '{}'",
                         contactEmail, booking.getRoomName(), booking.getBookingCode());
 
-                emailService.sendRoomBookingContactNotification(
-                        contactEmail,
-                        booking.getRoomName(),
-                        booking.getBookedByName(),
-                        booking.getHostDepartment(),
-                        booking.getBookingCode(),
-                        booking.getMeetingTitle(),
-                        booking.getScheduledStartTime(),
-                        booking.getScheduledEndTime(),
-                        booking.getMeetingAgenda(),
-                        booking.getExpectedAttendees(),
-                        true,
-                        cancelledByName
-                );
+                if (emailService != null) {
+                    try {
+                        emailService.sendRoomBookingContactNotification(
+                                contactEmail,
+                                booking.getRoomName(),
+                                booking.getBookedByName(),
+                                booking.getHostDepartment(),
+                                booking.getBookingCode(),
+                                booking.getMeetingTitle(),
+                                booking.getScheduledStartTime(),
+                                booking.getScheduledEndTime(),
+                                booking.getMeetingAgenda(),
+                                booking.getExpectedAttendees(),
+                                true,
+                                cancelledByName
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send cancellation email to room contact {} for {}: {}",
+                                contactEmail, booking.getBookingCode(), e.getMessage());
+                    }
+                }
 
                 userRepository.findByEmailIgnoreCase(contactEmail).ifPresent(contactUser -> {
                     if (notificationService != null && (currentUser == null || !contactUser.getId().equals(currentUser.getId()))) {
@@ -557,15 +627,20 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 "The booking for room '%s' (%s) on %s (%s) was cancelled by %s. Ref: %s.",
                                 booking.getRoomName(), booking.getMeetingTitle(), dateStr, timeStr, cancelledByName, booking.getBookingCode()
                         );
-                        notificationService.notifyUser(
-                                contactUser,
-                                "Room Reservation Cancelled: " + booking.getRoomName(),
-                                contactMsg,
-                                NotificationType.SYSTEM_ALERT,
-                                booking.getId(),
-                                booking.getBookingCode(),
-                                false
-                        );
+                        try {
+                            notificationService.notifyUser(
+                                    contactUser,
+                                    "Room Reservation Cancelled: " + booking.getRoomName(),
+                                    contactMsg,
+                                    NotificationType.SYSTEM_ALERT,
+                                    booking.getId(),
+                                    booking.getBookingCode(),
+                                    false
+                            );
+                        } catch (Exception e) {
+                            log.warn("Failed to send room contact cancellation alert to {} for {}: {}",
+                                    contactEmail, booking.getBookingCode(), e.getMessage());
+                        }
                     }
                 });
             }
@@ -580,7 +655,6 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
             List<User> concernedDeptStaff = userRepository.findAll().stream()
                     .filter(u -> u.isEnabled() && u.isAccountNonLocked())
-                    .filter(u -> StringUtils.hasText(u.getEmail()))
                     .filter(u -> {
                         if (StringUtils.hasText(u.getDepartment())) {
                             String uDept = u.getDepartment().trim().toLowerCase();
@@ -598,22 +672,47 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                     .toList();
 
             for (User deptUser : concernedDeptStaff) {
-                if (bookerEmail != null && deptUser.getEmail().equalsIgnoreCase(bookerEmail.trim())) {
+                if (StringUtils.hasText(bookerEmail) && StringUtils.hasText(deptUser.getEmail())
+                        && deptUser.getEmail().equalsIgnoreCase(bookerEmail.trim())) {
                     continue;
                 }
-                if (emailService != null) {
-                    emailService.sendRoomBookingCancellationNotification(
-                            deptUser.getEmail(),
-                            deptUser.getFullName(),
-                            booking.getRoomName(),
-                            booking.getBookedByName(),
-                            booking.getBookingCode(),
-                            booking.getMeetingTitle(),
-                            booking.getScheduledStartTime(),
-                            booking.getScheduledEndTime(),
-                            cancelledByName,
-                            "Reservation for room in your department was cancelled."
-                    );
+                if (emailService != null && StringUtils.hasText(deptUser.getEmail())) {
+                    try {
+                        emailService.sendRoomBookingCancellationNotification(
+                                deptUser.getEmail(),
+                                deptUser.getFullName(),
+                                booking.getRoomName(),
+                                booking.getBookedByName(),
+                                booking.getBookingCode(),
+                                booking.getMeetingTitle(),
+                                booking.getScheduledStartTime(),
+                                booking.getScheduledEndTime(),
+                                cancelledByName,
+                                "Reservation for room in your department was cancelled."
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send department cancellation email to {} for {}: {}",
+                                deptUser.getEmail(), booking.getBookingCode(), e.getMessage());
+                    }
+                }
+                if (notificationService != null) {
+                    String departmentCancelMessage = String.format(
+                            "The booking for room '%s' (%s) was cancelled by %s. Ref: %s.",
+                            booking.getRoomName(), booking.getMeetingTitle(), cancelledByName, booking.getBookingCode());
+                    try {
+                        notificationService.notifyUser(
+                                deptUser,
+                                "Room Reservation Cancelled: " + booking.getRoomName(),
+                                departmentCancelMessage,
+                                NotificationType.SYSTEM_ALERT,
+                                booking.getId(),
+                                booking.getBookingCode(),
+                                false
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send department cancellation alert to {} for {}: {}",
+                                deptUser.getUsername(), booking.getBookingCode(), e.getMessage());
+                    }
                 }
             }
         } catch (Exception e) {

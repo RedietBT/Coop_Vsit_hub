@@ -16,6 +16,7 @@ import useSecurityStore from '../store/securityStore';
 import useVisitStore from '@/modules/visits/store/visitStore';
 import Badge from '@/shared/components/ui/Badge';
 import Spinner from '@/shared/components/ui/Spinner';
+import Pagination from '@/shared/components/ui/Pagination';
 
 export const SecurityArrivalsTable = () => {
   const {
@@ -29,6 +30,13 @@ export const SecurityArrivalsTable = () => {
 
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const dropdownRef = useRef(null);
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [expectedArrivals.length]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -52,6 +60,13 @@ export const SecurityArrivalsTable = () => {
     e.stopPropagation();
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
+
+  const totalElements = expectedArrivals.length;
+  const totalPages = Math.ceil(totalElements / pageSize) || 1;
+  const paginatedArrivals = expectedArrivals.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
+  );
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden text-left">
@@ -92,7 +107,7 @@ export const SecurityArrivalsTable = () => {
                 </td>
               </tr>
             ) : (
-              expectedArrivals.map((visit) => (
+              paginatedArrivals.map((visit) => (
                 <tr
                   key={visit.id}
                   onClick={() => openDetailDrawer(visit)}
@@ -246,6 +261,18 @@ export const SecurityArrivalsTable = () => {
           </tbody>
         </table>
       </div>
+
+      {totalElements > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          onPageChange={setCurrentPage}
+          itemName="expected arrivals"
+        />
+      )}
     </div>
   );
 };

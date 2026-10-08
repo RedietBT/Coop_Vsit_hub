@@ -94,7 +94,7 @@ export const AppRoutes = () => {
         path="/bookings"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_DIRECTOR', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK']}>
+            <RoleGuard allowedRoles={['ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_DIRECTOR', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK', 'ROLE_FRONT_DESK']}>
               <DashboardLayout>
                 <BookingManagementPage />
               </DashboardLayout>

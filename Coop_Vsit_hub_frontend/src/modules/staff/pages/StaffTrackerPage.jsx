@@ -26,6 +26,7 @@ import useOrganizationStore from '@/modules/organizations/store/organizationStor
 import useGuestStore from '@/modules/guests/store/guestStore';
 import Badge from '@/shared/components/ui/Badge';
 import DirectorReviewModal from '@/modules/visits/components/DirectorReviewModal';
+import Pagination from '@/shared/components/ui/Pagination';
 
 export const StaffTrackerPage = () => {
   const { user } = useAuthStore();
@@ -81,6 +82,32 @@ export const StaffTrackerPage = () => {
       g.organizationAffiliation?.toLowerCase().includes(term)
     );
   });
+
+  const [visitsPage, setVisitsPage] = useState(0);
+  const [orgsPage, setOrgsPage] = useState(0);
+  const [guestsPage, setGuestsPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setVisitsPage(0);
+  }, [filteredVisits.length, searchTerm]);
+
+  useEffect(() => {
+    setOrgsPage(0);
+  }, [filteredOrgs.length, searchTerm]);
+
+  useEffect(() => {
+    setGuestsPage(0);
+  }, [filteredGuests.length, searchTerm]);
+
+  const totalVisitsPages = Math.ceil(filteredVisits.length / pageSize) || 1;
+  const paginatedVisits = filteredVisits.slice(visitsPage * pageSize, (visitsPage + 1) * pageSize);
+
+  const totalOrgsPages = Math.ceil(filteredOrgs.length / pageSize) || 1;
+  const paginatedOrgs = filteredOrgs.slice(orgsPage * pageSize, (orgsPage + 1) * pageSize);
+
+  const totalGuestsPages = Math.ceil(filteredGuests.length / pageSize) || 1;
+  const paginatedGuests = filteredGuests.slice(guestsPage * pageSize, (guestsPage + 1) * pageSize);
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
@@ -283,7 +310,7 @@ export const StaffTrackerPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredVisits.map((v) => (
+                  paginatedVisits.map((v) => (
                     <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900">{v.guestDisplayName || 'Guest'}</div>
@@ -374,6 +401,18 @@ export const StaffTrackerPage = () => {
               </tbody>
             </table>
           </div>
+
+          {filteredVisits.length > 0 && (
+            <Pagination
+              currentPage={visitsPage}
+              totalPages={totalVisitsPages}
+              totalElements={filteredVisits.length}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              onPageChange={setVisitsPage}
+              itemName="visits"
+            />
+          )}
         </div>
       )}
 
@@ -400,7 +439,7 @@ export const StaffTrackerPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredOrgs.map((org) => (
+                  paginatedOrgs.map((org) => (
                     <tr key={org.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
@@ -468,6 +507,18 @@ export const StaffTrackerPage = () => {
               </tbody>
             </table>
           </div>
+
+          {filteredOrgs.length > 0 && (
+            <Pagination
+              currentPage={orgsPage}
+              totalPages={totalOrgsPages}
+              totalElements={filteredOrgs.length}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              onPageChange={setOrgsPage}
+              itemName="organizations"
+            />
+          )}
         </div>
       )}
 
@@ -495,7 +546,7 @@ export const StaffTrackerPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredGuests.map((guest) => (
+                  paginatedGuests.map((guest) => (
                     <tr key={guest.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
@@ -565,6 +616,18 @@ export const StaffTrackerPage = () => {
               </tbody>
             </table>
           </div>
+
+          {filteredGuests.length > 0 && (
+            <Pagination
+              currentPage={guestsPage}
+              totalPages={totalGuestsPages}
+              totalElements={filteredGuests.length}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              onPageChange={setGuestsPage}
+              itemName="guests"
+            />
+          )}
         </div>
       )}
 

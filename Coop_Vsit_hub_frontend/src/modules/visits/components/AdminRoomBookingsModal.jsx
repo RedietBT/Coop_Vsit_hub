@@ -19,6 +19,7 @@ import visitApi from '../api/visitApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
+import Pagination from '@/shared/components/ui/Pagination';
 
 export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   const [bookings, setBookings] = useState([]);
@@ -26,6 +27,9 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   const [search, setSearch] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('ALL');
   const [cancelingId, setCancelingId] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchBookings = async () => {
     setIsLoading(true);
@@ -82,6 +86,16 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
       b.bookedByDepartment?.toLowerCase().includes(q);
     return matchRoom && matchSearch;
   });
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filteredBookings.length, search, selectedRoom]);
+
+  const totalPages = Math.ceil(filteredBookings.length / pageSize) || 1;
+  const paginatedBookings = filteredBookings.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn text-left">
@@ -181,7 +195,7 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredBookings.map((b) => (
+                  {paginatedBookings.map((b) => (
                     <tr key={b.visitId} className="hover:bg-blue-50/30 transition-colors">
                       {/* Room */}
                       <td className="py-3.5 px-4">
@@ -261,6 +275,18 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                   ))}
                 </tbody>
               </table>
+
+              {filteredBookings.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalElements={filteredBookings.length}
+                  pageSize={pageSize}
+                  onPageSizeChange={setPageSize}
+                  onPageChange={setCurrentPage}
+                  itemName="reservations"
+                />
+              )}
             </div>
           )}
         </div>
