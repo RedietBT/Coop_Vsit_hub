@@ -439,13 +439,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         String cleanRoom = StringUtils.hasText(roomName) ? roomName.trim() : null;
         String cleanSearch = StringUtils.hasText(search) ? search.trim() : null;
 
-        return roomBookingRepository.findMyBookingsWithFilters(
-                currentUser.getId(),
-                currentUser.getEmail(),
-                currentUser.getUsername(),
-                cleanRoom,
-                cleanSearch,
-                status,
+        return roomBookingRepository.findAll(
+                RoomBookingSpecification.filterMyBookings(currentUser, cleanRoom, cleanSearch, status),
                 pageable
         ).map(this::mapToResponse);
     }

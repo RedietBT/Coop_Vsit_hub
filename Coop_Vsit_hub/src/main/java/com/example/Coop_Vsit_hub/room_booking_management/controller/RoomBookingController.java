@@ -41,14 +41,7 @@ public class RoomBookingController {
             @RequestBody CreateRoomBookingRequest request,
             Principal principal
     ) {
-        User currentUser = null;
-        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
-            String pName = principal.getName().trim();
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
-                    .or(() -> userRepository.findByUsername(pName))
-                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
-                    .orElse(null);
-        }
+        User currentUser = resolveCurrentUser(principal);
         RoomBookingResponse response = roomBookingService.createBooking(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -66,15 +59,9 @@ public class RoomBookingController {
             @RequestParam(defaultValue = "desc") String sortDirection,
             Principal principal
     ) {
-        User currentUser = null;
-        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
-            String pName = principal.getName().trim();
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
-                    .or(() -> userRepository.findByUsername(pName))
-                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
-                    .orElse(null);
-        }
-        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        User currentUser = resolveCurrentUser(principal);
+        String safeSortBy = normalizeSortProperty(sortBy);
+        Sort sort = "asc".equalsIgnoreCase(sortDirection) ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
         return ResponseEntity.ok(result);
     }
@@ -92,15 +79,9 @@ public class RoomBookingController {
             @RequestParam(defaultValue = "desc") String sortDirection,
             Principal principal
     ) {
-        User currentUser = null;
-        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
-            String pName = principal.getName().trim();
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
-                    .or(() -> userRepository.findByUsername(pName))
-                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
-                    .orElse(null);
-        }
-        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        User currentUser = resolveCurrentUser(principal);
+        String safeSortBy = normalizeSortProperty(sortBy);
+        Sort sort = "asc".equalsIgnoreCase(sortDirection) ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
         Page<RoomBookingResponse> result = roomBookingService.getMyBookings(roomName, search, status, PageRequest.of(page, size, sort), currentUser);
         return ResponseEntity.ok(result);
     }
@@ -143,14 +124,7 @@ public class RoomBookingController {
             @RequestBody(required = false) CancelBookingRequest requestBody,
             Principal principal
     ) {
-        User currentUser = null;
-        if (principal != null && org.springframework.util.StringUtils.hasText(principal.getName())) {
-            String pName = principal.getName().trim();
-            currentUser = userRepository.findByUsernameOrEmailIgnoreCase(pName)
-                    .or(() -> userRepository.findByUsername(pName))
-                    .or(() -> userRepository.findByEmailIgnoreCase(pName))
-                    .orElse(null);
-        }
+        User currentUser = resolveCurrentUser(principal);
 
         String reason = null;
         if (requestBody != null && org.springframework.util.StringUtils.hasText(requestBody.getCancellationReason())) {
@@ -160,5 +134,47 @@ public class RoomBookingController {
         }
 
         return ResponseEntity.ok(roomBookingService.cancelBooking(id, reason, currentUser));
+    }
+
+    private User resolveCurrentUser(Principal principal) {
+        if (principal == null || !org.springframework.util.StringUtils.hasText(principal.getName())) {
+            return null;
+        }
+        String pName = principal.getName().trim();
+        User user = userRepository.findByUsernameOrEmailIgnoreCase(pName)
+                .or(() -> userRepository.findByUsername(pName))
+                .or(() -> userRepository.findByEmailIgnoreCase(pName))
+                .orElse(null);
+
+        if (user == null && pName.contains("@")) {
+            String prefix = pName.substring(0, pName.indexOf("@")).trim();
+            user = userRepository.findByUsernameOrEmailIgnoreCase(prefix)
+                    .or(() -> userRepository.findByUsername(prefix))
+                    .orElse(null);
+        }
+        if (user == null && pName.contains("\\")) {
+            String sam = pName.substring(pName.lastIndexOf("\\") + 1).trim();
+            user = userRepository.findByUsernameOrEmailIgnoreCase(sam)
+                    .or(() -> userRepository.findByUsername(sam))
+                    .orElse(null);
+        }
+        return user;
+    }
+
+    private String normalizeSortProperty(String sortBy) {
+        if (!org.springframework.util.StringUtils.hasText(sortBy)) {
+            return "scheduledStartTime";
+        }
+        return switch (sortBy.trim()) {
+            case "scheduled_start_time", "scheduledStartTime", "startTime" -> "scheduledStartTime";
+            case "scheduled_end_time", "scheduledEndTime", "endTime" -> "scheduledEndTime";
+            case "created_at", "createdAt" -> "createdAt";
+            case "updated_at", "updatedAt" -> "updatedAt";
+            case "room_name", "roomName" -> "roomName";
+            case "meeting_title", "meetingTitle" -> "meetingTitle";
+            case "booking_code", "bookingCode" -> "bookingCode";
+            case "status" -> "status";
+            default -> sortBy.trim();
+        };
     }
 }
