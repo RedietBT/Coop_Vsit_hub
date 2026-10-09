@@ -10,6 +10,7 @@ import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus
 import com.example.coop_vsit_hub.room_booking_management.model.RoomBooking;
 import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository;
 import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingSpecification;
+import com.example.coop_vsit_hub.master_data.entity.MeetingRoom;
 import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -308,7 +309,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         deptMessage,
                                         NotificationType.VISIT_APPROVED,
                                         saved.getId(),
-                                        saved.getBookingCode(),
+                                        bookingCode,
                                         false
                                 );
                             } catch (Exception e) {
