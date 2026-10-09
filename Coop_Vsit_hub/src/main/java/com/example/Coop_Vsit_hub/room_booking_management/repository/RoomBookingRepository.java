@@ -54,42 +54,9 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
             @Param("toDate") Instant toDate
     );
 
-    @Query("SELECT b FROM RoomBooking b WHERE " +
-           "(:roomName IS NULL OR LOWER(b.roomName) LIKE LOWER(CONCAT('%', :roomName, '%'))) AND " +
-           "(:search IS NULL OR LOWER(b.meetingTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           " LOWER(b.bookedByName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           " LOWER(b.guestOrganizationName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           " LOWER(b.bookingCode) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-           "(:status IS NULL OR b.status = :status)")
-    Page<RoomBooking> findAllWithFilters(
-            @Param("roomName") String roomName,
-            @Param("search") String search,
-            @Param("status") RoomBookingStatus status,
-            Pageable pageable
-    );
-
     List<RoomBooking> findByBookedByUserId(UUID bookedByUserId);
 
     Page<RoomBooking> findByBookedByUserId(UUID bookedByUserId, Pageable pageable);
-
-    @Query("SELECT b FROM RoomBooking b WHERE " +
-           "((:userId IS NOT NULL AND b.bookedByUserId = :userId) OR " +
-           " (:email IS NOT NULL AND LOWER(b.bookedByEmail) = LOWER(:email)) OR " +
-           " (:username IS NOT NULL AND LOWER(b.bookedByUsername) = LOWER(:username))) AND " +
-           "(:roomName IS NULL OR LOWER(b.roomName) LIKE LOWER(CONCAT('%', :roomName, '%'))) AND " +
-           "(:search IS NULL OR LOWER(b.meetingTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           " LOWER(b.bookingCode) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           " LOWER(b.guestOrganizationName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-           "(:status IS NULL OR b.status = :status)")
-    Page<RoomBooking> findMyBookingsWithFilters(
-            @Param("userId") UUID userId,
-            @Param("email") String email,
-            @Param("username") String username,
-            @Param("roomName") String roomName,
-            @Param("search") String search,
-            @Param("status") RoomBookingStatus status,
-            Pageable pageable
-    );
 
     List<RoomBooking> findByBookedByUsernameIgnoreCaseOrBookedByEmailIgnoreCase(String username, String email);
 }
