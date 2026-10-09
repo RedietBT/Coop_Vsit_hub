@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   X,
   ShieldAlert,
+  UserCheck,
+  Mail,
+  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Modal from '@/shared/components/ui/Modal';
@@ -28,6 +31,9 @@ const roomSchema = z.object({
   floorLocation: z.string().trim().min(1, 'Floor location is required'),
   department: z.string().min(1, 'Department is required'),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1 person'),
+  assignedUserId: z.string().optional().nullable(),
+  assignedUserName: z.string().optional().nullable(),
+  contactEmail: z.string().optional().nullable(),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -43,6 +49,8 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [custodians, setCustodians] = useState([]);
+  const [isLoadingCustodians, setIsLoadingCustodians] = useState(false);
 
   const {
     register,
@@ -58,17 +66,34 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
       floorLocation: '',
       department: isSecretary ? secretaryDept : '',
       capacity: 10,
+      assignedUserId: '',
+      assignedUserName: '',
+      contactEmail: '',
       description: '',
       isActive: true,
     },
   });
 
   const isActiveValue = watch('isActive', true);
+  const currentAssignedUserId = watch('assignedUserId');
 
-  // Load active departments
+  // Load active departments and eligible custodians
   useEffect(() => {
     if (isOpen) {
       fetchDepartments(true);
+
+      const loadCustodians = async () => {
+        setIsLoadingCustodians(true);
+        try {
+          const list = await masterDataApi.getEligibleCustodians();
+          setCustodians(Array.isArray(list) ? list : []);
+        } catch (e) {
+          console.error('Failed to load eligible custodians:', e);
+        } finally {
+          setIsLoadingCustodians(false);
+        }
+      };
+      loadCustodians();
     }
   }, [isOpen, fetchDepartments]);
 
@@ -81,6 +106,9 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
           floorLocation: roomToEdit.floorLocation || roomToEdit.location || '',
           department: roomToEdit.department || '',
           capacity: roomToEdit.capacity || 10,
+          assignedUserId: roomToEdit.assignedUserId || '',
+          assignedUserName: roomToEdit.assignedUserName || '',
+          contactEmail: roomToEdit.contactEmail || '',
           description: roomToEdit.description || '',
           isActive: roomToEdit.isActive !== false,
         });
@@ -91,6 +119,9 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
           floorLocation: '',
           department: isSecretary && secretaryDept ? secretaryDept : '',
           capacity: 10,
+          assignedUserId: '',
+          assignedUserName: '',
+          contactEmail: '',
           description: '',
           isActive: true,
         });
@@ -134,6 +165,22 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
     onClose();
   };
 
+  const handleCustodianSelect = (e) => {
+    const selectedId = e.target.value;
+    if (!selectedId) {
+      setValue('assignedUserId', '');
+      setValue('assignedUserName', '');
+      setValue('contactEmail', '');
+    } else {
+      const selectedUser = custodians.find((c) => String(c.id) === String(selectedId));
+      if (selectedUser) {
+        setValue('assignedUserId', selectedUser.id);
+        setValue('assignedUserName', selectedUser.fullName || selectedUser.username);
+        setValue('contactEmail', selectedUser.email || '');
+      }
+    }
+  };
+
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -142,6 +189,9 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
         floorLocation: data.floorLocation.trim(),
         department: isSecretary && secretaryDept ? secretaryDept : data.department,
         capacity: Number(data.capacity),
+        assignedUserId: data.assignedUserId || null,
+        assignedUserName: data.assignedUserName || null,
+        contactEmail: data.contactEmail?.trim() || null,
         description: data.description?.trim() || '',
         isActive: Boolean(data.isActive),
       };
@@ -200,7 +250,7 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
         {isSecretary && secretaryDept && (
           <div className="p-3 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#00adef] shrink-0" />
+              <Building2 className="w-4 h-4 text-[#00adef]" />
               <span>
                 Managing for assigned department: <strong className="font-bold">{secretaryDept}</strong>
               </span>
@@ -280,6 +330,54 @@ export const AddEditRoomModal = ({ isOpen, onClose, roomToEdit = null, onSuccess
             required
             {...register('capacity')}
           />
+        </div>
+
+        {/* Room Custodian / Contact Person Section */}
+        <div className="p-4 rounded-2xl bg-sky-50/70 border border-sky-200/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+              <UserCheck className="w-4 h-4 text-[#00adef]" />
+              <span>Room Custodian / Contact User</span>
+            </span>
+            <span className="text-[10px] font-bold text-[#00adef] bg-sky-100 px-2.5 py-0.5 rounded-full border border-sky-300">
+              Receives Alerts & Can Cancel
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                Select System User
+              </label>
+              <select
+                value={currentAssignedUserId || ''}
+                onChange={handleCustodianSelect}
+                className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-[#00adef] transition-all"
+              >
+                <option value="">-- No Associated User (Unassigned) --</option>
+                {custodians.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.fullName || c.username} ({c.email}) {c.department ? `— ${c.department}` : ''}
+                  </option>
+                ))}
+              </select>
+              <input type="hidden" {...register('assignedUserId')} />
+              <input type="hidden" {...register('assignedUserName')} />
+            </div>
+
+            <Input
+              label="Notification Email"
+              type="email"
+              icon={Mail}
+              placeholder="e.g. custodian@coopbank.et"
+              error={errors.contactEmail?.message}
+              {...register('contactEmail')}
+            />
+          </div>
+
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            The assigned user receives an automatic email alert whenever this room is booked or cancelled. They can also sign in to Visit Hub and cancel reservations scheduled for this room.
+          </p>
         </div>
 
         {/* Description Field */}

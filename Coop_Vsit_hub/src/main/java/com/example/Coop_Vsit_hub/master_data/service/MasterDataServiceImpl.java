@@ -5,8 +5,10 @@ import com.example.coop_vsit_hub.master_data.entity.Department;
 import com.example.coop_vsit_hub.master_data.entity.MeetingRoom;
 import com.example.coop_vsit_hub.master_data.repository.DepartmentRepository;
 import com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository;
-import com.example.coop_vsit_hub.user_and_auth.model.User;
+import com.example.coop_vsit_hub.user_and_auth.dto.UserDetailResponse;
 import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
+import com.example.coop_vsit_hub.user_and_auth.model.User;
+import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -25,6 +27,7 @@ public class MasterDataServiceImpl implements MasterDataService {
 
     private final DepartmentRepository departmentRepository;
     private final MeetingRoomRepository meetingRoomRepository;
+    private final UserRepository userRepository;
 
     @org.springframework.beans.factory.annotation.Value("${coopbank.rooms.upload-dir:uploads/rooms/}")
     private String roomsUploadDir;
@@ -182,6 +185,30 @@ public class MasterDataServiceImpl implements MasterDataService {
             throw new IllegalArgumentException("A meeting room with name '" + request.getName() + "' already exists.");
         }
 
+        UUID assignedUserId = request.getAssignedUserId();
+        String assignedUserName = request.getAssignedUserName();
+        String contactEmail = request.getContactEmail() != null && !request.getContactEmail().isBlank()
+                ? request.getContactEmail().trim() : null;
+
+        if (assignedUserId != null) {
+            var userOpt = userRepository.findById(assignedUserId);
+            if (userOpt.isPresent()) {
+                var u = userOpt.get();
+                if (assignedUserName == null || assignedUserName.isBlank()) {
+                    assignedUserName = u.getFullName();
+                }
+                if (contactEmail == null || contactEmail.isBlank()) {
+                    contactEmail = u.getEmail();
+                }
+            }
+        } else if (contactEmail != null) {
+            var userOpt = userRepository.findByEmailIgnoreCase(contactEmail);
+            if (userOpt.isPresent()) {
+                assignedUserId = userOpt.get().getId();
+                assignedUserName = userOpt.get().getFullName();
+            }
+        }
+
         MeetingRoom room = MeetingRoom.builder()
                 .name(request.getName().trim())
                 .floorLocation(request.getFloorLocation())
@@ -189,7 +216,9 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .capacity(request.getCapacity() != null ? request.getCapacity() : 10)
                 .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
-                .contactEmail(request.getContactEmail() != null && !request.getContactEmail().isBlank() ? request.getContactEmail().trim() : null)
+                .assignedUserId(assignedUserId)
+                .assignedUserName(assignedUserName)
+                .contactEmail(contactEmail)
                 .isActive(true)
                 .build();
 
@@ -240,9 +269,46 @@ public class MasterDataServiceImpl implements MasterDataService {
             room.setImageUrl(request.getImageUrl());
         }
         room.setDescription(request.getDescription());
-        if (request.getContactEmail() != null) {
-            room.setContactEmail(request.getContactEmail().isBlank() ? null : request.getContactEmail().trim());
+
+        // Handle assigned custodian & contact email
+        if (request.getAssignedUserId() != null) {
+            room.setAssignedUserId(request.getAssignedUserId());
+            var userOpt = userRepository.findById(request.getAssignedUserId());
+            if (userOpt.isPresent()) {
+                var u = userOpt.get();
+                room.setAssignedUserName(request.getAssignedUserName() != null && !request.getAssignedUserName().isBlank()
+                        ? request.getAssignedUserName().trim() : u.getFullName());
+                if (request.getContactEmail() == null || request.getContactEmail().isBlank()) {
+                    room.setContactEmail(u.getEmail());
+                } else {
+                    room.setContactEmail(request.getContactEmail().trim());
+                }
+            } else if (request.getAssignedUserName() != null) {
+                room.setAssignedUserName(request.getAssignedUserName().trim());
+            }
+        } else if (request.getAssignedUserName() != null && request.getAssignedUserName().isBlank()) {
+            room.setAssignedUserId(null);
+            room.setAssignedUserName(null);
         }
+
+        if (request.getContactEmail() != null) {
+            if (request.getContactEmail().isBlank()) {
+                room.setContactEmail(null);
+                if (request.getAssignedUserId() == null) {
+                    room.setAssignedUserId(null);
+                    room.setAssignedUserName(null);
+                }
+            } else {
+                room.setContactEmail(request.getContactEmail().trim());
+                if (room.getAssignedUserId() == null) {
+                    userRepository.findByEmailIgnoreCase(request.getContactEmail().trim()).ifPresent(u -> {
+                        room.setAssignedUserId(u.getId());
+                        room.setAssignedUserName(u.getFullName());
+                    });
+                }
+            }
+        }
+
         if (request.getIsActive() != null) {
             room.setIsActive(request.getIsActive());
         }
@@ -352,6 +418,22 @@ public class MasterDataServiceImpl implements MasterDataService {
             }
         }
         meetingRoomRepository.delete(room);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserDetailResponse> getEligibleCustodians(String department) {
+        log.info("Fetching eligible room custodians (department filter: '{}')", department);
+        List<User> users = userRepository.findAll().stream()
+                .filter(User::isEnabled)
+                .sorted((a, b) -> {
+                    String nameA = a.getFullName() != null ? a.getFullName() : a.getUsername();
+                    String nameB = b.getFullName() != null ? b.getFullName() : b.getUsername();
+                    return nameA.compareToIgnoreCase(nameB);
+                })
+                .toList();
+
+        return users.stream().map(UserDetailResponse::from).toList();
     }
 
     private boolean isSecretary(User user) {

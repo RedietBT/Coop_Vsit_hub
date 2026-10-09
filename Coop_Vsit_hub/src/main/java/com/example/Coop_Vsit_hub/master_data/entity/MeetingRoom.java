@@ -41,6 +41,18 @@ public class MeetingRoom {
     private String description;
 
     /**
+     * Assigned custodian user ID from the system users table.
+     */
+    @Column(name = "assigned_user_id")
+    private UUID assignedUserId;
+
+    /**
+     * Cached display name of the assigned room custodian.
+     */
+    @Column(name = "assigned_user_name", length = 150)
+    private String assignedUserName;
+
+    /**
      * Designated department contact who receives booking/cancellation notifications
      * for this room and has authority to cancel meetings.
      */

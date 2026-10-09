@@ -21,6 +21,8 @@ public class MeetingRoomDto {
     private Integer capacity;
     private String imageUrl;
     private String description;
+    private UUID assignedUserId;
+    private String assignedUserName;
     private String contactEmail;
     private Boolean isActive;
     private Instant createdAt;
@@ -35,6 +37,8 @@ public class MeetingRoomDto {
                 .capacity(entity.getCapacity())
                 .imageUrl(entity.getImageUrl())
                 .description(entity.getDescription())
+                .assignedUserId(entity.getAssignedUserId())
+                .assignedUserName(entity.getAssignedUserName())
                 .contactEmail(entity.getContactEmail())
                 .isActive(entity.getIsActive())
                 .createdAt(entity.getCreatedAt())

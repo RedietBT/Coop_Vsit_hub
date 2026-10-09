@@ -36,6 +36,9 @@ public class RoomBookingResponse {
     private Instant cancelledAt;
     private UUID linkedVisitId;
     private String linkedVisitCode;
+    private UUID roomAssignedUserId;
+    private String roomAssignedUserName;
+    private String roomContactEmail;
     private Instant createdAt;
     private Instant updatedAt;
 }

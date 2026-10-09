@@ -318,9 +318,22 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         }
                     }
 
-                    // 3. Dispatch notification to designated room Contact Email (e.g. DxValley contact or incubation lead)
-                    if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail())) {
-                        String contactEmail = roomOpt.get().getContactEmail().trim();
+                    // 3. Dispatch notification to designated room Contact / Custodian (e.g. DxValley contact or incubation lead)
+                    String resolvedContactEmail = null;
+                    if (roomOpt.isPresent()) {
+                        if (StringUtils.hasText(roomOpt.get().getContactEmail())) {
+                            resolvedContactEmail = roomOpt.get().getContactEmail().trim();
+                        } else if (roomOpt.get().getAssignedUserId() != null) {
+                            resolvedContactEmail = userRepository.findById(roomOpt.get().getAssignedUserId())
+                                    .map(User::getEmail)
+                                    .filter(StringUtils::hasText)
+                                    .map(String::trim)
+                                    .orElse(null);
+                        }
+                    }
+
+                    if (StringUtils.hasText(resolvedContactEmail)) {
+                        String contactEmail = resolvedContactEmail;
                         log.info("Dispatching room booking notification to designated contact email '{}' for room '{}'",
                                 contactEmail, saved.getRoomName());
 
@@ -507,9 +520,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 || (StringUtils.hasText(booking.getBookedByUsername()) && StringUtils.hasText(currentUser.getUsername()) && booking.getBookedByUsername().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
                 || (StringUtils.hasText(booking.getBookedByName()) && StringUtils.hasText(currentUser.getFullName()) && booking.getBookedByName().trim().equalsIgnoreCase(currentUser.getFullName().trim()))
         );
-        boolean isRoomContact = currentUser != null && roomOpt.isPresent()
-                && StringUtils.hasText(roomOpt.get().getContactEmail())
-                && roomOpt.get().getContactEmail().trim().equalsIgnoreCase(currentUser.getEmail());
+        boolean isRoomContact = currentUser != null && roomOpt.isPresent() && (
+                (roomOpt.get().getAssignedUserId() != null && currentUser.getId() != null && roomOpt.get().getAssignedUserId().equals(currentUser.getId()))
+                || (StringUtils.hasText(roomOpt.get().getContactEmail()) && StringUtils.hasText(currentUser.getEmail()) && roomOpt.get().getContactEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
+                || (StringUtils.hasText(roomOpt.get().getAssignedUserName()) && StringUtils.hasText(currentUser.getUsername()) && roomOpt.get().getAssignedUserName().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
+                || (StringUtils.hasText(roomOpt.get().getAssignedUserName()) && StringUtils.hasText(currentUser.getFullName()) && roomOpt.get().getAssignedUserName().trim().equalsIgnoreCase(currentUser.getFullName().trim()))
+        );
         boolean isDeptSecretary = currentUser != null && isSecretary(currentUser) && (
                 (StringUtils.hasText(currentUser.getDepartment()) && currentUser.getDepartment().equalsIgnoreCase(booking.getHostDepartment()))
                 || (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getDepartment()) && roomOpt.get().getDepartment().equalsIgnoreCase(currentUser.getDepartment()))
@@ -619,9 +635,22 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 }
             }
 
-            // 3. Notify the designated room Contact Email (if present)
-            if (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getContactEmail())) {
-                String contactEmail = roomOpt.get().getContactEmail().trim();
+            // 3. Notify the designated room Contact / Custodian (if present)
+            String cancelContactEmail = null;
+            if (roomOpt.isPresent()) {
+                if (StringUtils.hasText(roomOpt.get().getContactEmail())) {
+                    cancelContactEmail = roomOpt.get().getContactEmail().trim();
+                } else if (roomOpt.get().getAssignedUserId() != null) {
+                    cancelContactEmail = userRepository.findById(roomOpt.get().getAssignedUserId())
+                            .map(User::getEmail)
+                            .filter(StringUtils::hasText)
+                            .map(String::trim)
+                            .orElse(null);
+                }
+            }
+
+            if (StringUtils.hasText(cancelContactEmail)) {
+                String contactEmail = cancelContactEmail;
                 log.info("Sending cancellation email to room contact '{}' for room '{}', booking '{}'",
                         contactEmail, booking.getRoomName(), booking.getBookingCode());
 
@@ -782,6 +811,11 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     }
 
     private RoomBookingResponse mapToResponse(RoomBooking b) {
+        var roomOpt = meetingRoomRepository.findByNameIgnoreCase(b.getRoomName());
+        UUID roomAssignedUserId = roomOpt.map(MeetingRoom::getAssignedUserId).orElse(null);
+        String roomAssignedUserName = roomOpt.map(MeetingRoom::getAssignedUserName).orElse(null);
+        String roomContactEmail = roomOpt.map(MeetingRoom::getContactEmail).orElse(null);
+
         return RoomBookingResponse.builder()
                 .id(b.getId())
                 .bookingCode(b.getBookingCode())
@@ -803,6 +837,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .cancelledByName(b.getCancelledByName())
                 .cancelledAt(b.getCancelledAt())
                 .linkedVisitId(b.getLinkedVisitId())
+                .roomAssignedUserId(roomAssignedUserId)
+                .roomAssignedUserName(roomAssignedUserName)
+                .roomContactEmail(roomContactEmail)
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())
                 .build();

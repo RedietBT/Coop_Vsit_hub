@@ -117,7 +117,13 @@ export const RoomBookingsTable = () => {
       (b.bookedByUsername && user.username && b.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
       (b.bookedByName && user.fullName && b.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase());
 
-    return Boolean(isOwner);
+    const isRoomCustodian =
+      (b.roomAssignedUserId && user.id && String(b.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+      (b.roomContactEmail && user.email && b.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+      (b.roomAssignedUserName && user.username && b.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+      (b.roomAssignedUserName && user.fullName && b.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase());
+
+    return Boolean(isOwner || isRoomCustodian);
   };
 
   const isUserOwner = (b) => {

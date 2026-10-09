@@ -586,7 +586,19 @@ export const BookingManagementPage = () => {
                           : '';
 
                         const isConfirmed = booking.status === 'CONFIRMED';
-                        const canCancel = isConfirmed && (isAdmin || isSecretary || user?.id === booking.bookedByUserId);
+                        const isOwner = user && (
+                          (booking.bookedByUserId && user.id && String(booking.bookedByUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                          (booking.bookedByEmail && user.email && booking.bookedByEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                          (booking.bookedByUsername && user.username && booking.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                          (booking.bookedByName && user.fullName && booking.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
+                        );
+                        const isRoomCustodian = user && (
+                          (booking.roomAssignedUserId && user.id && String(booking.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                          (booking.roomContactEmail && user.email && booking.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                          (booking.roomAssignedUserName && user.username && booking.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                          (booking.roomAssignedUserName && user.fullName && booking.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
+                        );
+                        const canCancel = isConfirmed && (isAdmin || isSecretary || isOwner || isRoomCustodian);
 
                         return (
                           <tr
@@ -1031,7 +1043,15 @@ export const BookingManagementPage = () => {
                         (b.bookedByUsername && user.username && b.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
                         (b.bookedByName && user.fullName && b.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
                       );
-                      const canCancel = isAdmin || isSecretary || isOwner;
+                      const isRoomCustodian = user && (
+                        (b.roomAssignedUserId && user.id && String(b.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                        (b.roomContactEmail && user.email && b.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                        (b.roomAssignedUserName && user.username && b.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                        (b.roomAssignedUserName && user.fullName && b.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase()) ||
+                        (selectedRoom?.assignedUserId && user.id && String(selectedRoom.assignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                        (selectedRoom?.contactEmail && user.email && selectedRoom.contactEmail.trim().toLowerCase() === user.email.trim().toLowerCase())
+                      );
+                      const canCancel = isAdmin || isSecretary || isOwner || isRoomCustodian;
 
                       return (
                         <div

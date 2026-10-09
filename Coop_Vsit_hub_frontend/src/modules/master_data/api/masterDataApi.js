@@ -50,6 +50,14 @@ export const masterDataApi = {
     const response = await apiClient.delete(`/api/v1/meeting-rooms/${id}`);
     return response.data;
   },
+
+  // --- Room Custodians ---
+  getEligibleCustodians: async (department = '') => {
+    const response = await apiClient.get('/api/v1/meeting-rooms/custodians', {
+      params: department ? { department } : {},
+    });
+    return response.data;
+  },
 };
 
 export const handleRoomApiError = (err, defaultMsg = 'Operation failed.') => {

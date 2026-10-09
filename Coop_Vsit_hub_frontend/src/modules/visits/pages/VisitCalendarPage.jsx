@@ -735,7 +735,13 @@ export const VisitCalendarPage = () => {
                           (conflict.bookedByUsername && user.username && conflict.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
                           (conflict.bookedByName && user.fullName && conflict.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
                         );
-                        const canCancelSlot = isAdmin || isSecretary || isOwner;
+                        const isRoomCustodian = user && conflict && (
+                          (conflict.roomAssignedUserId && user.id && String(conflict.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
+                          (conflict.roomContactEmail && user.email && conflict.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+                          (conflict.roomAssignedUserName && user.username && conflict.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
+                          (conflict.roomAssignedUserName && user.fullName && conflict.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
+                        );
+                        const canCancelSlot = isAdmin || isSecretary || isOwner || isRoomCustodian;
 
                         return (
                           <div

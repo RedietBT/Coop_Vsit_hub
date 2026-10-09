@@ -4,6 +4,7 @@ import com.example.coop_vsit_hub.master_data.dto.CreateMeetingRoomRequest;
 import com.example.coop_vsit_hub.master_data.dto.MeetingRoomDto;
 import com.example.coop_vsit_hub.master_data.dto.UpdateMeetingRoomRequest;
 import com.example.coop_vsit_hub.master_data.service.MasterDataService;
+import com.example.coop_vsit_hub.user_and_auth.dto.UserDetailResponse;
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +53,16 @@ public class MeetingRoomController {
     ) {
         User currentUser = resolveCurrentUser(principal);
         return ResponseEntity.ok(masterDataService.getMeetingRooms(activeOnly, department, currentUser));
+    }
+
+    @GetMapping("/custodians")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SECRETARY')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "List Eligible Room Custodians", description = "Retrieves active staff users who can be assigned as custodians for meeting rooms.")
+    public ResponseEntity<List<UserDetailResponse>> getEligibleCustodians(
+            @RequestParam(required = false) String department
+    ) {
+        return ResponseEntity.ok(masterDataService.getEligibleCustodians(department));
     }
 
     @GetMapping("/{id}")
@@ -109,25 +120,16 @@ public class MeetingRoomController {
                 }
             }
 
-            // Fallback 2: check nested child "Coop_Vsit_hub/uploads/rooms/"
+            // Fallback 2: check inside working directory or parent directory if running from subfolder
             if (!targetFile.exists() || !targetFile.isFile()) {
-                File nestedFile = java.nio.file.Paths.get("Coop_Vsit_hub/uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
-                if (nestedFile.exists() && nestedFile.isFile()) {
-                    targetFile = nestedFile;
+                File parentRelFile = java.nio.file.Paths.get("../uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
+                if (parentRelFile.exists() && parentRelFile.isFile()) {
+                    targetFile = parentRelFile;
                 }
             }
 
-            // Fallback 3: check classpath static resources
             if (!targetFile.exists() || !targetFile.isFile()) {
-                org.springframework.core.io.ClassPathResource classPathResource =
-                        new org.springframework.core.io.ClassPathResource("static/rooms/" + safeFileName);
-                if (classPathResource.exists() && classPathResource.isReadable()) {
-                    String contentType = resolveContentType(safeFileName, null);
-                    return ResponseEntity.ok()
-                            .contentType(MediaType.parseMediaType(contentType))
-                            .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
-                            .body(classPathResource);
-                }
+                log.warn("Meeting room image file not found on disk: {}", filePath);
                 return ResponseEntity.notFound().build();
             }
 
@@ -136,7 +138,7 @@ public class MeetingRoomController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
+                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                     .body(resource);
         } catch (Exception e) {
             log.warn("Could not serve room image '{}': {}", filename, e.getMessage());

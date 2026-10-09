@@ -75,7 +75,8 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
     @Query("SELECT b FROM RoomBooking b WHERE " +
            "((:userId IS NOT NULL AND b.bookedByUserId = :userId) OR " +
            " (:email IS NOT NULL AND LOWER(b.bookedByEmail) = LOWER(:email)) OR " +
-           " (:username IS NOT NULL AND LOWER(b.bookedByUsername) = LOWER(:username))) AND " +
+           " (:username IS NOT NULL AND LOWER(b.bookedByUsername) = LOWER(:username)) OR " +
+           " (b.roomName IN (SELECT m.name FROM MeetingRoom m WHERE (:userId IS NOT NULL AND m.assignedUserId = :userId) OR (:email IS NOT NULL AND m.contactEmail IS NOT NULL AND LOWER(m.contactEmail) = LOWER(:email))))) AND " +
            "(:roomName IS NULL OR LOWER(b.roomName) LIKE LOWER(CONCAT('%', :roomName, '%'))) AND " +
            "(:search IS NULL OR LOWER(b.meetingTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            " LOWER(b.bookingCode) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Sparkles,
   CheckCircle2,
+  UserCheck,
   XCircle,
   ShieldAlert,
   Info,
@@ -380,12 +381,23 @@ export const MeetingRoomsPage = () => {
                         {room.name}
                       </h3>
 
-                      {/* Department Tag */}
-                      <div className="flex items-center gap-1.5 mt-1 text-slate-500 text-xs">
-                        <Building2 className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
-                        <span className="font-semibold truncate">
-                          {room.department || 'General Facility'}
-                        </span>
+                      {/* Department & Custodian Tag */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1 text-slate-500 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
+                          <span className="font-semibold truncate">
+                            {room.department || 'General Facility'}
+                          </span>
+                        </div>
+                        {(room.assignedUserName || room.contactEmail) && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[#00adef] font-semibold bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100 text-[11px]"
+                            title={`Custodian: ${room.assignedUserName || ''} (${room.contactEmail || ''})`}
+                          >
+                            <UserCheck className="w-3 h-3 text-[#00adef] shrink-0" />
+                            <span className="truncate max-w-[160px]">{room.assignedUserName || room.contactEmail}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

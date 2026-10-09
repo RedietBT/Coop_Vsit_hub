@@ -10,6 +10,8 @@ import {
   Image as ImageIcon,
   Upload,
   Lock,
+  UserCheck,
+  Mail,
 } from 'lucide-react';
 import Modal from '@/shared/components/ui/Modal';
 import Button from '@/shared/components/ui/Button';
@@ -50,7 +52,20 @@ export const MasterDataManagementModal = () => {
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
+    assignedUserId: '',
+    assignedUserName: '',
+    contactEmail: '',
   });
+
+  const [custodians, setCustodians] = useState([]);
+
+  useEffect(() => {
+    if (isMasterModalOpen) {
+      masterDataApi.getEligibleCustodians()
+        .then((data) => setCustodians(Array.isArray(data) ? data : []))
+        .catch((e) => console.warn('Failed to load custodians:', e));
+    }
+  }, [isMasterModalOpen]);
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -67,7 +82,7 @@ export const MasterDataManagementModal = () => {
   const handleClose = () => {
     setEditingId(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
     closeMasterModal();
   };
 
@@ -101,7 +116,7 @@ export const MasterDataManagementModal = () => {
     } else {
       await createMeetingRoom(payload);
     }
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -311,7 +326,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', capacity: 18, imageUrl: '' });
+                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -378,6 +393,60 @@ export const MasterDataManagementModal = () => {
                 </div>
               </div>
 
+              {/* Room Custodian / Contact User */}
+              <div className="p-3 bg-white rounded-xl border border-sky-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-[#00adef]" />
+                    <span>Room Custodian / Contact User</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-[#00adef] bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+                    Email Alerts & Cancellation
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <select
+                    value={roomForm.assignedUserId || ''}
+                    onChange={(e) => {
+                      const selId = e.target.value;
+                      if (!selId) {
+                        setRoomForm((prev) => ({
+                          ...prev,
+                          assignedUserId: '',
+                          assignedUserName: '',
+                          contactEmail: '',
+                        }));
+                      } else {
+                        const selUser = custodians.find((c) => String(c.id) === String(selId));
+                        if (selUser) {
+                          setRoomForm((prev) => ({
+                            ...prev,
+                            assignedUserId: selUser.id,
+                            assignedUserName: selUser.fullName || selUser.username,
+                            contactEmail: selUser.email || '',
+                          }));
+                        }
+                      }
+                    }}
+                    className="w-full h-[40px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
+                  >
+                    <option value="">-- No Assigned Custodian --</option>
+                    {custodians.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.fullName || c.username} ({c.email}) {c.department ? `— ${c.department}` : ''}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Input
+                    placeholder="Contact Email (auto-filled)"
+                    type="email"
+                    value={roomForm.contactEmail || ''}
+                    onChange={(e) => setRoomForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
+                  />
+                </div>
+              </div>
+
               {/* 4. Room Image & Photo Upload */}
               <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-2">
                 <label className="text-xs font-bold text-slate-700 block">
@@ -436,6 +505,7 @@ export const MasterDataManagementModal = () => {
                     <th className="py-2.5 pl-4">Photo</th>
                     <th className="py-2.5 px-3">Room Name & Floor</th>
                     <th className="py-2.5 px-3">Managing Department</th>
+                    <th className="py-2.5 px-3">Custodian</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
                     <th className="py-2.5 pr-4 text-right">Actions</th>
                   </tr>
@@ -465,6 +535,15 @@ export const MasterDataManagementModal = () => {
                           {r.department || 'General Facility'}
                         </span>
                       </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {r.assignedUserName ? (
+                          <span className="font-semibold text-slate-800">{r.assignedUserName}</span>
+                        ) : r.contactEmail ? (
+                          <span className="font-mono text-[11px] text-slate-500">{r.contactEmail}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">None</span>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">{r.capacity} Seats</td>
                       <td className="py-2.5 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -486,6 +565,9 @@ export const MasterDataManagementModal = () => {
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
+                                assignedUserId: r.assignedUserId || '',
+                                assignedUserName: r.assignedUserName || '',
+                                contactEmail: r.contactEmail || '',
                               });
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"

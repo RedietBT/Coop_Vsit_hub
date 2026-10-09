@@ -1,6 +1,7 @@
 package com.example.coop_vsit_hub.master_data.service;
 
 import com.example.coop_vsit_hub.master_data.dto.*;
+import com.example.coop_vsit_hub.user_and_auth.dto.UserDetailResponse;
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,4 +30,7 @@ public interface MasterDataService {
     MeetingRoomDto uploadRoomImage(UUID id, MultipartFile file, User currentUser);
     void deleteMeetingRoom(UUID id);
     void deleteMeetingRoom(UUID id, User currentUser);
+
+    // --- Room Custodians ---
+    List<UserDetailResponse> getEligibleCustodians(String department);
 }

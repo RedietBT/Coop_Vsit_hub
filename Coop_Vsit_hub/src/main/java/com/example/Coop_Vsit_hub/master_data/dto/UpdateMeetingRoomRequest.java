@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -30,6 +32,10 @@ public class UpdateMeetingRoomRequest {
     private String imageUrl;
 
     private String description;
+
+    private UUID assignedUserId;
+
+    private String assignedUserName;
 
     @jakarta.validation.constraints.Email(message = "Contact email must be a valid email address.")
     @jakarta.validation.constraints.Size(max = 200, message = "Contact email cannot exceed 200 characters.")
