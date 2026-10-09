@@ -115,7 +115,7 @@ export const useMasterDataStore = create((set, get) => ({
       const updated = await masterDataApi.updateMeetingRoom(id, payload);
       toast.success(`Meeting Room "${updated.name}" updated.`);
       get().fetchAllMasterData();
-      return { success: true };
+      return { success: true, room: updated };
     } catch (err) {
       toast.error(
         err.response?.data?.message || 'Failed to update meeting room.'

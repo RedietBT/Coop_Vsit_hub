@@ -40,7 +40,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
 
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadPath + File.separator);
+                .addResourceLocations(uploadPath.toUri().toString());
 
         // 2. Room images upload directory & static fallback
         Path roomsPath = Paths.get(roomsUploadDir).toAbsolutePath();
@@ -49,14 +49,31 @@ public class WebMvcConfig implements WebMvcConfigurer {
             roomsDir.mkdirs();
         }
 
+        java.util.List<String> roomLocations = new java.util.ArrayList<>();
+        roomLocations.add(roomsPath.toUri().toString());
+
+        // Add cross-folder fallbacks for local dev / workspace subfolders
+        for (String fallbackPath : java.util.List.of(
+                "uploads/rooms/",
+                "../uploads/rooms/",
+                "Coop_Vsit_hub/uploads/rooms/",
+                "../Coop_Vsit_hub/uploads/rooms/",
+                "Coop_Vsit_hub_frontend/public/rooms/",
+                "../Coop_Vsit_hub_frontend/public/rooms/"
+        )) {
+            File fbFile = Paths.get(fallbackPath).toAbsolutePath().toFile();
+            if (fbFile.exists()) {
+                roomLocations.add(fbFile.toPath().toUri().toString());
+            }
+        }
+
+        roomLocations.add("classpath:/static/rooms/");
+        roomLocations.add("classpath:/static/");
+
         registry.addResourceHandler("/rooms/**", "/uploads/rooms/**")
-                .addResourceLocations(
-                        "file:" + roomsPath + File.separator,
-                        "classpath:/static/rooms/",
-                        "classpath:/static/"
-                );
+                .addResourceLocations(roomLocations.toArray(new String[0]));
 
         log.info("File upload directory resolved to: {}", uploadPath);
-        log.info("Room photos directory resolved to: {}", roomsPath);
+        log.info("Room photos locations resolved to: {}", roomLocations);
     }
 }

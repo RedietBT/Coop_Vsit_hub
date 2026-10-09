@@ -68,6 +68,22 @@ public interface EmailService {
             String cancelledBy
     );
 
+    void sendRoomBookingContactNotification(
+            String contactEmail,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            boolean isCancellation,
+            String cancelledBy,
+            String cancellationReason
+    );
+
     void sendRoomBookingBookerConfirmation(
             String recipientEmail,
             String recipientName,

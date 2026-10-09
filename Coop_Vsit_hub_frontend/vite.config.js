@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import fs from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -26,6 +27,18 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
           secure: false
+        },
+        '/rooms': {
+          target: apiUrl,
+          changeOrigin: true,
+          secure: false,
+          bypass: (req) => {
+            const cleanPath = req.url.split('?')[0].replace(/^\//, '');
+            const localFile = path.resolve(import.meta.dirname, 'public', cleanPath);
+            if (fs.existsSync(localFile)) {
+              return req.url; // Serve directly from public/ without proxying
+            }
+          }
         },
         '/uploads': {
           target: apiUrl,

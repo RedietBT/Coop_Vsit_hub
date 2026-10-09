@@ -134,6 +134,8 @@ export const BookingManagementPage = () => {
 
   const isAdmin = hasRole('ROLE_ADMIN');
   const isSecretary = hasRole('ROLE_SECRETARY');
+  const isRelationshipManager = hasRole('ROLE_RELATIONSHIP_MANAGER');
+  const isDirector = hasRole('ROLE_DIRECTOR');
 
   // Fetch recent bookings ledger
   const fetchBookings = useCallback(async () => {
@@ -598,7 +600,7 @@ export const BookingManagementPage = () => {
                           (booking.roomAssignedUserName && user.username && booking.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
                           (booking.roomAssignedUserName && user.fullName && booking.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
                         );
-                        const canCancel = isConfirmed && (isAdmin || isSecretary || isOwner || isRoomCustodian);
+                        const canCancel = isConfirmed && (isAdmin || isSecretary || isRelationshipManager || isDirector || isOwner || isRoomCustodian);
 
                         return (
                           <tr

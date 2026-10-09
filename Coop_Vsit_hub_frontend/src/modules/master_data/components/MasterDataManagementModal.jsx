@@ -19,6 +19,7 @@ import Input from '@/shared/components/ui/Input';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '../store/masterDataStore';
 import masterDataApi from '../api/masterDataApi';
+import RoomCardImage from '@/modules/booking/components/RoomCardImage';
 import { toast } from 'sonner';
 
 export const MasterDataManagementModal = () => {
@@ -68,6 +69,7 @@ export const MasterDataManagementModal = () => {
   }, [isMasterModalOpen]);
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedRoomFile, setSelectedRoomFile] = useState(null);
 
   useEffect(() => {
     if (isMasterModalOpen && isSecretary) {
@@ -81,6 +83,7 @@ export const MasterDataManagementModal = () => {
 
   const handleClose = () => {
     setEditingId(null);
+    setSelectedRoomFile(null);
     setDeptForm({ name: '', code: '', description: '' });
     setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
     closeMasterModal();
@@ -108,14 +111,31 @@ export const MasterDataManagementModal = () => {
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
+      // Strip base64 preview string so we don't store megabytes of data URI in JSON
+      imageUrl: roomForm.imageUrl?.startsWith('data:') ? '' : roomForm.imageUrl,
     };
 
-    if (editingId) {
-      await updateMeetingRoom(editingId, payload);
-      setEditingId(null);
+    const currentEditingId = editingId;
+    let savedResult;
+    if (currentEditingId) {
+      savedResult = await updateMeetingRoom(currentEditingId, payload);
     } else {
-      await createMeetingRoom(payload);
+      savedResult = await createMeetingRoom(payload);
     }
+
+    const targetRoomId = savedResult?.room?.id || savedResult?.id || currentEditingId;
+    if (selectedRoomFile && targetRoomId) {
+      try {
+        await masterDataApi.uploadRoomImage(targetRoomId, selectedRoomFile);
+        toast.success('Room photo uploaded successfully!');
+        await fetchMeetingRooms(false);
+      } catch (imgErr) {
+        toast.error('Room saved, but image upload failed.');
+      }
+    }
+
+    setSelectedRoomFile(null);
+    setEditingId(null);
     setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
   };
 
@@ -138,6 +158,7 @@ export const MasterDataManagementModal = () => {
           setRoomForm((prev) => ({ ...prev, imageUrl: updated.imageUrl }));
         }
       } else {
+        setSelectedRoomFile(file);
         // Convert to data url for preview before create
         const reader = new FileReader();
         reader.onload = () => {
@@ -514,20 +535,13 @@ export const MasterDataManagementModal = () => {
                   {meetingRooms.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 pl-4 w-12">
-                        {r.imageUrl ? (
-                          <img
-                            src={r.imageUrl}
-                            alt={r.name}
-                            className="w-10 h-8 object-cover rounded-md border border-slate-200"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
+                        <div className="w-10 h-8 rounded-md overflow-hidden border border-slate-200">
+                          <RoomCardImage
+                            room={r}
+                            className="w-full h-full object-cover"
+                            iconSize="w-4 h-4"
                           />
-                        ) : (
-                          <div className="w-10 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-400">
-                            <DoorOpen className="w-4 h-4" />
-                          </div>
-                        )}
+                        </div>
                       </td>
                       <td className="py-2.5 px-3 font-bold text-[#000000]">{r.name}</td>
                       <td className="py-2.5 px-3">

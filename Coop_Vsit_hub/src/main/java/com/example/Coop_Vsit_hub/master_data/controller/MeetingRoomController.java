@@ -56,7 +56,7 @@ public class MeetingRoomController {
     }
 
     @GetMapping("/custodians")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SECRETARY')")
+    @PreAuthorize("isAuthenticated()")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "List Eligible Room Custodians", description = "Retrieves active staff users who can be assigned as custodians for meeting rooms.")
     public ResponseEntity<List<UserDetailResponse>> getEligibleCustodians(
@@ -98,46 +98,57 @@ public class MeetingRoomController {
         return ResponseEntity.ok(masterDataService.uploadRoomImage(id, file, currentUser));
     }
 
-    @GetMapping("/images/{filename:.+}")
+    @GetMapping({"/images/{filename:.+}", "/photo/{filename:.+}"})
     @Operation(summary = "Serve Uploaded Room Image (Public)", description = "Streams uploaded room photo file securely.")
     public ResponseEntity<Resource> serveRoomImage(@PathVariable String filename) {
         try {
             // Prevent directory traversal attacks
             String safeFileName = java.nio.file.Paths.get(filename).getFileName().toString();
 
-            // Check primary configured upload directory
-            String uploadBase = (roomsUploadDir != null && !roomsUploadDir.isBlank()) ? roomsUploadDir : "uploads/rooms/";
-            java.nio.file.Path baseDir = java.nio.file.Paths.get(uploadBase).toAbsolutePath().normalize();
-            java.nio.file.Path filePath = baseDir.resolve(safeFileName).normalize();
+            // Search list of candidate directory paths
+            java.util.List<String> searchBases = java.util.List.of(
+                    (roomsUploadDir != null && !roomsUploadDir.isBlank()) ? roomsUploadDir : "uploads/rooms/",
+                    "uploads/rooms/",
+                    "../uploads/rooms/",
+                    "Coop_Vsit_hub/uploads/rooms/",
+                    "../Coop_Vsit_hub/uploads/rooms/",
+                    "Coop_Vsit_hub_frontend/public/rooms/",
+                    "../Coop_Vsit_hub_frontend/public/rooms/"
+            );
 
-            File targetFile = filePath.toFile();
-
-            // Fallback 1: check relative "uploads/rooms/"
-            if (!targetFile.exists() || !targetFile.isFile()) {
-                File relFile = java.nio.file.Paths.get("uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
-                if (relFile.exists() && relFile.isFile()) {
-                    targetFile = relFile;
+            File targetFile = null;
+            for (String base : searchBases) {
+                File candidate = java.nio.file.Paths.get(base).toAbsolutePath().resolve(safeFileName).toFile();
+                if (candidate.exists() && candidate.isFile() && candidate.canRead()) {
+                    targetFile = candidate;
+                    break;
                 }
             }
 
-            // Fallback 2: check inside working directory or parent directory if running from subfolder
-            if (!targetFile.exists() || !targetFile.isFile()) {
-                File parentRelFile = java.nio.file.Paths.get("../uploads/rooms").toAbsolutePath().resolve(safeFileName).toFile();
-                if (parentRelFile.exists() && parentRelFile.isFile()) {
-                    targetFile = parentRelFile;
+            Resource resource = null;
+            String contentType = null;
+
+            if (targetFile != null) {
+                resource = new FileSystemResource(targetFile);
+                contentType = resolveContentType(safeFileName, targetFile);
+            } else {
+                // Classpath fallback for bundled seed assets
+                org.springframework.core.io.ClassPathResource classPathResource =
+                        new org.springframework.core.io.ClassPathResource("static/rooms/" + safeFileName);
+                if (classPathResource.exists() && classPathResource.isReadable()) {
+                    resource = classPathResource;
+                    contentType = resolveContentType(safeFileName, null);
                 }
             }
 
-            if (!targetFile.exists() || !targetFile.isFile()) {
-                log.warn("Meeting room image file not found on disk: {}", filePath);
+            if (resource == null) {
+                log.warn("Meeting room image file not found anywhere for: {}", safeFileName);
                 return ResponseEntity.notFound().build();
             }
 
-            Resource resource = new FileSystemResource(targetFile);
-            String contentType = resolveContentType(safeFileName, targetFile);
-
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
+                    .contentType(MediaType.parseMediaType(contentType != null ? contentType : MediaType.IMAGE_JPEG_VALUE))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + safeFileName + "\"")
                     .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                     .body(resource);
         } catch (Exception e) {

@@ -39,6 +39,7 @@ export const RoomBookingsTable = () => {
   const isAdmin = hasRole('ROLE_ADMIN');
   const isSecretary = hasRole('ROLE_SECRETARY');
   const isRelationshipManager = hasRole('ROLE_RELATIONSHIP_MANAGER');
+  const isDirector = hasRole('ROLE_DIRECTOR');
 
   // Allow switching between personal bookings and departmental/all bookings
   const [scope, setScope] = useState('MY'); // 'MY' | 'ALL'
@@ -108,7 +109,7 @@ export const RoomBookingsTable = () => {
   // Check if current user is owner or has elevated cancellation permission
   const canCancelBooking = (b) => {
     if (!b || b.status === 'CANCELLED') return false;
-    if (isAdmin || isSecretary || isRelationshipManager) return true;
+    if (isAdmin || isSecretary || isRelationshipManager || isDirector) return true;
     if (!user) return false;
 
     const isOwner =

@@ -381,7 +381,25 @@ public class MasterDataServiceImpl implements MasterDataService {
             java.nio.file.Path targetPath = uploadPath.resolve(filename).normalize();
             java.nio.file.Files.copy(file.getInputStream(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            String fileUrl = "/api/v1/meeting-rooms/images/" + filename;
+            // Mirror uploaded photo to frontend public/rooms and classpath static/rooms for immediate dev/test rendering
+            for (String mirrorDir : java.util.List.of(
+                    "../Coop_Vsit_hub_frontend/public/rooms",
+                    "Coop_Vsit_hub_frontend/public/rooms",
+                    "src/main/resources/static/rooms"
+            )) {
+                try {
+                    java.nio.file.Path mPath = java.nio.file.Paths.get(mirrorDir).toAbsolutePath().normalize();
+                    if (java.nio.file.Files.isDirectory(mPath)) {
+                        java.nio.file.Files.copy(targetPath, mPath.resolve(filename), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        log.info("Mirrored room image to: {}", mPath.resolve(filename));
+                    }
+                } catch (Exception mirrorEx) {
+                    log.debug("Mirroring room photo skipped for {}: {}", mirrorDir, mirrorEx.getMessage());
+                }
+            }
+
+            // Standardize URL to /rooms/{filename} (which is served by WebMvc static handler and Vite proxy)
+            String fileUrl = "/rooms/" + filename;
             room.setImageUrl(fileUrl);
 
             MeetingRoom saved = meetingRoomRepository.save(room);
@@ -424,8 +442,31 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Transactional(readOnly = true)
     public List<UserDetailResponse> getEligibleCustodians(String department) {
         log.info("Fetching eligible room custodians (department filter: '{}')", department);
+
+        // Only users with management/approver roles can oversee/cancel meeting rooms
+        // Excludes unprivileged roles like ROLE_FRONT_DESK or ROLE_SECURITY_DESK
+        java.util.Set<RoleName> eligibleRoles = java.util.Set.of(
+                RoleName.ROLE_ADMIN,
+                RoleName.ROLE_SECRETARY,
+                RoleName.ROLE_RELATIONSHIP_MANAGER,
+                RoleName.ROLE_DIRECTOR
+        );
+
         List<User> users = userRepository.findAll().stream()
-                .filter(User::isEnabled)
+                .filter(u -> u.isEnabled() && u.isAccountNonLocked())
+                .filter(u -> u.getRoles() != null && u.getRoles().stream().anyMatch(r -> eligibleRoles.contains(r.getName())))
+                .filter(u -> {
+                    if (department == null || department.isBlank()) {
+                        return true;
+                    }
+                    String targetDept = department.trim();
+                    boolean isGlobalAdmin = u.getRoles().stream().anyMatch(r ->
+                            r.getName() == RoleName.ROLE_ADMIN || r.getName() == RoleName.ROLE_DIRECTOR);
+                    if (isGlobalAdmin) {
+                        return true;
+                    }
+                    return u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(targetDept);
+                })
                 .sorted((a, b) -> {
                     String nameA = a.getFullName() != null ? a.getFullName() : a.getUsername();
                     String nameB = b.getFullName() != null ? b.getFullName() : b.getUsername();

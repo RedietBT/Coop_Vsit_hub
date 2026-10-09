@@ -332,6 +332,39 @@ public class EmailServiceImpl implements EmailService {
             boolean isCancellation,
             String cancelledBy
     ) {
+        sendRoomBookingContactNotification(
+                contactEmail,
+                roomName,
+                bookedByName,
+                bookedByDept,
+                bookingCode,
+                meetingTitle,
+                startTime,
+                endTime,
+                purpose,
+                attendees,
+                isCancellation,
+                cancelledBy,
+                null
+        );
+    }
+
+    @Override
+    public void sendRoomBookingContactNotification(
+            String contactEmail,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            boolean isCancellation,
+            String cancelledBy,
+            String cancellationReason
+    ) {
         if (contactEmail == null || contactEmail.isBlank()) {
             return;
         }
@@ -378,6 +411,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
                     + (isCancellation
                         ? "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> " + (cancelledBy != null ? cancelledBy : "System User") + "</p>"
+                        : "")
+                    + (isCancellation && cancellationReason != null && !cancellationReason.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>💬 Cancellation Reason:</strong> " + cancellationReason + "</p>"
                         : "")
                     + "</div>"
                     + "<p style='font-size: 12px; color: #64748b;'>As the designated room contact, you can manage or oversee this facility in the <a href='" + frontendUrl + "/bookings' style='color: #0284c7; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
