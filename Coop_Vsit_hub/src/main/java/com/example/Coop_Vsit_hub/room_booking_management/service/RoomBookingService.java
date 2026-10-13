@@ -32,5 +32,7 @@ public interface RoomBookingService {
         return cancelBooking(bookingId, null, currentUser);
     }
 
+    RoomBookingResponse updateBooking(UUID bookingId, com.example.coop_vsit_hub.room_booking_management.dto.UpdateRoomBookingRequest request, User currentUser);
+
     RoomBookingResponse getBookingById(UUID bookingId);
 }

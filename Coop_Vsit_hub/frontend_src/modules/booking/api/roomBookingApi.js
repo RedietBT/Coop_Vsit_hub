@@ -54,6 +54,14 @@ export const roomBookingApi = {
   },
 
   /**
+   * Update or reschedule an existing room booking.
+   */
+  updateBooking: async (id, data) => {
+    const response = await apiClient.put(`/api/v1/room-bookings/${id}`, data);
+    return response.data;
+  },
+
+  /**
    * Fetch single booking detail by ID.
    */
   getBookingById: async (id) => {

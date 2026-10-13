@@ -6,6 +6,7 @@ import com.example.coop_vsit_hub.room_booking_management.dto.CancelBookingReques
 import com.example.coop_vsit_hub.room_booking_management.dto.CreateRoomBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingSlotResponse;
+import com.example.coop_vsit_hub.room_booking_management.dto.UpdateRoomBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus;
 import com.example.coop_vsit_hub.room_booking_management.service.RoomBookingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -113,6 +114,18 @@ public class RoomBookingController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<RoomBookingResponse> getBookingById(@PathVariable UUID id) {
         return ResponseEntity.ok(roomBookingService.getBookingById(id));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Update / Reschedule Room Booking", description = "Updates reservation parameters or reschedules to an open time window. Allowed only for the booker, the person in charge of that room, or super admin.")
+    public ResponseEntity<RoomBookingResponse> updateBooking(
+            @PathVariable UUID id,
+            @RequestBody UpdateRoomBookingRequest request,
+            Principal principal
+    ) {
+        User currentUser = resolveCurrentUser(principal);
+        return ResponseEntity.ok(roomBookingService.updateBooking(id, request, currentUser));
     }
 
     @DeleteMapping("/{id}")

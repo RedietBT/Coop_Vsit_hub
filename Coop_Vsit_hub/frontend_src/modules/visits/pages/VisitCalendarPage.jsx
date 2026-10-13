@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   XCircle,
   Trash2,
+  Edit2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -144,6 +145,18 @@ export const VisitCalendarPage = () => {
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Edit / Reschedule Reservation State
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    date: '',
+    startTime: '09:00',
+    endTime: '10:30',
+    expectedAttendees: 2,
+    meetingAgenda: '',
+  });
+
   // Booking Form State
   const [formData, setFormData] = useState({
     title: '',
@@ -214,27 +227,160 @@ export const VisitCalendarPage = () => {
     }
   }, [meetingRooms, selectedRoom]);
 
-  // Check if current user is authorized to cancel a specific reservation
-  const checkCanCancel = (booking) => {
+  // Strictly enforce authorization: Only the person who booked it, the person in charge of that space, or super admin only!
+  const checkCanModifyBooking = (booking) => {
     if (!booking) return false;
     if (booking.status && booking.status !== 'CONFIRMED') return false;
-    if (isAdmin || hasRole('ROLE_RELATIONSHIP_MANAGER') || hasRole('ROLE_DIRECTOR')) return true;
+
+    // 1. Super Admin
+    if (isAdmin) return true;
+
+    // 2. The Person who booked it
     if (user?.id && booking.bookedByUserId && user.id === booking.bookedByUserId) return true;
-    if (user?.email && booking.bookedByEmail && user.email.toLowerCase() === booking.bookedByEmail.toLowerCase()) return true;
-    if (user?.username && booking.bookedByUsername && user.username.toLowerCase() === booking.bookedByUsername.toLowerCase()) return true;
-    if (user?.fullName && booking.bookedByName && user.fullName.toLowerCase() === booking.bookedByName.toLowerCase()) return true;
+    if (user?.email && booking.bookedByEmail && user.email.trim().toLowerCase() === booking.bookedByEmail.trim().toLowerCase()) return true;
+    if (user?.username && booking.bookedByUsername && user.username.trim().toLowerCase() === booking.bookedByUsername.trim().toLowerCase()) return true;
+    if (user?.fullName && booking.bookedByName && user.fullName.trim().toLowerCase() === booking.bookedByName.trim().toLowerCase()) return true;
 
-    // Department Secretary match
-    if (isSecretary && user?.department && booking.hostDepartment && user.department.toLowerCase() === booking.hostDepartment.toLowerCase()) {
-      return true;
-    }
-
-    // Designated room contact email match
-    if (selectedRoom?.contactEmail && user?.email && selectedRoom.contactEmail.toLowerCase() === user.email.toLowerCase()) {
-      return true;
+    // 3. The Person who is in charge of that space
+    if (selectedRoom) {
+      if (selectedRoom.assignedUserId && user?.id && selectedRoom.assignedUserId === user.id) return true;
+      if (selectedRoom.contactEmail && user?.email && selectedRoom.contactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) return true;
+      if (selectedRoom.assignedUserName && user?.fullName && selectedRoom.assignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase()) return true;
+      if (selectedRoom.assignedUserName && user?.username && selectedRoom.assignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) return true;
     }
 
     return false;
+  };
+
+  const checkCanCancel = checkCanModifyBooking;
+
+  // Open Edit / Reschedule Modal
+  const handleOpenEditBooking = (booking) => {
+    let bookingDate = booking.date || getLocalDateString(new Date());
+    let st = '09:00';
+    let et = '10:30';
+
+    if (booking.scheduledStartTime) {
+      const sDate = new Date(booking.scheduledStartTime);
+      bookingDate = getLocalDateString(sDate);
+      try {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Africa/Addis_Ababa',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(sDate).split(':');
+        if (parts.length === 2) {
+          st = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+        }
+      } catch (err) {
+        console.warn('Time format error:', err);
+      }
+    }
+
+    if (booking.scheduledEndTime) {
+      const eDate = new Date(booking.scheduledEndTime);
+      try {
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Africa/Addis_Ababa',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(eDate).split(':');
+        if (parts.length === 2) {
+          et = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+        }
+      } catch (err) {
+        console.warn('Time format error:', err);
+      }
+    }
+
+    setEditFormData({
+      title: booking.meetingTitle || '',
+      date: bookingDate,
+      startTime: st,
+      endTime: et,
+      expectedAttendees: booking.expectedAttendees || 2,
+      meetingAgenda: booking.meetingAgenda || '',
+    });
+    setEditingBooking(booking);
+  };
+
+  // Confirm and execute edit/rescheduling
+  const handleUpdateBookingSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingBooking) return;
+    if (!editFormData.title.trim()) {
+      toast.error('Please enter a meeting title.');
+      return;
+    }
+    if (!editFormData.startTime || !editFormData.endTime) {
+      toast.error('Please specify start and end times.');
+      return;
+    }
+
+    const [sh, sm] = (editFormData.startTime || '').split(':').map(Number);
+    const [eh, em] = (editFormData.endTime || '').split(':').map(Number);
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) {
+      toast.error('Please specify valid start and end times.');
+      return;
+    }
+    if ((sh * 60 + sm) >= (eh * 60 + em)) {
+      toast.error('End time must be after start time.');
+      return;
+    }
+
+    // Explicit East Africa Time (UTC+3)
+    const newStartIso = `${editFormData.date}T${editFormData.startTime}:00+03:00`;
+    const newEndIso = `${editFormData.date}T${editFormData.endTime}:00+03:00`;
+    const newStartMs = new Date(newStartIso).getTime();
+    const newEndMs = new Date(newEndIso).getTime();
+
+    // Check if slot is already reserved by another confirmed booking in this room
+    const conflict = roomSlots.find((s) => {
+      if (s.id === editingBooking.id || s.bookingCode === editingBooking.bookingCode) {
+        return false; // Skip the booking being edited
+      }
+      if (s.status && s.status !== 'CONFIRMED') {
+        return false;
+      }
+      if (!s.scheduledStartTime || !s.scheduledEndTime) return false;
+      const sStart = new Date(s.scheduledStartTime).getTime();
+      const sEnd = new Date(s.scheduledEndTime).getTime();
+      // Overlap: newStart < sEnd && newEnd > sStart
+      return newStartMs < sEnd && newEndMs > sStart;
+    });
+
+    if (conflict) {
+      toast.error(
+        `Cannot reschedule: Slot is already reserved by "${conflict.meetingTitle || 'Another Meeting'}" (${conflict.timeFormatted || 'Reserved'}). Please choose a different time.`
+      );
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const payload = {
+        meetingTitle: editFormData.title.trim(),
+        scheduledStartTime: newStartIso,
+        scheduledEndTime: newEndIso,
+        expectedAttendees: parseInt(editFormData.expectedAttendees, 10) || 1,
+        meetingAgenda: editFormData.meetingAgenda.trim() || 'Internal boardroom session',
+      };
+
+      await roomBookingApi.updateBooking(editingBooking.id, payload);
+      soundPlayer.playNotificationChime();
+      toast.success(`Booking ${editingBooking.bookingCode} updated and rescheduled successfully!`);
+      setEditingBooking(null);
+      if (selectedRoom) {
+        loadRoomSlots(selectedRoom.name);
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Failed to update reservation.';
+      toast.error(errMsg);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Confirm and execute cancellation
@@ -774,7 +920,7 @@ export const VisitCalendarPage = () => {
                   <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                     {activeDateSlots.length > 0 ? (
                       activeDateSlots.map((slot) => {
-                        const canCancel = checkCanCancel(slot);
+                        const canModify = checkCanModifyBooking(slot);
                         return (
                           <div
                             key={slot.id || slot.bookingCode}
@@ -811,21 +957,36 @@ export const VisitCalendarPage = () => {
                               </div>
                             </div>
 
-                            {/* In-Place Cancellation Action */}
-                            <div className="shrink-0 flex items-center gap-2">
-                              {canCancel ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCancellingBooking(slot);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                                  title="Cancel your reservation directly from this schedule"
-                                >
-                                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                                  <span>Cancel Booking</span>
-                                </button>
+                            {/* In-Place Actions: Edit & Cancel (Strictly authorized) */}
+                            <div className="shrink-0 flex items-center gap-1.5">
+                              {canModify ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditBooking(slot);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                    title="Edit or reschedule this reservation if slot is available"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5 text-[#00adef]" />
+                                    <span>Edit</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCancellingBooking(slot);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                    title="Cancel reservation directly from this schedule"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                    <span>Cancel</span>
+                                  </button>
+                                </>
                               ) : (
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1 rounded-lg bg-slate-100">
                                   Reserved
@@ -1258,6 +1419,287 @@ export const VisitCalendarPage = () => {
 
       {/* Master Data Management Modal (for Admins) */}
       <MasterDataManagementModal />
+
+      {/* Edit & Reschedule Reservation Modal (Allowed only if slot is not already reserved) */}
+      {editingBooking && (
+        <Modal
+          isOpen={!!editingBooking}
+          onClose={() => !isUpdating && setEditingBooking(null)}
+          title="Edit & Reschedule Reservation"
+        >
+          {(() => {
+            // Live overlap detection against other confirmed slots
+            const [sh, sm] = (editFormData.startTime || '').split(':').map(Number);
+            const [eh, em] = (editFormData.endTime || '').split(':').map(Number);
+            const isValidRange = !isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em) && (sh * 60 + sm) < (eh * 60 + em);
+            
+            let slotConflict = null;
+            if (isValidRange && editFormData.date) {
+              const startMs = new Date(`${editFormData.date}T${editFormData.startTime}:00+03:00`).getTime();
+              const endMs = new Date(`${editFormData.date}T${editFormData.endTime}:00+03:00`).getTime();
+              slotConflict = roomSlots.find((s) => {
+                if (s.id === editingBooking.id || s.bookingCode === editingBooking.bookingCode) return false;
+                if (s.status && s.status !== 'CONFIRMED') return false;
+                if (!s.scheduledStartTime || !s.scheduledEndTime) return false;
+                const sStart = new Date(s.scheduledStartTime).getTime();
+                const sEnd = new Date(s.scheduledEndTime).getTime();
+                return startMs < sEnd && endMs > sStart;
+              });
+            }
+
+            return (
+              <form onSubmit={handleUpdateBookingSubmit} className="p-6 space-y-4 text-left">
+                {/* Reference Banner */}
+                <div className="flex items-center justify-between p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
+                      Editing Reservation Reference
+                    </span>
+                    <span className="font-mono font-bold text-sm text-slate-800">
+                      {editingBooking.bookingCode}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-[#00adef]">
+                    {selectedRoom?.name}
+                  </span>
+                </div>
+
+                {/* Overlap Conflict Notice */}
+                {slotConflict && (
+                  <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-2xl text-xs font-medium">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-amber-800">Slot Conflict Detected</p>
+                      <p className="text-amber-700 leading-relaxed mt-0.5">
+                        This slot is already reserved by <strong>{slotConflict.meetingTitle || 'Another Meeting'}</strong> ({slotConflict.timeFormatted}). Please choose an open date or time window.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Meeting Title */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Meeting Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                    placeholder="e.g. Q3 Financial Review"
+                  />
+                </div>
+
+                {/* Reservation Date */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editFormData.date}
+                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                  />
+                </div>
+
+                {/* 12-Hour Time Pickers */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Start Time */}
+                  {(() => {
+                    const t = parseTimeTo12Hr(editFormData.startTime);
+                    const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                    const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                    return (
+                      <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">Start Time</label>
+                          <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                            {t.hour}:{t.minute} {t.period}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={t.hour}
+                            onChange={(e) => {
+                              const new24 = format12To24(e.target.value, t.minute, t.period);
+                              setEditFormData((prev) => ({ ...prev, startTime: new24 }));
+                            }}
+                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                          >
+                            {hours.map((h) => (
+                              <option key={`edit-start-h-${h}`} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="font-bold text-slate-400">:</span>
+                          <select
+                            value={t.minute}
+                            onChange={(e) => {
+                              const new24 = format12To24(t.hour, e.target.value, t.period);
+                              setEditFormData((prev) => ({ ...prev, startTime: new24 }));
+                            }}
+                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                          >
+                            {minutes.map((m) => (
+                              <option key={`edit-start-m-${m}`} value={m}>{m}</option>
+                            ))}
+                          </select>
+                          <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const new24 = format12To24(t.hour, t.minute, 'AM');
+                                setEditFormData((prev) => ({ ...prev, startTime: new24 }));
+                              }}
+                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
+                                t.period === 'AM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              }`}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const new24 = format12To24(t.hour, t.minute, 'PM');
+                                setEditFormData((prev) => ({ ...prev, startTime: new24 }));
+                              }}
+                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
+                                t.period === 'PM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              }`}
+                            >
+                              PM
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* End Time */}
+                  {(() => {
+                    const t = parseTimeTo12Hr(editFormData.endTime);
+                    const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                    const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                    return (
+                      <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-700">End Time</label>
+                          <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                            {t.hour}:{t.minute} {t.period}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={t.hour}
+                            onChange={(e) => {
+                              const new24 = format12To24(e.target.value, t.minute, t.period);
+                              setEditFormData((prev) => ({ ...prev, endTime: new24 }));
+                            }}
+                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                          >
+                            {hours.map((h) => (
+                              <option key={`edit-end-h-${h}`} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="font-bold text-slate-400">:</span>
+                          <select
+                            value={t.minute}
+                            onChange={(e) => {
+                              const new24 = format12To24(t.hour, e.target.value, t.period);
+                              setEditFormData((prev) => ({ ...prev, endTime: new24 }));
+                            }}
+                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                          >
+                            {minutes.map((m) => (
+                              <option key={`edit-end-m-${m}`} value={m}>{m}</option>
+                            ))}
+                          </select>
+                          <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const new24 = format12To24(t.hour, t.minute, 'AM');
+                                setEditFormData((prev) => ({ ...prev, endTime: new24 }));
+                              }}
+                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
+                                t.period === 'AM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              }`}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const new24 = format12To24(t.hour, t.minute, 'PM');
+                                setEditFormData((prev) => ({ ...prev, endTime: new24 }));
+                              }}
+                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
+                                t.period === 'PM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              }`}
+                            >
+                              PM
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Attendees */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Expected Attendees
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedRoom?.capacity || 50}
+                    value={editFormData.expectedAttendees}
+                    onChange={(e) => setEditFormData({ ...editFormData, expectedAttendees: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                  />
+                </div>
+
+                {/* Agenda / Notes */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Meeting Objective / Agenda
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editFormData.meetingAgenda}
+                    onChange={(e) => setEditFormData({ ...editFormData, meetingAgenda: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                    placeholder="Discussion topics, equipment required..."
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setEditingBooking(null)}
+                    disabled={isUpdating}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isUpdating || !!slotConflict}
+                    className="bg-[#00adef] hover:bg-[#0095ce] text-white"
+                  >
+                    {isUpdating ? 'Saving Changes...' : 'Save & Reschedule'}
+                  </Button>
+                </div>
+              </form>
+            );
+          })()}
+        </Modal>
+      )}
 
       {/* Schedule In-Place Cancellation Confirmation Modal */}
       {cancellingBooking && (

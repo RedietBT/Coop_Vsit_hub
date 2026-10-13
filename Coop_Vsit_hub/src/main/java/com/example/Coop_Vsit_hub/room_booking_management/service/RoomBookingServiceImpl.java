@@ -6,6 +6,7 @@ import com.example.coop_vsit_hub.notification_management.service.NotificationSer
 import com.example.coop_vsit_hub.room_booking_management.dto.CreateRoomBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingSlotResponse;
+import com.example.coop_vsit_hub.room_booking_management.dto.UpdateRoomBookingRequest;
 import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus;
 import com.example.coop_vsit_hub.room_booking_management.model.RoomBooking;
 import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository;
@@ -521,32 +522,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             return mapToResponse(booking);
         }
 
-        // Authorization check: Who is allowed to cancel this booking?
-        // 1. Admins
-        // 2. Relationship Managers
-        // 3. The original booker (by user ID, email, username, or name)
-        // 4. Department Secretary for this room's department
-        // 5. Designated room Contact Person
-        var roomOpt = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName());
-        boolean isOwner = currentUser != null && (
-                (booking.getBookedByUserId() != null && currentUser.getId() != null && booking.getBookedByUserId().equals(currentUser.getId()))
-                || (StringUtils.hasText(booking.getBookedByEmail()) && StringUtils.hasText(currentUser.getEmail()) && booking.getBookedByEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
-                || (StringUtils.hasText(booking.getBookedByUsername()) && StringUtils.hasText(currentUser.getUsername()) && booking.getBookedByUsername().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
-                || (StringUtils.hasText(booking.getBookedByName()) && StringUtils.hasText(currentUser.getFullName()) && booking.getBookedByName().trim().equalsIgnoreCase(currentUser.getFullName().trim()))
-        );
-        boolean isRoomContact = currentUser != null && roomOpt.isPresent() && (
-                (roomOpt.get().getAssignedUserId() != null && currentUser.getId() != null && roomOpt.get().getAssignedUserId().equals(currentUser.getId()))
-                || (StringUtils.hasText(roomOpt.get().getContactEmail()) && StringUtils.hasText(currentUser.getEmail()) && roomOpt.get().getContactEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
-                || (StringUtils.hasText(roomOpt.get().getAssignedUserName()) && StringUtils.hasText(currentUser.getUsername()) && roomOpt.get().getAssignedUserName().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
-                || (StringUtils.hasText(roomOpt.get().getAssignedUserName()) && StringUtils.hasText(currentUser.getFullName()) && roomOpt.get().getAssignedUserName().trim().equalsIgnoreCase(currentUser.getFullName().trim()))
-        );
-        boolean isDeptSecretary = currentUser != null && isSecretary(currentUser) && (
-                (StringUtils.hasText(currentUser.getDepartment()) && currentUser.getDepartment().equalsIgnoreCase(booking.getHostDepartment()))
-                || (roomOpt.isPresent() && StringUtils.hasText(roomOpt.get().getDepartment()) && roomOpt.get().getDepartment().equalsIgnoreCase(currentUser.getDepartment()))
-        );
-
-        if (!isAdmin(currentUser) && !isRelationshipManager(currentUser) && !isDirector(currentUser) && !isOwner && !isRoomContact && !isDeptSecretary) {
-            throw new AccessDeniedException("Access Denied: You do not have permission to cancel this meeting room booking.");
+        // Authorization check: Cancellation and editing can ONLY be performed by:
+        // 1. The person who booked it
+        // 2. The person who is in charge of that space (designated custodian / contact)
+        // 3. Super Administrator
+        if (!checkCanModifyBooking(booking, currentUser)) {
+            throw new AccessDeniedException("Access Denied: Room cancellation and editing can only be performed by the reserving staff member, the person in charge of this room, or a Super Administrator.");
         }
 
         String reason = StringUtils.hasText(cancellationReason) ? cancellationReason.trim() : "Room reservation cancelled by user.";
@@ -802,6 +783,113 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         );
 
         return mapToResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public RoomBookingResponse updateBooking(UUID bookingId, UpdateRoomBookingRequest request, User currentUser) {
+        RoomBooking booking = roomBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Room booking not found with ID: " + bookingId));
+
+        if (booking.getStatus() == RoomBookingStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot edit a cancelled reservation.");
+        }
+
+        // Authorization: only the person who booked it, the person in charge of that space, or super admin
+        if (!checkCanModifyBooking(booking, currentUser)) {
+            throw new AccessDeniedException("Access Denied: Room cancellation and editing can only be performed by the reserving staff member, the person in charge of this room, or a Super Administrator.");
+        }
+
+        Instant newStart = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : booking.getScheduledStartTime();
+        Instant newEnd = request.getScheduledEndTime() != null ? request.getScheduledEndTime() : booking.getScheduledEndTime();
+
+        if (newEnd.isBefore(newStart) || newEnd.equals(newStart)) {
+            throw new IllegalArgumentException("Scheduled end time must be after start time.");
+        }
+
+        // Conflict check: Ensure slot is not already reserved by another booking
+        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(booking.getRoomName(), newStart, newEnd);
+        boolean hasConflict = overlapping.stream().anyMatch(b -> !b.getId().equals(booking.getId()));
+        if (hasConflict) {
+            RoomBooking conflict = overlapping.stream().filter(b -> !b.getId().equals(booking.getId())).findFirst().get();
+            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledStartTime());
+            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledEndTime());
+            throw new IllegalStateException(String.format(
+                    "Meeting room '%s' is already booked from %s to %s for '%s' (Ref: %s). Please select an open time slot.",
+                    booking.getRoomName(), conflictStart, conflictEnd, conflict.getMeetingTitle(), conflict.getBookingCode()
+            ));
+        }
+
+        if (StringUtils.hasText(request.getMeetingTitle())) {
+            booking.setMeetingTitle(request.getMeetingTitle().trim());
+        }
+        if (request.getScheduledStartTime() != null) {
+            booking.setScheduledStartTime(newStart);
+        }
+        if (request.getScheduledEndTime() != null) {
+            booking.setScheduledEndTime(newEnd);
+        }
+        if (request.getExpectedAttendees() != null && request.getExpectedAttendees() > 0) {
+            booking.setExpectedAttendees(request.getExpectedAttendees());
+        }
+        if (request.getMeetingAgenda() != null) {
+            booking.setMeetingAgenda(request.getMeetingAgenda().trim());
+        }
+        if (request.getGuestName() != null) {
+            booking.setGuestName(request.getGuestName().trim());
+        }
+        if (request.getGuestOrganizationName() != null) {
+            booking.setGuestOrganizationName(request.getGuestOrganizationName().trim());
+        }
+
+        RoomBooking updated = roomBookingRepository.save(booking);
+
+        auditLoggerService.logEvent(
+                currentUser,
+                currentUser != null ? currentUser.getUsername() : "system",
+                AuditEventType.DATA_UPDATE,
+                AuditStatus.SUCCESS,
+                null,
+                null,
+                String.format("Room booking '%s' for room '%s' was UPDATED/RESCHEDULED by %s",
+                        updated.getBookingCode(), updated.getRoomName(), currentUser != null ? currentUser.getFullName() : "User")
+        );
+
+        return mapToResponse(updated);
+    }
+
+    private boolean checkCanModifyBooking(RoomBooking booking, User currentUser) {
+        if (currentUser == null) {
+            return false;
+        }
+        // 1. Super Admin
+        if (isAdmin(currentUser)) {
+            return true;
+        }
+
+        // 2. The Person who booked it
+        boolean isOwner = (booking.getBookedByUserId() != null && currentUser.getId() != null && booking.getBookedByUserId().equals(currentUser.getId()))
+                || (StringUtils.hasText(booking.getBookedByEmail()) && StringUtils.hasText(currentUser.getEmail()) && booking.getBookedByEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
+                || (StringUtils.hasText(booking.getBookedByUsername()) && StringUtils.hasText(currentUser.getUsername()) && booking.getBookedByUsername().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
+                || (StringUtils.hasText(booking.getBookedByName()) && StringUtils.hasText(currentUser.getFullName()) && booking.getBookedByName().trim().equalsIgnoreCase(currentUser.getFullName().trim()));
+        if (isOwner) {
+            return true;
+        }
+
+        // 3. The Person who is in charge of that space
+        var roomOpt = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName());
+        if (roomOpt.isPresent()) {
+            MeetingRoom room = roomOpt.get();
+            boolean isRoomContact = (room.getAssignedUserId() != null && currentUser.getId() != null && room.getAssignedUserId().equals(currentUser.getId()))
+                    || (StringUtils.hasText(room.getContactEmail()) && StringUtils.hasText(currentUser.getEmail()) && room.getContactEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim()))
+                    || (StringUtils.hasText(room.getAssignedUserName()) && StringUtils.hasText(currentUser.getUsername()) && room.getAssignedUserName().trim().equalsIgnoreCase(currentUser.getUsername().trim()))
+                    || (StringUtils.hasText(room.getAssignedUserName()) && StringUtils.hasText(currentUser.getFullName()) && room.getAssignedUserName().trim().equalsIgnoreCase(currentUser.getFullName().trim()));
+            if (isRoomContact) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
