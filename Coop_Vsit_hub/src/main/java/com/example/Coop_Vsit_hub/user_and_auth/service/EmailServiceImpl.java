@@ -155,8 +155,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(adminEmail);
             helper.setSubject("🏢 [Room Booking Alert] " + (roomName != null ? roomName : "Meeting Facility") + " Reserved (" + (visitCode != null ? visitCode : "Direct") + ")");
 
-            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Time";
-            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled Time";
+            String formattedStart = formatEmailDate(startTime);
+            String formattedEnd = formatEmailDate(endTime);
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
                     + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
@@ -215,8 +215,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setTo(secretaryEmail);
             helper.setSubject("📋 [Department Room Alert] " + (roomName != null ? roomName : "Meeting Room") + " Reserved — " + (departmentName != null ? departmentName : "Department"));
 
-            String formattedStart = startTime != null ? startTime.toString() : "Scheduled Time";
-            String formattedEnd = endTime != null ? endTime.toString() : "Scheduled Time";
+            String formattedStart = formatEmailDate(startTime);
+            String formattedEnd = formatEmailDate(endTime);
 
             String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
                     + "<div style='background: linear-gradient(135deg, #0284c7, #0369a1); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"

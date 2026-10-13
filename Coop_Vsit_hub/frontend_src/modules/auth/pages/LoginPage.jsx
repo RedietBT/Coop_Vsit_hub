@@ -198,7 +198,7 @@ export const LoginPage = () => {
           </div>
 
           {/* Quick SSO Security Note */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-left flex items-start gap-3">
+          {/* <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-left flex items-start gap-3">
             <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-bold text-slate-800">Active Directory Single Sign-On</p>
@@ -206,7 +206,7 @@ export const LoginPage = () => {
                 CoopBank employees and front-desk staff can sign in directly using their bank account credentials.
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 

@@ -191,10 +191,43 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 .ifPresent(u -> adminEmails.add(u.getEmail()));
                     }
 
-                    log.info("Sending room booking email notification for room '{}' to {} admin(s): {}",
-                            saved.getRoomName(), adminEmails.size(), adminEmails);
+                    // Deduplicate email recipients: each individual receives exactly ONE email per booking
+                    java.util.Set<String> alreadyEmailed = new java.util.HashSet<>();
 
-                    for (String aEmail : adminEmails) {
+                    // 1. Dispatch booking confirmation to the reserving staff member FIRST
+                    if (StringUtils.hasText(saved.getBookedByEmail())) {
+                        String bookerEmail = saved.getBookedByEmail().trim().toLowerCase();
+                        try {
+                            emailService.sendRoomBookingBookerConfirmation(
+                                    saved.getBookedByEmail().trim(),
+                                    saved.getBookedByName(),
+                                    saved.getRoomName(),
+                                    saved.getBookingCode(),
+                                    saved.getMeetingTitle(),
+                                    saved.getScheduledStartTime(),
+                                    saved.getScheduledEndTime(),
+                                    saved.getMeetingAgenda(),
+                                    saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
+                                    saved.getHostDepartment()
+                            );
+                            alreadyEmailed.add(bookerEmail);
+                        } catch (Exception e) {
+                            log.warn("Failed to send booker confirmation for {}: {}", bookingCode, e.getMessage());
+                        }
+                    }
+
+                    // 2. Dispatch alert to System Admins (skipping booker if booker is an admin to prevent duplicate emails)
+                    List<String> distinctAdminEmails = adminEmails.stream()
+                            .filter(StringUtils::hasText)
+                            .map(String::trim)
+                            .filter(email -> !alreadyEmailed.contains(email.toLowerCase()))
+                            .distinct()
+                            .toList();
+
+                    log.info("Sending room booking email notification for room '{}' to {} admin(s): {}",
+                            saved.getRoomName(), distinctAdminEmails.size(), distinctAdminEmails);
+
+                    for (String aEmail : distinctAdminEmails) {
                         try {
                             emailService.sendRoomBookingAdminNotification(
                                     aEmail,
@@ -210,28 +243,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                     saved.getMeetingAgenda(),
                                     saved.getExpectedAttendees()
                             );
+                            alreadyEmailed.add(aEmail.toLowerCase());
                         } catch (Exception e) {
                             log.warn("Failed to send admin room booking email to {} for {}: {}", aEmail, bookingCode, e.getMessage());
-                        }
-                    }
-
-                    // 1. Dispatch booking confirmation to the booker
-                    if (StringUtils.hasText(saved.getBookedByEmail())) {
-                        try {
-                            emailService.sendRoomBookingBookerConfirmation(
-                                    saved.getBookedByEmail().trim(),
-                                    saved.getBookedByName(),
-                                    saved.getRoomName(),
-                                    saved.getBookingCode(),
-                                    saved.getMeetingTitle(),
-                                    saved.getScheduledStartTime(),
-                                    saved.getScheduledEndTime(),
-                                    saved.getMeetingAgenda(),
-                                    saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
-                                    saved.getHostDepartment()
-                            );
-                        } catch (Exception e) {
-                            log.warn("Failed to send booker confirmation for {}: {}", bookingCode, e.getMessage());
                         }
                     }
 
@@ -267,9 +281,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                             saved.getRoomName(), concernedUsers.size(), finalDept);
 
                     for (User deptUser : concernedUsers) {
-                        // Skip booker if they booked their own room to avoid duplicate emails
-                        if (StringUtils.hasText(saved.getBookedByEmail()) && StringUtils.hasText(deptUser.getEmail())
-                                && deptUser.getEmail().equalsIgnoreCase(saved.getBookedByEmail().trim())) {
+                        // Skip recipient if they already received an email (booker or admin)
+                        if (StringUtils.hasText(deptUser.getEmail()) && alreadyEmailed.contains(deptUser.getEmail().trim().toLowerCase())) {
                             continue;
                         }
 

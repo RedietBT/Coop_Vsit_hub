@@ -7,6 +7,7 @@ import {
   Plus,
   ArrowLeft,
   Users,
+  User,
   Clock,
   Sparkles,
   SlidersHorizontal,
@@ -20,6 +21,9 @@ import {
   Check,
   Building2,
   FileText,
+  AlertTriangle,
+  XCircle,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -29,6 +33,7 @@ import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
+import Modal from '@/shared/components/ui/Modal';
 import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import { resolveImageUrl } from '@/core/utils/imageUtils';
@@ -48,14 +53,24 @@ export const VisitCalendarPage = () => {
   const [capacityFilter, setCapacityFilter] = useState('ALL');
   const [isAdminRosterOpen, setIsAdminRosterOpen] = useState(false);
 
-  // Date & Time Helpers
+  // Date & Time Helpers (Accurate East Africa Time - UTC+3)
   const getLocalDateString = (d = new Date()) => {
     const dateObj = typeof d === 'string' ? new Date(d) : d;
     if (!dateObj || isNaN(dateObj.getTime())) return '';
-    const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Addis_Ababa',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(dateObj); // "YYYY-MM-DD"
+    } catch {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
   };
 
   const parseTimeTo12Hr = (time24) => {
@@ -125,6 +140,10 @@ export const VisitCalendarPage = () => {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Cancellation State (for cancelling one's own reservation directly from the schedule)
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Booking Form State
   const [formData, setFormData] = useState({
     title: '',
@@ -137,48 +156,106 @@ export const VisitCalendarPage = () => {
     visitObjective: '',
   });
 
-  // Fetch meeting rooms on mount
+  // Fetch meeting rooms on mount (fetches all master data like Booking Management page)
   useEffect(() => {
-    if (typeof fetchMeetingRooms === 'function') {
-      fetchMeetingRooms(true);
-    } else if (typeof fetchAllMasterData === 'function') {
-      fetchAllMasterData();
-    }
-  }, [fetchMeetingRooms, fetchAllMasterData]);
+    fetchAllMasterData();
+  }, [fetchAllMasterData]);
 
-  // Default rooms fallback if DB has none yet
+  // Authentic CoopBank facility rooms fallback matching Migration V18
   const defaultRooms = [
     {
       id: 'default-1',
-      name: 'Executive Boardroom - 4th Floor',
+      name: 'Executive Boardroom',
       capacity: 18,
-      imageUrl:
-        'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+      department: 'Executive Office',
+      imageUrl: '/rooms/executive-boardroom.jpg',
     },
     {
       id: 'default-2',
-      name: 'FinTech Innovation Room A - 4th Floor',
+      name: 'FinTech Innovation Room A',
       capacity: 12,
-      imageUrl:
-        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
+      department: 'Digital Banking & MSME',
+      imageUrl: '/rooms/fintech-bar-counter.jpg',
     },
     {
       id: 'default-3',
-      name: 'Strategic Peering Room B - 4th Floor',
+      name: 'Strategic Peering Room B',
       capacity: 10,
-      imageUrl:
-        'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
+      department: 'Retail Banking & MSME',
+      imageUrl: '/rooms/africa-table.jpg',
     },
     {
       id: 'default-4',
-      name: 'CoopBank HQ VIP Lounge - Ground Floor',
+      name: 'CoopBank HQ VIP Lounge',
       capacity: 25,
-      imageUrl:
-        'https://images.unsplash.com/photo-1577412647305-991150c7d163?auto=format&fit=crop&w=800&q=80',
+      department: 'Operations & Front Desk',
+      imageUrl: '/rooms/creative-lounge-stools.jpg',
+    },
+    {
+      id: 'default-5',
+      name: 'Executive Hospitality & Dining Facility',
+      capacity: 16,
+      department: 'Operations & Front Desk',
+      imageUrl: '/rooms/cafeteria-collaboration-table.jpg',
     },
   ];
 
   const activeRooms = meetingRooms.length > 0 ? meetingRooms : defaultRooms;
+
+  // Keep selectedRoom updated with latest photo/details if master data changes
+  useEffect(() => {
+    if (selectedRoom && meetingRooms.length > 0) {
+      const updated = meetingRooms.find(
+        (r) => (r.id && r.id === selectedRoom.id) || r.name?.toLowerCase() === selectedRoom.name?.toLowerCase()
+      );
+      if (updated && updated.imageUrl !== selectedRoom.imageUrl) {
+        setSelectedRoom((prev) => ({ ...prev, ...updated }));
+      }
+    }
+  }, [meetingRooms, selectedRoom]);
+
+  // Check if current user is authorized to cancel a specific reservation
+  const checkCanCancel = (booking) => {
+    if (!booking) return false;
+    if (booking.status && booking.status !== 'CONFIRMED') return false;
+    if (isAdmin || hasRole('ROLE_RELATIONSHIP_MANAGER') || hasRole('ROLE_DIRECTOR')) return true;
+    if (user?.id && booking.bookedByUserId && user.id === booking.bookedByUserId) return true;
+    if (user?.email && booking.bookedByEmail && user.email.toLowerCase() === booking.bookedByEmail.toLowerCase()) return true;
+    if (user?.username && booking.bookedByUsername && user.username.toLowerCase() === booking.bookedByUsername.toLowerCase()) return true;
+    if (user?.fullName && booking.bookedByName && user.fullName.toLowerCase() === booking.bookedByName.toLowerCase()) return true;
+
+    // Department Secretary match
+    if (isSecretary && user?.department && booking.hostDepartment && user.department.toLowerCase() === booking.hostDepartment.toLowerCase()) {
+      return true;
+    }
+
+    // Designated room contact email match
+    if (selectedRoom?.contactEmail && user?.email && selectedRoom.contactEmail.toLowerCase() === user.email.toLowerCase()) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Confirm and execute cancellation
+  const handleCancelBookingConfirm = async () => {
+    if (!cancellingBooking) return;
+    setIsCancelling(true);
+    try {
+      await roomBookingApi.cancelBooking(cancellingBooking.id);
+      soundPlayer.playNotificationChime();
+      toast.success(`Booking ${cancellingBooking.bookingCode} cancelled and released.`);
+      setCancellingBooking(null);
+      if (selectedRoom) {
+        loadRoomSlots(selectedRoom.name);
+      }
+    } catch (e) {
+      const errMsg = e.response?.data?.message || 'Failed to cancel reservation.';
+      toast.error(errMsg);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Filter rooms
   const filteredRooms = activeRooms.filter((room) => {
@@ -210,6 +287,7 @@ export const VisitCalendarPage = () => {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
           });
         }
         if (s.scheduledEndTime) {
@@ -218,6 +296,7 @@ export const VisitCalendarPage = () => {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
           });
         }
         return {
@@ -296,25 +375,24 @@ export const VisitCalendarPage = () => {
       return;
     }
 
-    // Parse local date + time components accurately into Date objects
-    const localStart = new Date(`${formData.date}T${formData.startTime}:00`);
-    const localEnd = new Date(`${formData.date}T${formData.endTime}:00`);
-
-    if (isNaN(localStart.getTime()) || isNaN(localEnd.getTime())) {
+    const [sh, sm] = (formData.startTime || '').split(':').map(Number);
+    const [eh, em] = (formData.endTime || '').split(':').map(Number);
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) {
       toast.error('Please specify valid start and end times.');
       return;
     }
-
-    if (localStart >= localEnd) {
+    if ((sh * 60 + sm) >= (eh * 60 + em)) {
       toast.error('End time must be after start time.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Accurately convert local date/time to UTC ISO timestamp
-      const startIso = localStart.toISOString();
-      const endIso = localEnd.toISOString();
+      // East Africa Time is UTC+3 (Africa/Addis_Ababa).
+      // Explicitly formatting with the +03:00 offset ensures the backend parses the exact intended time
+      // without any client browser timezone drift (e.g., 2:30 PM staying strictly 2:30 PM).
+      const startIso = `${formData.date}T${formData.startTime}:00+03:00`;
+      const endIso = `${formData.date}T${formData.endTime}:00+03:00`;
 
       const payload = {
         roomName: selectedRoom.name,
@@ -673,40 +751,94 @@ export const VisitCalendarPage = () => {
                   })}
                 </div>
 
-                {/* Interactive Hourly Availability Box (Locked Stable Height - No Jitter) */}
-                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl h-32 flex flex-col justify-between overflow-hidden">
-                  <div className="flex items-center justify-between mb-1.5 shrink-0">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#00adef]" />
-                      Schedule on {formatDisplayDate(activeHoverDateStr)}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      (Hover over calendar days to inspect)
-                    </span>
+                {/* Interactive Hourly Schedule & In-Place Cancellation Section */}
+                <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#00adef]" />
+                      <span className="text-xs font-bold text-slate-800">
+                        Schedule on {formatDisplayDate(activeHoverDateStr)}
+                      </span>
+                    </div>
+                    {activeDateSlots.length > 0 ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                        {activeDateSlots.length} Booked {activeDateSlots.length === 1 ? 'Slot' : 'Slots'}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">
+                        Open All Day
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-1">
+                  <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                     {activeDateSlots.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {activeDateSlots.map((slot, idx) => (
+                      activeDateSlots.map((slot) => {
+                        const canCancel = checkCanCancel(slot);
+                        return (
                           <div
-                            key={idx}
-                            className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
+                            key={slot.id || slot.bookingCode}
+                            className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all hover:border-slate-300"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-red-500" />
-                              <span className="font-mono">{slot.timeFormatted || 'Reserved Hours'}</span>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-md bg-sky-50 text-[#00adef] border border-sky-200 text-[11px] font-bold font-mono">
+                                  {slot.timeFormatted || 'Reserved'}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800">
+                                  {slot.meetingTitle || 'Scheduled Meeting'}
+                                </span>
+                                {slot.bookingCode && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                    Ref: {slot.bookingCode}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <User className="w-3 h-3 text-slate-400" />
+                                  <span>{slot.bookedByName || 'Staff Member'}</span>
+                                  {slot.hostDepartment && (
+                                    <span className="text-slate-400">({slot.hostDepartment})</span>
+                                  )}
+                                </span>
+                                {slot.expectedAttendees && (
+                                  <span className="flex items-center gap-1 text-slate-400">
+                                    <Users className="w-3 h-3" />
+                                    <span>{slot.expectedAttendees} attendees</span>
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
-                              Booked
-                            </span>
+
+                            {/* In-Place Cancellation Action */}
+                            <div className="shrink-0 flex items-center gap-2">
+                              {canCancel ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCancellingBooking(slot);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                  title="Cancel your reservation directly from this schedule"
+                                >
+                                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Cancel Booking</span>
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1 rounded-lg bg-slate-100">
+                                  Reserved
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })
                     ) : (
-                      <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Entire day is currently open. No scheduled bookings yet.</span>
+                      <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 flex items-center gap-2.5 text-xs font-medium">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>This room has no bookings on this date. Full schedule is open for booking.</span>
                       </div>
                     )}
                   </div>
@@ -1126,6 +1258,67 @@ export const VisitCalendarPage = () => {
 
       {/* Master Data Management Modal (for Admins) */}
       <MasterDataManagementModal />
+
+      {/* Schedule In-Place Cancellation Confirmation Modal */}
+      {cancellingBooking && (
+        <Modal
+          isOpen={!!cancellingBooking}
+          onClose={() => !isCancelling && setCancellingBooking(null)}
+          title="Cancel Room Reservation"
+        >
+          <div className="p-6 space-y-4 text-left">
+            <div className="flex items-start gap-3 p-4 bg-red-50 text-red-800 border border-red-200 rounded-2xl">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-sm text-red-900">Release this meeting room reservation?</p>
+                <p className="text-red-700 leading-relaxed">
+                  Cancelling will immediately release <strong>{selectedRoom?.name}</strong> for reference{' '}
+                  <span className="font-mono font-bold bg-red-100 px-1 py-0.5 rounded">{cancellingBooking.bookingCode}</span> and make the slot available for other colleagues.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2">
+              <div className="flex justify-between py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Meeting Room:</span>
+                <span className="font-bold text-slate-800">{selectedRoom?.name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Meeting Title:</span>
+                <span className="font-bold text-slate-800">{cancellingBooking.meetingTitle}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Schedule Window (12-hr EAT):</span>
+                <span className="font-bold text-[#00adef] font-mono">{cancellingBooking.timeFormatted}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500 font-medium">Reserved By:</span>
+                <span className="font-bold text-slate-800">
+                  {cancellingBooking.bookedByName || 'Staff'} ({cancellingBooking.hostDepartment || 'Staff'})
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setCancellingBooking(null)}
+                disabled={isCancelling}
+              >
+                Keep Reservation
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleCancelBookingConfirm}
+                disabled={isCancelling}
+                icon={AlertTriangle}
+              >
+                {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

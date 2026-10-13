@@ -137,6 +137,7 @@ export const BookingManagementPage = () => {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
           });
         }
         if (s.scheduledEndTime) {
@@ -145,6 +146,7 @@ export const BookingManagementPage = () => {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
           });
         }
         return {
@@ -661,6 +663,7 @@ export const BookingManagementPage = () => {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : 'N/A';
                         const sTime = booking.scheduledStartTime
@@ -668,6 +671,7 @@ export const BookingManagementPage = () => {
                               hour: '2-digit',
                               minute: '2-digit',
                               hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '';
                         const eTime = booking.scheduledEndTime
@@ -675,6 +679,7 @@ export const BookingManagementPage = () => {
                               hour: '2-digit',
                               minute: '2-digit',
                               hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '';
 
@@ -683,6 +688,7 @@ export const BookingManagementPage = () => {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '—';
                         const bookedOnTime = booking.createdAt
@@ -690,6 +696,7 @@ export const BookingManagementPage = () => {
                               hour: '2-digit',
                               minute: '2-digit',
                               hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '';
 
@@ -1310,6 +1317,7 @@ export const BookingManagementPage = () => {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : 'N/A'}
                 </p>
@@ -1319,6 +1327,7 @@ export const BookingManagementPage = () => {
                         hour: '2-digit',
                         minute: '2-digit',
                         hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : ''}{' '}
                   -{' '}
@@ -1327,6 +1336,7 @@ export const BookingManagementPage = () => {
                         hour: '2-digit',
                         minute: '2-digit',
                         hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : ''}
                 </p>
@@ -1340,6 +1350,7 @@ export const BookingManagementPage = () => {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : 'N/A'}
                 </p>
@@ -1348,6 +1359,8 @@ export const BookingManagementPage = () => {
                     ? new Date(inspectingBooking.createdAt).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : ''}
                 </p>

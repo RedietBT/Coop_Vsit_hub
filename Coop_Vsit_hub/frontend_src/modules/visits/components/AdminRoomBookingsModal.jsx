@@ -208,6 +208,7 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                                     month: 'short',
                                     day: 'numeric',
                                     year: 'numeric',
+                                    timeZone: 'Africa/Addis_Ababa',
                                   })
                                 : b.date || 'Scheduled'}
                             </span>
@@ -220,10 +221,12 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                                     hour: '2-digit',
                                     minute: '2-digit',
                                     hour12: true,
+                                    timeZone: 'Africa/Addis_Ababa',
                                   })} - ${new Date(b.scheduledEndTime).toLocaleTimeString('en-US', {
                                     hour: '2-digit',
                                     minute: '2-digit',
                                     hour12: true,
+                                    timeZone: 'Africa/Addis_Ababa',
                                   })}`
                                 : b.timeRange || 'Full Day'}
                             </span>
