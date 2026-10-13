@@ -178,10 +178,11 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      const startIso = `${formData.scheduledDate}T${formData.startTime}:00Z`;
-      const endIso = `${formData.scheduledDate}T${formData.endTime}:00Z`;
+      const localStart = new Date(`${formData.scheduledDate}T${formData.startTime}:00`);
+      const localEnd = new Date(`${formData.scheduledDate}T${formData.endTime}:00`);
+      const startIso = !isNaN(localStart.getTime()) ? localStart.toISOString() : `${formData.scheduledDate}T${formData.startTime}:00Z`;
+      const endIso = !isNaN(localEnd.getTime()) ? localEnd.toISOString() : `${formData.scheduledDate}T${formData.endTime}:00Z`;
 
       const payload = {
         title: formData.title.trim() || undefined,
@@ -810,10 +811,10 @@ export const NewVisitorBookingModal = ({ isOpen, onClose, onSuccess }) => {
                   {matchingBookings.map((b) => {
                     const isLinked = formData.locationRoom === b.roomName || formData.linkedBookingId === b.id;
                     const sTime = b.scheduledStartTime
-                      ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                      ? new Date(b.scheduledStartTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
                       : '';
                     const eTime = b.scheduledEndTime
-                      ? new Date(b.scheduledEndTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                      ? new Date(b.scheduledEndTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
                       : '';
 
                     return (

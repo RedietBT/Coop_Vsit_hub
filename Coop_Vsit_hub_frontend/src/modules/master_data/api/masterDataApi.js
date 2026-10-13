@@ -40,9 +40,7 @@ export const masterDataApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await apiClient.post(`/api/v1/meeting-rooms/${id}/image`, formData, {
-      headers: {
-        'Content-Type': undefined, // Let browser set boundary!
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
@@ -50,21 +48,6 @@ export const masterDataApi = {
     const response = await apiClient.delete(`/api/v1/meeting-rooms/${id}`);
     return response.data;
   },
-
-  // --- Room Custodians ---
-  getEligibleCustodians: async (department = '') => {
-    const response = await apiClient.get('/api/v1/meeting-rooms/custodians', {
-      params: department ? { department } : {},
-    });
-    return response.data;
-  },
-};
-
-export const handleRoomApiError = (err, defaultMsg = 'Operation failed.') => {
-  if (err?.response?.status === 403) {
-    return 'You are only authorized to manage meeting rooms for your department.';
-  }
-  return err?.response?.data?.message || err?.response?.data?.error || defaultMsg;
 };
 
 export default masterDataApi;

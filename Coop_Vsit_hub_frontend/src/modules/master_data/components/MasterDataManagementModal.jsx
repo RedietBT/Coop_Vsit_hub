@@ -10,7 +10,6 @@ import {
   Image as ImageIcon,
   Upload,
   Lock,
-  UserCheck,
   Mail,
 } from 'lucide-react';
 import Modal from '@/shared/components/ui/Modal';
@@ -19,8 +18,8 @@ import Input from '@/shared/components/ui/Input';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '../store/masterDataStore';
 import masterDataApi from '../api/masterDataApi';
-import RoomCardImage from '@/modules/booking/components/RoomCardImage';
 import { toast } from 'sonner';
+import { resolveImageUrl } from '@/core/utils/imageUtils';
 
 export const MasterDataManagementModal = () => {
   const { user, hasRole } = useAuthStore();
@@ -53,23 +52,11 @@ export const MasterDataManagementModal = () => {
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
-    assignedUserId: '',
-    assignedUserName: '',
     contactEmail: '',
   });
 
-  const [custodians, setCustodians] = useState([]);
-
-  useEffect(() => {
-    if (isMasterModalOpen) {
-      masterDataApi.getEligibleCustodians()
-        .then((data) => setCustodians(Array.isArray(data) ? data : []))
-        .catch((e) => console.warn('Failed to load custodians:', e));
-    }
-  }, [isMasterModalOpen]);
-
+  const [newRoomImageFile, setNewRoomImageFile] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [selectedRoomFile, setSelectedRoomFile] = useState(null);
 
   useEffect(() => {
     if (isMasterModalOpen && isSecretary) {
@@ -83,9 +70,9 @@ export const MasterDataManagementModal = () => {
 
   const handleClose = () => {
     setEditingId(null);
-    setSelectedRoomFile(null);
+    setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
     closeMasterModal();
   };
 
@@ -111,32 +98,40 @@ export const MasterDataManagementModal = () => {
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
-      // Strip base64 preview string so we don't store megabytes of data URI in JSON
-      imageUrl: roomForm.imageUrl?.startsWith('data:') ? '' : roomForm.imageUrl,
+      contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
     };
 
-    const currentEditingId = editingId;
-    let savedResult;
-    if (currentEditingId) {
-      savedResult = await updateMeetingRoom(currentEditingId, payload);
+    if (editingId) {
+      await updateMeetingRoom(editingId, payload);
+      if (newRoomImageFile) {
+        try {
+          await masterDataApi.uploadRoomImage(editingId, newRoomImageFile);
+          fetchMeetingRooms(false);
+        } catch (imgErr) {
+          console.error('Failed to upload image during update', imgErr);
+        }
+      }
+      setEditingId(null);
     } else {
-      savedResult = await createMeetingRoom(payload);
-    }
-
-    const targetRoomId = savedResult?.room?.id || savedResult?.id || currentEditingId;
-    if (selectedRoomFile && targetRoomId) {
-      try {
-        await masterDataApi.uploadRoomImage(targetRoomId, selectedRoomFile);
-        toast.success('Room photo uploaded successfully!');
-        await fetchMeetingRooms(false);
-      } catch (imgErr) {
-        toast.error('Room saved, but image upload failed.');
+      // Clean payload: don't send temporary blob: preview URLs to the creation endpoint
+      const createPayload = {
+        ...payload,
+        imageUrl: payload.imageUrl && !payload.imageUrl.startsWith('blob:') && !payload.imageUrl.startsWith('data:')
+          ? payload.imageUrl
+          : null,
+      };
+      const res = await createMeetingRoom(createPayload);
+      if (newRoomImageFile && res?.success && res?.room?.id) {
+        try {
+          await masterDataApi.uploadRoomImage(res.room.id, newRoomImageFile);
+          fetchMeetingRooms(false);
+        } catch (imgErr) {
+          console.error('Failed to upload image for new room', imgErr);
+        }
       }
     }
-
-    setSelectedRoomFile(null);
-    setEditingId(null);
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
+    setNewRoomImageFile(null);
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -158,14 +153,11 @@ export const MasterDataManagementModal = () => {
           setRoomForm((prev) => ({ ...prev, imageUrl: updated.imageUrl }));
         }
       } else {
-        setSelectedRoomFile(file);
-        // Convert to data url for preview before create
-        const reader = new FileReader();
-        reader.onload = () => {
-          setRoomForm((prev) => ({ ...prev, imageUrl: reader.result }));
-          toast.success('Photo ready for new room registration.');
-        };
-        reader.readAsDataURL(file);
+        // Keep file in state to upload as multipart file once the room ID is generated
+        setNewRoomImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setRoomForm((prev) => ({ ...prev, imageUrl: previewUrl }));
+        toast.success('Photo ready! It will be uploaded when you click Register Room.');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upload room image.');
@@ -183,9 +175,9 @@ export const MasterDataManagementModal = () => {
       maxWidth="max-w-4xl"
     >
       <div className="space-y-6 text-left">
-        {/* Navigation Tabs (Only shown to full Admin) */}
-        {!isSecretary && (
-          <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl">
+          {!isSecretary && (
             <button
               type="button"
               onClick={() => {
@@ -201,24 +193,24 @@ export const MasterDataManagementModal = () => {
               <Building2 className="w-4 h-4" />
               <span>Bank Departments ({departments.length})</span>
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('rooms');
-                setEditingId(null);
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'rooms'
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <DoorOpen className="w-4 h-4" />
-              <span>Meeting Rooms & Spaces ({meetingRooms.length})</span>
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('rooms');
+              setEditingId(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'rooms'
+                ? 'bg-white text-emerald-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <DoorOpen className="w-4 h-4" />
+            <span>Meeting Rooms & Boardrooms ({meetingRooms.length})</span>
+          </button>
+        </div>
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: DEPARTMENTS */}
@@ -332,7 +324,7 @@ export const MasterDataManagementModal = () => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 2: MEETING ROOMS & SPACES (3 STRICT FIELDS + PHOTO UPLOAD) */}
+        {/* TAB 2: MEETING ROOMS & SPACES */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'rooms' && (
           <div className="space-y-4">
@@ -347,7 +339,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: '', assignedUserName: '', contactEmail: '' });
+                      setRoomForm({ name: '', capacity: 18, imageUrl: '', contactEmail: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -414,57 +406,22 @@ export const MasterDataManagementModal = () => {
                 </div>
               </div>
 
-              {/* Room Custodian / Contact User */}
-              <div className="p-3 bg-white rounded-xl border border-sky-100 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5 text-[#00adef]" />
-                    <span>Room Custodian / Contact User</span>
-                  </span>
-                  <span className="text-[10px] font-bold text-[#00adef] bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
-                    Email Alerts & Cancellation
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <select
-                    value={roomForm.assignedUserId || ''}
-                    onChange={(e) => {
-                      const selId = e.target.value;
-                      if (!selId) {
-                        setRoomForm((prev) => ({
-                          ...prev,
-                          assignedUserId: '',
-                          assignedUserName: '',
-                          contactEmail: '',
-                        }));
-                      } else {
-                        const selUser = custodians.find((c) => String(c.id) === String(selId));
-                        if (selUser) {
-                          setRoomForm((prev) => ({
-                            ...prev,
-                            assignedUserId: selUser.id,
-                            assignedUserName: selUser.fullName || selUser.username,
-                            contactEmail: selUser.email || '',
-                          }));
-                        }
-                      }
-                    }}
-                    className="w-full h-[40px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
-                  >
-                    <option value="">-- No Assigned Custodian --</option>
-                    {custodians.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.fullName || c.username} ({c.email}) {c.department ? `— ${c.department}` : ''}
-                      </option>
-                    ))}
-                  </select>
-
+              {/* Designated Room Contact Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-emerald-100">
+                <div>
                   <Input
-                    placeholder="Contact Email (auto-filled)"
+                    label="Designated Room Contact Email"
                     type="email"
+                    placeholder="e.g. dept.secretary@coopbankoromia.com.et"
                     value={roomForm.contactEmail || ''}
-                    onChange={(e) => setRoomForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
+                    onChange={(e) => setRoomForm({ ...roomForm, contactEmail: e.target.value })}
                   />
+                </div>
+                <div className="flex items-center text-[11px] text-slate-500 pt-3 sm:pt-0">
+                  <div className="bg-sky-50 border border-sky-200 rounded-lg p-2.5 flex items-start gap-2">
+                    <Mail className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
+                    <span>This contact receives instant email & in-app alerts when this room is reserved or cancelled, and is authorized to cancel reservations.</span>
+                  </div>
                 </div>
               </div>
 
@@ -476,12 +433,13 @@ export const MasterDataManagementModal = () => {
                 <div className="flex items-center gap-3">
                   {roomForm.imageUrl ? (
                     <img
-                      src={roomForm.imageUrl}
+                      src={resolveImageUrl(roomForm.imageUrl)}
                       alt="Room Preview"
-                      className="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
                       onError={(e) => {
-                        e.target.style.display = 'none';
+                        e.target.onerror = null;
+                        e.target.src = '/rooms/executive-boardroom.jpg';
                       }}
+                      className="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
                     />
                   ) : (
                     <div className="w-16 h-12 rounded-lg bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
@@ -526,7 +484,7 @@ export const MasterDataManagementModal = () => {
                     <th className="py-2.5 pl-4">Photo</th>
                     <th className="py-2.5 px-3">Room Name & Floor</th>
                     <th className="py-2.5 px-3">Managing Department</th>
-                    <th className="py-2.5 px-3">Custodian</th>
+                    <th className="py-2.5 px-3">Contact Email</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
                     <th className="py-2.5 pr-4 text-right">Actions</th>
                   </tr>
@@ -535,13 +493,21 @@ export const MasterDataManagementModal = () => {
                   {meetingRooms.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 pl-4 w-12">
-                        <div className="w-10 h-8 rounded-md overflow-hidden border border-slate-200">
-                          <RoomCardImage
-                            room={r}
-                            className="w-full h-full object-cover"
-                            iconSize="w-4 h-4"
+                        {r.imageUrl ? (
+                          <img
+                            src={resolveImageUrl(r.imageUrl)}
+                            alt={r.name}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/rooms/executive-boardroom.jpg';
+                            }}
+                            className="w-10 h-8 object-cover rounded-md border border-slate-200"
                           />
-                        </div>
+                        ) : (
+                          <div className="w-10 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-400">
+                            <DoorOpen className="w-4 h-4" />
+                          </div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 font-bold text-[#000000]">{r.name}</td>
                       <td className="py-2.5 px-3">
@@ -549,13 +515,14 @@ export const MasterDataManagementModal = () => {
                           {r.department || 'General Facility'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-600">
-                        {r.assignedUserName ? (
-                          <span className="font-semibold text-slate-800">{r.assignedUserName}</span>
-                        ) : r.contactEmail ? (
-                          <span className="font-mono text-[11px] text-slate-500">{r.contactEmail}</span>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                        {r.contactEmail ? (
+                          <span className="flex items-center gap-1 text-slate-700">
+                            <Mail className="w-3 h-3 text-[#00adef]" />
+                            <span>{r.contactEmail}</span>
+                          </span>
                         ) : (
-                          <span className="text-slate-400 italic">None</span>
+                          <span className="text-slate-400 italic">Unassigned</span>
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">{r.capacity} Seats</td>
@@ -579,8 +546,6 @@ export const MasterDataManagementModal = () => {
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
-                                assignedUserId: r.assignedUserId || '',
-                                assignedUserName: r.assignedUserName || '',
                                 contactEmail: r.contactEmail || '',
                               });
                             }}

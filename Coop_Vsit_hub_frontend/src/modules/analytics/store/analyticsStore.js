@@ -2,15 +2,6 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 import analyticsApi from '../api/analyticsApi';
 
-const getSafePinnedFeedback = () => {
-  try {
-    const data = localStorage.getItem('coop_pinned_feedback');
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-};
-
 export const useAnalyticsStore = create((set, get) => ({
   dashboardData: null,
   feedbackData: null,
@@ -18,7 +9,7 @@ export const useAnalyticsStore = create((set, get) => ({
   error: null,
   lastRefreshedAt: null,
   showFinancials: localStorage.getItem('coop_show_financials') === 'true',
-  pinnedFeedbackIds: getSafePinnedFeedback(),
+  pinnedFeedbackIds: JSON.parse(localStorage.getItem('coop_pinned_feedback') || '[]'),
 
   fetchDashboard: async (isManualRefresh = false) => {
     set({ isLoading: true, error: null });

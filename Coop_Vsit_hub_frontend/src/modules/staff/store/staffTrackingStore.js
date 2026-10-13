@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 export const useStaffTrackingStore = create((set, get) => ({
   overview: null,
   trackedVisits: [],
+  trackedBookings: [],
   trackedOrganizations: [],
   trackedGuests: [],
   isLoading: false,
@@ -17,6 +18,7 @@ export const useStaffTrackingStore = create((set, get) => ({
       set({
         overview: data,
         trackedVisits: data?.visits || [],
+        trackedBookings: data?.roomBookings || [],
         trackedOrganizations: data?.organizations || [],
         trackedGuests: data?.individualGuests || [],
         isLoading: false,
@@ -32,6 +34,16 @@ export const useStaffTrackingStore = create((set, get) => ({
     try {
       const visits = await staffTrackingApi.getMyVisits();
       set({ trackedVisits: visits, isLoading: false });
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+    }
+  },
+
+  fetchMyBookings: async () => {
+    set({ isLoading: true });
+    try {
+      const bookings = await staffTrackingApi.getMyBookings();
+      set({ trackedBookings: bookings, isLoading: false });
     } catch (err) {
       set({ error: err.message, isLoading: false });
     }
@@ -54,6 +66,19 @@ export const useStaffTrackingStore = create((set, get) => ({
       set({ trackedGuests: guests, isLoading: false });
     } catch (err) {
       set({ error: err.message, isLoading: false });
+    }
+  },
+
+  cancelBooking: async (bookingId) => {
+    try {
+      await staffTrackingApi.cancelBooking(bookingId);
+      toast.success('Room reservation cancelled successfully');
+      await get().fetchOverview();
+      return true;
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to cancel reservation';
+      toast.error(msg);
+      throw err;
     }
   },
 

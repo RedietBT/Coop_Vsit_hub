@@ -13,20 +13,20 @@ export const AuthLayout = ({ children, title, subtitle, topRightAction }) => {
 
       <div className="w-full max-w-md my-auto">
         {/* Brand Logo */}
-        <div className="mb-6 flex justify-center">
+        <div className="mb-8 flex justify-center">
           <CoopLogo size="md" />
         </div>
 
         {/* Header */}
         {(title || subtitle) && (
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
             {title && (
               <h2 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
                 {title}
               </h2>
             )}
             {subtitle && (
-              <p className="text-xs sm:text-sm text-slate-600 mt-2">
+              <p className="text-sm text-slate-600 mt-2">
                 {subtitle}
               </p>
             )}
@@ -34,7 +34,7 @@ export const AuthLayout = ({ children, title, subtitle, topRightAction }) => {
         )}
 
         {/* Form Container Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 border border-slate-200/90">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/60 border border-slate-200/90">
           {children}
         </div>
       </div>

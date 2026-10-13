@@ -63,49 +63,30 @@ export const LoginPage = () => {
       soundPlayer.playNotificationChime();
       toast.success(`Welcome back, ${result.user?.firstName || result.user?.username || 'User'}!`);
       
-      const checkRole = (target) => {
-        const cleanTarget = String(target).replace(/^ROLE_/, '').toUpperCase();
-        const checkItem = (val) => {
-          if (!val) return false;
-          const clean = String(val).replace(/^ROLE_/, '').toUpperCase();
-          return clean === cleanTarget || String(val) === String(target) || String(val) === `ROLE_${cleanTarget}`;
-        };
-        const userRoles = Array.isArray(result.user?.roles)
-          ? result.user.roles
-          : (result.user?.role ? [result.user.role] : []);
-        return userRoles.some((r) => {
-          if (typeof r === 'string') return checkItem(r);
-          if (typeof r === 'object' && r !== null) return checkItem(r.name || r.role || r.authority);
-          return false;
+      const roles = Array.isArray(result.user?.roles) ? result.user.roles : [];
+      const checkRole = (target) =>
+        roles.some((r) => {
+          const name = typeof r === 'string' ? r : r?.name;
+          return name === target || name === `ROLE_${target}`;
         });
-      };
-
-      const isFrontDesk = checkRole('FRONT_DESK') || checkRole('SECURITY_DESK');
       const isAdmin = checkRole('ADMIN');
+      const isSecurity = checkRole('SECURITY_DESK');
       const isDirector = checkRole('DIRECTOR');
       const isSecretary = checkRole('SECRETARY');
       
       let defaultDestination = '/my-tracking';
-      if (isFrontDesk) {
-        defaultDestination = '/admin/front-desk';
-      } else if (isAdmin) {
+      if (isAdmin) {
         defaultDestination = '/dashboard';
       } else if (isDirector) {
         defaultDestination = '/my-tracking';
       } else if (isSecretary) {
         defaultDestination = '/bookings';
+      } else if (isSecurity) {
+        defaultDestination = '/security-desk';
       }
 
-      let from = location.state?.from?.pathname;
-      // Safeguard: do not redirect front-desk staff to admin-only pages
-      if (from && isFrontDesk && !isAdmin) {
-        const restrictedForFrontDesk = ['/dashboard', '/users', '/audit-logs', '/reports', '/admin', '/admin/dashboard'];
-        if (restrictedForFrontDesk.some((p) => from === p || from.startsWith('/admin/dashboard') || from.startsWith('/users'))) {
-          from = null;
-        }
-      }
-
-      navigate(from || defaultDestination, { replace: true });
+      const from = location.state?.from?.pathname || defaultDestination;
+      navigate(from, { replace: true });
     } else {
       soundPlayer.playNotificationChime();
       if (result.status === 429 || (result.error && result.error.toLowerCase().includes('locked'))) {
@@ -118,12 +99,7 @@ export const LoginPage = () => {
 
   const handleFirstTimeSuccess = () => {
     setShowFirstTimeModal(false);
-    const { hasRole } = useAuthStore.getState();
-    if (hasRole('ROLE_FRONT_DESK') || hasRole('ROLE_SECURITY_DESK')) {
-      navigate('/admin/front-desk', { replace: true });
-    } else {
-      navigate('/visits/calendar', { replace: true });
-    }
+    navigate('/visits/calendar', { replace: true });
   };
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();
@@ -209,7 +185,7 @@ export const LoginPage = () => {
               Access Receptionist & Staff Portal
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed mb-5">
-              Book a meeting room or schedule visits for CoopBank facilities.
+              Book a meeting room, reserve an executive visit, or check in guest delegations for CoopBank facilities.
             </p>
             <div className="flex items-center justify-between pt-2 border-t border-sky-100">
               <span className="text-xs font-bold text-[#00adef] group-hover:underline">
@@ -222,15 +198,15 @@ export const LoginPage = () => {
           </div>
 
           {/* Quick SSO Security Note */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-left flex items-start gap-3">
+          {/* <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-left flex items-start gap-3">
             <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-bold text-slate-800">Active Directory Single Sign-On</p>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                Use your AD credentials to log in.
+                CoopBank employees and front-desk staff can sign in directly using their bank account credentials.
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -281,7 +257,7 @@ export const LoginPage = () => {
                     Active Directory Single Sign-On
                   </p>
                   <p className="text-[10px] text-blue-700 leading-relaxed">
-                    Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>) or credentials created in the admin directory.
+                    Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>).
                   </p>
                 </div>
               </div>

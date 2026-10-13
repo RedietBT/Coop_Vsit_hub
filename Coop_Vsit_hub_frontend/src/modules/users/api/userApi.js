@@ -22,15 +22,8 @@ export const userApi = {
   },
 
   onboardUser: async (payload) => {
-    // payload: { username, email, password, confirmPassword, firstName, lastName, phone, department, jobTitle, roleNames, isAdUser }
+    // payload: { username, email, password, confirmPassword, firstName, lastName, phone, department, jobTitle, roleNames }
     const response = await apiClient.post('/api/v1/auth/register', payload);
-    return response.data;
-  },
-
-  lookupAdStaff: async (emailOrUsername) => {
-    const response = await apiClient.get('/api/v1/admin/ad/lookup', {
-      params: { email: emailOrUsername },
-    });
     return response.data;
   },
 

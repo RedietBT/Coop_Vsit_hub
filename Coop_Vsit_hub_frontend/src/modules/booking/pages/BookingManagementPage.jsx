@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   CalendarDays,
@@ -14,6 +13,8 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Shield,
   Layers,
   Filter,
@@ -26,7 +27,7 @@ import {
   Check,
   Sparkles,
   Plus,
-  Lock,
+  BookmarkCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import roomBookingApi from '../api/roomBookingApi';
@@ -37,63 +38,9 @@ import Badge from '@/shared/components/ui/Badge';
 import Button from '@/shared/components/ui/Button';
 import Spinner from '@/shared/components/ui/Spinner';
 import Modal from '@/shared/components/ui/Modal';
-import RoomCardImage from '../components/RoomCardImage';
-
-const STANDARD_BUSINESS_SLOTS = [
-  { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
-  { start: '09:00', end: '10:00', label: '09:00 - 10:00' },
-  { start: '10:00', end: '11:00', label: '10:00 - 11:00' },
-  { start: '11:00', end: '12:00', label: '11:00 - 12:00' },
-  { start: '12:00', end: '13:00', label: '12:00 - 13:00' },
-  { start: '13:00', end: '14:00', label: '13:00 - 14:00' },
-  { start: '14:00', end: '15:00', label: '14:00 - 15:00' },
-  { start: '15:00', end: '16:00', label: '15:00 - 16:00' },
-  { start: '16:00', end: '17:00', label: '16:00 - 17:00' },
-  { start: '17:00', end: '18:00', label: '17:00 - 18:00' },
-];
-
-const parseTimeToMinutes = (timeStr) => {
-  if (!timeStr) return 0;
-  const parts = timeStr.split(':');
-  const h = parseInt(parts[0], 10) || 0;
-  const m = parseInt(parts[1], 10) || 0;
-  return h * 60 + m;
-};
-
-const getLocalDateString = (d) => {
-  if (!d) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-const getConflictingBooking = (dateStr, startStr, endStr, slotsList) => {
-  if (!dateStr || !startStr || !endStr) return null;
-  const startMin = parseTimeToMinutes(startStr);
-  const endMin = parseTimeToMinutes(endStr);
-  if (startMin >= endMin) return null;
-
-  return (slotsList || []).find((b) => {
-    if (!b.scheduledStartTime || !b.scheduledEndTime) return false;
-    let bDate = b.date;
-    if (!bDate && b.scheduledStartTime) {
-      bDate = b.scheduledStartTime.split('T')[0];
-    }
-    const bLocalDate = getLocalDateString(new Date(b.scheduledStartTime));
-    if (bDate !== dateStr && bLocalDate !== dateStr) return false;
-
-    const bStartDate = new Date(b.scheduledStartTime);
-    const bEndDate = new Date(b.scheduledEndTime);
-    const bStartMin = bStartDate.getHours() * 60 + bStartDate.getMinutes();
-    const bEndMin = bEndDate.getHours() * 60 + bEndDate.getMinutes();
-
-    return startMin < bEndMin && endMin > bStartMin;
-  });
-};
+import { resolveImageUrl } from '@/core/utils/imageUtils';
 
 export const BookingManagementPage = () => {
-  const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
   const { meetingRooms, fetchAllMasterData, openMasterModal } = useMasterDataStore();
 
@@ -111,12 +58,15 @@ export const BookingManagementPage = () => {
   const [roomSearch, setRoomSearch] = useState('');
   const [roomCapacityFilter, setRoomCapacityFilter] = useState('ALL');
 
+  // Ledger Tab View: 'ALL' (All/Department Bookings) vs 'MY' (My Personal Bookings)
+  const [ledgerViewTab, setLedgerViewTab] = useState('ALL');
+
   // Recent Bookings Ledger State
   const [bookings, setBookings] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
   // Ledger Filters
@@ -126,7 +76,6 @@ export const BookingManagementPage = () => {
 
   // Cancel Modal State
   const [cancellingBooking, setCancellingBooking] = useState(null);
-  const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Detail Modal State
@@ -134,14 +83,14 @@ export const BookingManagementPage = () => {
 
   const isAdmin = hasRole('ROLE_ADMIN');
   const isSecretary = hasRole('ROLE_SECRETARY');
-  const isRelationshipManager = hasRole('ROLE_RELATIONSHIP_MANAGER');
-  const isDirector = hasRole('ROLE_DIRECTOR');
+  const isRM = hasRole('ROLE_RELATIONSHIP_MANAGER');
 
-  // Fetch recent bookings ledger
+  // Fetch recent bookings ledger (supports All vs My Bookings)
   const fetchBookings = useCallback(async () => {
     setIsLoadingBookings(true);
     try {
-      const data = await roomBookingApi.getBookings({
+      const apiFn = ledgerViewTab === 'MY' ? roomBookingApi.getMyBookings : roomBookingApi.getBookings;
+      const data = await apiFn({
         search: ledgerSearch.trim() || undefined,
         roomName: ledgerRoomFilter || undefined,
         status: ledgerStatusFilter || undefined,
@@ -159,7 +108,17 @@ export const BookingManagementPage = () => {
     } finally {
       setIsLoadingBookings(false);
     }
-  }, [ledgerSearch, ledgerRoomFilter, ledgerStatusFilter, currentPage, pageSize]);
+  }, [ledgerViewTab, ledgerSearch, ledgerRoomFilter, ledgerStatusFilter, currentPage, pageSize]);
+
+  // Local Date Helper
+  const getLocalDateString = (d = new Date()) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
   // Load booked slots for the selected room
   const loadRoomSlots = useCallback(async (roomName) => {
@@ -168,23 +127,32 @@ export const BookingManagementPage = () => {
     try {
       const slots = await roomBookingApi.getRoomSlots(roomName);
       const formatted = (Array.isArray(slots) ? slots : []).map((s) => {
-        const d = s.scheduledStartTime ? s.scheduledStartTime.split('T')[0] : '';
-        const sTime = s.scheduledStartTime
-          ? new Date(s.scheduledStartTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
-        const eTime = s.scheduledEndTime
-          ? new Date(s.scheduledEndTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
+        let d = '';
+        let sTime = '';
+        let eTime = '';
+        if (s.scheduledStartTime) {
+          const startDate = new Date(s.scheduledStartTime);
+          d = getLocalDateString(startDate);
+          sTime = startDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
+          });
+        }
+        if (s.scheduledEndTime) {
+          const endDate = new Date(s.scheduledEndTime);
+          eTime = endDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Africa/Addis_Ababa',
+          });
+        }
         return {
           ...s,
           date: d,
-          timeFormatted: `${sTime} - ${eTime}`,
+          timeFormatted: sTime && eTime ? `${sTime} - ${eTime}` : sTime || 'Reserved',
         };
       });
       setRoomSlots(formatted);
@@ -218,33 +186,80 @@ export const BookingManagementPage = () => {
 
   const handleCancelConfirm = async () => {
     if (!cancellingBooking) return;
-    if (!cancelReason.trim()) {
-      toast.error('Please specify a reason for cancellation.');
-      return;
-    }
     setIsCancelling(true);
     try {
-      await roomBookingApi.cancelBooking(cancellingBooking.id, cancelReason.trim());
+      await roomBookingApi.cancelBooking(cancellingBooking.id);
       toast.success(`Booking ${cancellingBooking.bookingCode} cancelled successfully.`);
       setCancellingBooking(null);
-      setCancelReason('');
+      if (inspectingBooking?.id === cancellingBooking.id) {
+        setInspectingBooking(null);
+      }
       fetchBookings();
       if (selectedRoom) {
         loadRoomSlots(selectedRoom.name);
       }
     } catch (e) {
-      toast.error('Failed to cancel room booking.');
+      const errMsg = e.response?.data?.message || 'Failed to cancel room booking.';
+      toast.error(errMsg);
     } finally {
       setIsCancelling(false);
     }
   };
 
+  // Check if current user has authority to cancel a specific booking
+  const checkCanCancel = (booking) => {
+    if (!booking || booking.status !== 'CONFIRMED') return false;
+    if (isAdmin || isRM) return true;
+    if (user?.id && booking.bookedByUserId && user.id === booking.bookedByUserId) return true;
+    if (user?.email && booking.bookedByEmail && user.email.toLowerCase() === booking.bookedByEmail.toLowerCase()) return true;
+    if (user?.username && booking.bookedByUsername && user.username.toLowerCase() === booking.bookedByUsername.toLowerCase()) return true;
+
+    // Department Secretary match
+    if (isSecretary && user?.department && booking.hostDepartment && user.department.toLowerCase() === booking.hostDepartment.toLowerCase()) {
+      return true;
+    }
+
+    // Designated room contact match
+    const matchingRoom = meetingRooms.find((r) => r.name?.toLowerCase() === booking.roomName?.toLowerCase());
+    if (matchingRoom?.contactEmail && user?.email && matchingRoom.contactEmail.toLowerCase() === user.email.toLowerCase()) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Filtered rooms for directory
-  const activeRooms = Array.isArray(meetingRooms) ? meetingRooms : [];
+  const activeRooms = meetingRooms && meetingRooms.length > 0 ? meetingRooms : [
+    {
+      id: '1',
+      name: 'Executive Boardroom',
+      capacity: 20,
+      imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      id: '2',
+      name: 'CoopBank HQ VIP Lounge',
+      capacity: 12,
+      imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      id: '3',
+      name: 'FinTech Innovation Lab',
+      capacity: 16,
+      imageUrl: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      id: '4',
+      name: 'Strategic Operations Room',
+      capacity: 10,
+      imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
+    },
+  ];
 
   const filteredRooms = activeRooms.filter((room) => {
     const matchesSearch =
-      !roomSearch || room.name?.toLowerCase().includes(roomSearch.toLowerCase());
+      !roomSearch || room.name?.toLowerCase().includes(roomSearch.toLowerCase()) ||
+      (room.contactEmail && room.contactEmail.toLowerCase().includes(roomSearch.toLowerCase()));
     const matchesCap =
       roomCapacityFilter === 'ALL' ||
       (roomCapacityFilter === 'SMALL' && room.capacity <= 10) ||
@@ -303,7 +318,7 @@ export const BookingManagementPage = () => {
                     Booking Management
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold">
-                    {totalElements} Total Bookings
+                    {totalElements} Bookings
                   </span>
                   {isSecretary && user?.department && (
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-[#e38524] border border-amber-200 text-xs font-bold">
@@ -312,34 +327,33 @@ export const BookingManagementPage = () => {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Inspect meeting rooms, view detailed calendar schedules, and audit who booked each facility.
+                  Inspect meeting rooms, view live calendar schedules, and manage your reservations.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Link to="/meeting-rooms">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={DoorOpen}
-                  className="shadow-xs"
-                >
-                  Meeting Rooms
-                </Button>
-              </Link>
-
               {(isAdmin || isSecretary) && (
-                <Link to="/meeting-rooms">
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openMasterModal('rooms')}
+                    icon={DoorOpen}
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    Manage Rooms
+                  </Button>
                   <Button
                     variant="primary"
                     size="sm"
+                    onClick={() => openMasterModal('rooms')}
                     icon={Plus}
                     className="bg-[#00adef] hover:bg-[#0095cc] text-white shadow-xs"
                   >
                     Add Room
                   </Button>
-                </Link>
+                </>
               )}
 
               <Button
@@ -349,7 +363,7 @@ export const BookingManagementPage = () => {
                 disabled={isLoadingBookings}
                 icon={RotateCcw}
               >
-                Refresh Data
+                Refresh
               </Button>
             </div>
           </div>
@@ -375,7 +389,7 @@ export const BookingManagementPage = () => {
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search rooms..."
+                    placeholder="Search rooms or contact..."
                     value={roomSearch}
                     onChange={(e) => setRoomSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef]"
@@ -427,7 +441,15 @@ export const BookingManagementPage = () => {
                   >
                     <div>
                       <div className="w-full h-44 rounded-2xl overflow-hidden relative mb-3 bg-slate-100">
-                        <RoomCardImage room={room} />
+                        <img
+                          src={resolveImageUrl(room.imageUrl)}
+                          alt={room.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/rooms/executive-boardroom.jpg';
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                         {room.department && (
                           <div className="absolute top-2.5 left-2.5">
                             <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
@@ -450,6 +472,13 @@ export const BookingManagementPage = () => {
                       <p className="text-slate-500 text-[11px] mt-0.5 line-clamp-1">
                         {room.department ? `Dept: ${room.department}` : (room.description || 'Executive boardroom & meeting suite')}
                       </p>
+
+                      {room.contactEmail && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500 font-mono truncate bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                          <Mail className="w-3 h-3 text-[#00adef] shrink-0" />
+                          <span className="truncate">{room.contactEmail}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -467,16 +496,52 @@ export const BookingManagementPage = () => {
             )}
           </div>
 
-          {/* SECTION 2: MOST RECENT BOOKINGS LEDGER */}
+          {/* SECTION 2: BOOKINGS LEDGER (WITH ALL VS MY BOOKINGS TABS) */}
           <div className="space-y-4 pt-4 border-t border-slate-200">
-            <div>
-              <h2 className="font-heading font-bold text-lg text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#00adef]" />
-                <span>Most Recent Bookings Ledger</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Central register of all recent room bookings across the bank.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-heading font-bold text-lg text-slate-900 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-[#00adef]" />
+                  <span>Bookings Ledger & History</span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {ledgerViewTab === 'MY'
+                    ? 'Showing your personal room reservations. You can cancel active reservations here.'
+                    : 'Central register of room bookings across the bank.'}
+                </p>
+              </div>
+
+              {/* View Toggle Tabs */}
+              <div className="flex items-center p-1 bg-slate-100 rounded-2xl">
+                <button
+                  onClick={() => {
+                    setLedgerViewTab('ALL');
+                    setCurrentPage(0);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    ledgerViewTab === 'ALL'
+                      ? 'bg-white text-[#00adef] shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>All Reservations</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setLedgerViewTab('MY');
+                    setCurrentPage(0);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    ledgerViewTab === 'MY'
+                      ? 'bg-white text-emerald-600 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <BookmarkCheck className="w-3.5 h-3.5" />
+                  <span>My Bookings</span>
+                </button>
+              </div>
             </div>
 
             {/* Filter Bar */}
@@ -497,7 +562,7 @@ export const BookingManagementPage = () => {
                   {ledgerSearch && (
                     <button
                       onClick={() => setLedgerSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -532,6 +597,22 @@ export const BookingManagementPage = () => {
                   <option value="CONFIRMED">Confirmed</option>
                   <option value="CANCELLED">Cancelled</option>
                 </select>
+
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 pl-2">
+                  <span>Show:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(0);
+                    }}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none text-slate-700 font-semibold"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -544,7 +625,8 @@ export const BookingManagementPage = () => {
                       <th className="py-3.5 px-5">Booking Reference</th>
                       <th className="py-3.5 px-4">Room & Meeting</th>
                       <th className="py-3.5 px-4">Reserved Schedule</th>
-                      <th className="py-3.5 px-4">Booked By (Staff / AD)</th>
+                      <th className="py-3.5 px-4">Booked On</th>
+                      <th className="py-3.5 px-4">Booked By</th>
                       <th className="py-3.5 px-4">Affiliated Party</th>
                       <th className="py-3.5 px-4">Status</th>
                       <th className="py-3.5 px-5 text-right">Actions</th>
@@ -553,16 +635,25 @@ export const BookingManagementPage = () => {
                   <tbody className="divide-y divide-slate-100 text-xs">
                     {isLoadingBookings ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <td colSpan={8} className="py-12 text-center text-slate-400">
                           <Spinner size="lg" className="mx-auto text-[#00adef] mb-2" />
                           <p className="font-medium text-xs">Loading reservations...</p>
                         </td>
                       </tr>
                     ) : bookings.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <td colSpan={8} className="py-12 text-center text-slate-400">
                           <DoorOpen className="w-10 h-10 mx-auto text-slate-300 mb-1.5" />
-                          <p className="font-bold text-xs text-slate-700">No room bookings found</p>
+                          <p className="font-bold text-xs text-slate-700">
+                            {ledgerViewTab === 'MY'
+                              ? 'You have not made any room reservations yet.'
+                              : 'No room bookings found'}
+                          </p>
+                          {ledgerViewTab === 'MY' && (
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Select a meeting room above or book a room from the New Visit form to see it listed here.
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ) : (
@@ -572,35 +663,45 @@ export const BookingManagementPage = () => {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : 'N/A';
                         const sTime = booking.scheduledStartTime
                           ? new Date(booking.scheduledStartTime).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '';
                         const eTime = booking.scheduledEndTime
                           ? new Date(booking.scheduledEndTime).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
+                            })
+                          : '';
+
+                        const bookedOnDate = booking.createdAt
+                          ? new Date(booking.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              timeZone: 'Africa/Addis_Ababa',
+                            })
+                          : '—';
+                        const bookedOnTime = booking.createdAt
+                          ? new Date(booking.createdAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Africa/Addis_Ababa',
                             })
                           : '';
 
                         const isConfirmed = booking.status === 'CONFIRMED';
-                        const isOwner = user && (
-                          (booking.bookedByUserId && user.id && String(booking.bookedByUserId).toLowerCase() === String(user.id).toLowerCase()) ||
-                          (booking.bookedByEmail && user.email && booking.bookedByEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-                          (booking.bookedByUsername && user.username && booking.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
-                          (booking.bookedByName && user.fullName && booking.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
-                        );
-                        const isRoomCustodian = user && (
-                          (booking.roomAssignedUserId && user.id && String(booking.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
-                          (booking.roomContactEmail && user.email && booking.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-                          (booking.roomAssignedUserName && user.username && booking.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
-                          (booking.roomAssignedUserName && user.fullName && booking.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
-                        );
-                        const canCancel = isConfirmed && (isAdmin || isSecretary || isRelationshipManager || isDirector || isOwner || isRoomCustodian);
+                        const canCancel = checkCanCancel(booking);
 
                         return (
                           <tr
@@ -636,6 +737,16 @@ export const BookingManagementPage = () => {
                                 <span>
                                   {sTime} - {eTime}
                                 </span>
+                              </div>
+                            </td>
+
+                            {/* Booked On (Date & Time when reservation was made) */}
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-slate-800">
+                                {bookedOnDate}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                {bookedOnTime}
                               </div>
                             </td>
 
@@ -687,7 +798,7 @@ export const BookingManagementPage = () => {
                               >
                                 <button
                                   onClick={() => setInspectingBooking(booking)}
-                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer"
                                   title="View Details"
                                 >
                                   <Info className="w-4 h-4" />
@@ -696,7 +807,7 @@ export const BookingManagementPage = () => {
                                 {canCancel && (
                                   <button
                                     onClick={() => setCancellingBooking(booking)}
-                                    className="px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors"
+                                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
                                     title="Cancel Reservation"
                                   >
                                     Cancel
@@ -712,31 +823,79 @@ export const BookingManagementPage = () => {
                 </table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="p-3.5 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
-                    Page <span className="font-bold text-slate-800">{currentPage + 1}</span> of{' '}
-                    <span className="font-bold text-slate-800">{totalPages}</span> ({totalElements} total)
-                  </span>
+              {/* Complete Pagination Controls */}
+              <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-xs text-slate-500">
+                  Showing <span className="font-bold text-slate-800">{totalElements > 0 ? (currentPage * pageSize) + 1 : 0}</span> to{' '}
+                  <span className="font-bold text-slate-800">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> of{' '}
+                  <span className="font-bold text-slate-800">{totalElements}</span> reservations
+                </span>
 
+                {totalPages > 1 && (
                   <div className="flex items-center gap-1">
+                    {/* First Page */}
+                    <button
+                      onClick={() => setCurrentPage(0)}
+                      disabled={currentPage === 0 || isLoadingBookings}
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="First Page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Previous Page */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                       disabled={currentPage === 0 || isLoadingBookings}
-                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Previous Page"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                      let pageNum = currentPage - 2 + idx;
+                      if (pageNum < 0) pageNum = idx;
+                      if (pageNum >= totalPages) return null;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                            currentPage === pageNum
+                              ? 'bg-[#00adef] text-white shadow-xs'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    })}
+
+                    {/* Next Page */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
                       disabled={currentPage >= totalPages - 1 || isLoadingBookings}
-                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Next Page"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
+
+                    {/* Last Page */}
+                    <button
+                      onClick={() => setCurrentPage(totalPages - 1)}
+                      disabled={currentPage >= totalPages - 1 || isLoadingBookings}
+                      className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+                      title="Last Page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -765,6 +924,12 @@ export const BookingManagementPage = () => {
                     <Users className="w-3 h-3 mr-1" />
                     {selectedRoom.capacity || 12} Seats
                   </Badge>
+                  {selectedRoom.contactEmail && (
+                    <Badge variant="neutral">
+                      <Mail className="w-3 h-3 mr-1 text-[#00adef]" />
+                      {selectedRoom.contactEmail}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Inspect confirmed reservations, schedules, and staff bookings for this room.
@@ -772,26 +937,14 @@ export const BookingManagementPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate('/visits/calendar')}
-                icon={CalendarDays}
-                className="shadow-xs"
-              >
-                Instant Book Room
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedRoom(null)}
-                icon={ArrowLeft}
-              >
-                Choose Different Room
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedRoom(null)}
+              icon={ArrowLeft}
+            >
+              Choose Different Room
+            </Button>
           </div>
 
           {/* 50/50 Split Container */}
@@ -802,8 +955,13 @@ export const BookingManagementPage = () => {
             <div className="lg:col-span-6 space-y-6">
               {/* Room Image Showcase */}
               <div className="w-full h-56 rounded-3xl overflow-hidden relative border border-slate-200 shadow-xs bg-slate-100">
-                <RoomCardImage
-                  room={selectedRoom}
+                <img
+                  src={resolveImageUrl(selectedRoom.imageUrl)}
+                  alt={selectedRoom.name}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/rooms/executive-boardroom.jpg';
+                  }}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent flex items-end p-5">
@@ -910,79 +1068,56 @@ export const BookingManagementPage = () => {
                   })}
                 </div>
 
-                {/* Locked Stable Height Availability Inspector with Disabled Occupied Times */}
-                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl flex flex-col justify-between overflow-hidden">
-                  <div className="flex items-center justify-between mb-2 shrink-0">
+                {/* Locked Stable Height Availability Inspector */}
+                <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl h-32 flex flex-col justify-between overflow-hidden">
+                  <div className="flex items-center justify-between mb-1.5 shrink-0">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
-                      Hourly Schedule on{' '}
+                      Schedule on{' '}
                       {activeHoverDateStr
-                        ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                        ? (() => {
+                            const parts = activeHoverDateStr.split('-').map(Number);
+                            if (parts.length === 3) {
+                              return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              });
+                            }
+                            return activeHoverDateStr;
+                          })()
                         : 'Selected Date'}
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      (Occupied hours are disabled)
+                      (Click date to see full staff details)
                     </span>
                   </div>
 
-                  <div className="max-h-56 overflow-y-auto pr-1 space-y-1.5">
-                    {STANDARD_BUSINESS_SLOTS.map((slot) => {
-                      const conflict = getConflictingBooking(
-                        activeHoverDateStr,
-                        slot.start,
-                        slot.end,
-                        roomSlots
-                      );
-                      const isOccupied = Boolean(conflict);
-
-                      if (isOccupied) {
-                        return (
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    {activeDateSlots.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {activeDateSlots.map((slot, idx) => (
                           <div
-                            key={slot.label}
-                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-rose-50/80 border border-rose-200/90 text-rose-700 text-xs font-semibold opacity-75 select-none cursor-not-allowed"
-                            title={`Occupied: ${conflict.meetingTitle || 'Reserved'} (${conflict.timeFormatted || slot.label})`}
+                            key={idx}
+                            className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold"
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                              <span className="font-mono line-through">{slot.label}</span>
-                              <span className="text-[11px] text-rose-600 truncate max-w-45">
-                                • {conflict.meetingTitle || 'Booked Session'}
-                              </span>
+                              <span className="w-2 h-2 rounded-full bg-red-500" />
+                              <span>{slot.timeFormatted || 'Reserved Hours'}</span>
                             </div>
-                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold uppercase shrink-0 flex items-center gap-1">
-                              <Lock className="w-2.5 h-2.5" />
-                              Occupied (Disabled)
+                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
+                              Booked by {slot.bookedByName}
                             </span>
                           </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={slot.label}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 text-xs font-semibold"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                            <span className="font-mono">{slot.label}</span>
-                            <span className="text-[11px] text-emerald-700">
-                              • Available
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => navigate('/visits/calendar')}
-                            className="px-2 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold uppercase shrink-0 transition-colors cursor-pointer"
-                          >
-                            Open • Book
-                          </button>
-                        </div>
-                      );
-                    })}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>Entire day is currently open. No scheduled bookings.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1039,21 +1174,7 @@ export const BookingManagementPage = () => {
 
                   <div className="space-y-3">
                     {selectedDateBookings.map((b) => {
-                      const isOwner = user && (
-                        (b.bookedByUserId && user.id && String(b.bookedByUserId).toLowerCase() === String(user.id).toLowerCase()) ||
-                        (b.bookedByEmail && user.email && b.bookedByEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-                        (b.bookedByUsername && user.username && b.bookedByUsername.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
-                        (b.bookedByName && user.fullName && b.bookedByName.trim().toLowerCase() === user.fullName.trim().toLowerCase())
-                      );
-                      const isRoomCustodian = user && (
-                        (b.roomAssignedUserId && user.id && String(b.roomAssignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
-                        (b.roomContactEmail && user.email && b.roomContactEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-                        (b.roomAssignedUserName && user.username && b.roomAssignedUserName.trim().toLowerCase() === user.username.trim().toLowerCase()) ||
-                        (b.roomAssignedUserName && user.fullName && b.roomAssignedUserName.trim().toLowerCase() === user.fullName.trim().toLowerCase()) ||
-                        (selectedRoom?.assignedUserId && user.id && String(selectedRoom.assignedUserId).toLowerCase() === String(user.id).toLowerCase()) ||
-                        (selectedRoom?.contactEmail && user.email && selectedRoom.contactEmail.trim().toLowerCase() === user.email.trim().toLowerCase())
-                      );
-                      const canCancel = isAdmin || isSecretary || isOwner || isRoomCustodian;
+                      const canCancel = checkCanCancel(b);
 
                       return (
                         <div
@@ -1189,13 +1310,14 @@ export const BookingManagementPage = () => {
 
             <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Date & Time</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Scheduled Time</p>
                 <p className="font-bold text-slate-800 mt-0.5">
                   {inspectingBooking.scheduledStartTime
                     ? new Date(inspectingBooking.scheduledStartTime).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : 'N/A'}
                 </p>
@@ -1204,6 +1326,8 @@ export const BookingManagementPage = () => {
                     ? new Date(inspectingBooking.scheduledStartTime).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : ''}{' '}
                   -{' '}
@@ -1211,15 +1335,34 @@ export const BookingManagementPage = () => {
                     ? new Date(inspectingBooking.scheduledEndTime).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
                       })
                     : ''}
                 </p>
               </div>
 
               <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Expected Headcount</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Booked On / Created</p>
                 <p className="font-bold text-slate-800 mt-0.5">
-                  {inspectingBooking.expectedAttendees || 1} Attendees
+                  {inspectingBooking.createdAt
+                    ? new Date(inspectingBooking.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'Africa/Addis_Ababa',
+                      })
+                    : 'N/A'}
+                </p>
+                <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                  {inspectingBooking.createdAt
+                    ? new Date(inspectingBooking.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'Africa/Addis_Ababa',
+                      })
+                    : ''}
                 </p>
               </div>
             </div>
@@ -1262,7 +1405,23 @@ export const BookingManagementPage = () => {
               </div>
             )}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              {checkCanCancel(inspectingBooking) ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    const toCancel = inspectingBooking;
+                    setInspectingBooking(null);
+                    setCancellingBooking(toCancel);
+                  }}
+                >
+                  Cancel This Reservation
+                </Button>
+              ) : (
+                <div />
+              )}
+
               <Button
                 variant="ghost"
                 size="md"
@@ -1297,43 +1456,14 @@ export const BookingManagementPage = () => {
             </div>
 
             <p className="text-slate-600 text-xs">
-              Cancelling will immediately release the room slot on the calendar for other staff members.
+              Cancelling will immediately release the room slot on the calendar and notify all parties via email and in-app alerts.
             </p>
-
-            {/* Cancellation Reason Input */}
-            <div className="space-y-1.5 text-left">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Reason for Cancellation <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                rows={3}
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="State reason for cancellation (e.g., meeting postponed, client rescheduled)..."
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#00adef]/20 focus:border-[#00adef] bg-slate-50 focus:bg-white placeholder:text-slate-400 resize-none transition-all"
-              />
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {['Meeting Postponed', 'Client Rescheduled', 'Moved to Virtual Call', 'Emergency / Illness', 'Room Conflict'].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setCancelReason(preset)}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors font-medium cursor-pointer"
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setCancellingBooking(null);
-                  setCancelReason('');
-                }}
+                onClick={() => setCancellingBooking(null)}
                 disabled={isCancelling}
               >
                 Keep Booking
@@ -1342,7 +1472,6 @@ export const BookingManagementPage = () => {
                 variant="danger"
                 size="sm"
                 onClick={handleCancelConfirm}
-                disabled={isCancelling || !cancelReason.trim()}
                 isLoading={isCancelling}
               >
                 Confirm Cancellation

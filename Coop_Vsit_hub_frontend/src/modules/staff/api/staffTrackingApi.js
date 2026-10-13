@@ -11,6 +11,11 @@ export const staffTrackingApi = {
     return response.data?.data || response.data || [];
   },
 
+  getMyBookings: async () => {
+    const response = await apiClient.get('/api/v1/staff/my-bookings');
+    return response.data?.data || response.data || [];
+  },
+
   getMyOrganizations: async () => {
     const response = await apiClient.get('/api/v1/staff/my-organizations');
     return response.data?.data || response.data || [];
@@ -19,6 +24,11 @@ export const staffTrackingApi = {
   getMyGuests: async () => {
     const response = await apiClient.get('/api/v1/staff/my-guests');
     return response.data?.data || response.data || [];
+  },
+
+  cancelBooking: async (bookingId) => {
+    const response = await apiClient.delete(`/api/v1/room-bookings/${bookingId}`);
+    return response.data?.data || response.data;
   },
 
   linkBooking: async (bookingId, visitId) => {

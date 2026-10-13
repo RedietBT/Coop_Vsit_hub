@@ -25,8 +25,6 @@ export const useUserStore = create((set, get) => ({
   isOnboardModalOpen: false,
   isRolesModalOpen: false,
   roleTargetUser: null,
-  isEditModalOpen: false,
-  editTargetUser: null,
 
   setFilters: (newFilters) => {
     set((state) => ({
@@ -54,9 +52,6 @@ export const useUserStore = create((set, get) => ({
 
   openRolesModal: (user) => set({ roleTargetUser: user, isRolesModalOpen: true }),
   closeRolesModal: () => set({ roleTargetUser: null, isRolesModalOpen: false }),
-
-  openEditModal: (user) => set({ editTargetUser: user, isEditModalOpen: true }),
-  closeEditModal: () => set({ editTargetUser: null, isEditModalOpen: false }),
 
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
@@ -114,39 +109,6 @@ export const useUserStore = create((set, get) => ({
         err.response?.data?.message ||
         err.response?.data?.error ||
         'Failed to onboard staff user.';
-      toast.error(errorMsg);
-      return { success: false, error: errorMsg };
-    }
-  },
-
-  lookupAdStaff: async (emailOrUsername) => {
-    try {
-      const data = await userApi.lookupAdStaff(emailOrUsername);
-      return { success: true, ...data };
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Staff not found in Active Directory.';
-      return { success: false, found: false, message: errorMsg, error: err };
-    }
-  },
-
-  updateUser: async (id, payload) => {
-    try {
-      const updated = await userApi.updateUser(id, payload);
-      soundPlayer.playNotificationChime();
-      toast.success(
-        `Staff member "${updated.firstName || updated.username || 'User'}" updated successfully.`
-      );
-      get().closeEditModal();
-      get().fetchUsers();
-      return { success: true, user: updated };
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Failed to update staff user.';
       toast.error(errorMsg);
       return { success: false, error: errorMsg };
     }

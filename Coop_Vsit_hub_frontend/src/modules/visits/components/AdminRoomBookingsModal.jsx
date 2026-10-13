@@ -19,7 +19,6 @@ import visitApi from '../api/visitApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
-import Pagination from '@/shared/components/ui/Pagination';
 
 export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   const [bookings, setBookings] = useState([]);
@@ -27,9 +26,6 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   const [search, setSearch] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('ALL');
   const [cancelingId, setCancelingId] = useState(null);
-
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
 
   const fetchBookings = async () => {
     setIsLoading(true);
@@ -86,16 +82,6 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
       b.bookedByDepartment?.toLowerCase().includes(q);
     return matchRoom && matchSearch;
   });
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [filteredBookings.length, search, selectedRoom]);
-
-  const totalPages = Math.ceil(filteredBookings.length / pageSize) || 1;
-  const paginatedBookings = filteredBookings.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn text-left">
@@ -195,7 +181,7 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {paginatedBookings.map((b) => (
+                  {filteredBookings.map((b) => (
                     <tr key={b.visitId} className="hover:bg-blue-50/30 transition-colors">
                       {/* Room */}
                       <td className="py-3.5 px-4">
@@ -215,11 +201,35 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 font-medium text-slate-700">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{b.date || 'Scheduled'}</span>
+                            <span>
+                              {b.scheduledStartTime
+                                ? new Date(b.scheduledStartTime).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    timeZone: 'Africa/Addis_Ababa',
+                                  })
+                                : b.date || 'Scheduled'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#00adef]">
                             <Clock className="w-3 h-3 text-[#00adef]" />
-                            <span>{b.timeRange || 'Full Day'}</span>
+                            <span className="font-mono">
+                              {b.scheduledStartTime && b.scheduledEndTime
+                                ? `${new Date(b.scheduledStartTime).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                    timeZone: 'Africa/Addis_Ababa',
+                                  })} - ${new Date(b.scheduledEndTime).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                    timeZone: 'Africa/Addis_Ababa',
+                                  })}`
+                                : b.timeRange || 'Full Day'}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -275,18 +285,6 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                   ))}
                 </tbody>
               </table>
-
-              {filteredBookings.length > 0 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalElements={filteredBookings.length}
-                  pageSize={pageSize}
-                  onPageSizeChange={setPageSize}
-                  onPageChange={setCurrentPage}
-                  itemName="reservations"
-                />
-              )}
             </div>
           )}
         </div>
