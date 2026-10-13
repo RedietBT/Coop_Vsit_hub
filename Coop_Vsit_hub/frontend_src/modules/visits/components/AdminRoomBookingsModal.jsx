@@ -201,11 +201,32 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 font-medium text-slate-700">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{b.date || 'Scheduled'}</span>
+                            <span>
+                              {b.scheduledStartTime
+                                ? new Date(b.scheduledStartTime).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })
+                                : b.date || 'Scheduled'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#00adef]">
                             <Clock className="w-3 h-3 text-[#00adef]" />
-                            <span>{b.timeRange || 'Full Day'}</span>
+                            <span className="font-mono">
+                              {b.scheduledStartTime && b.scheduledEndTime
+                                ? `${new Date(b.scheduledStartTime).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                  })} - ${new Date(b.scheduledEndTime).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true,
+                                  })}`
+                                : b.timeRange || 'Full Day'}
+                            </span>
                           </div>
                         </div>
                       </td>

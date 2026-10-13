@@ -1,19 +1,21 @@
 function getApiBase() {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && envUrl.trim()) {
-    return envUrl.trim();
+    const trimmed = envUrl.trim();
+    return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
   }
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    return `http://${window.location.hostname}:8080`;
-  }
-  return 'http://localhost:8080';
+  // When running in the browser without an explicit external VITE_API_URL:
+  // Return empty string so relative URLs (/api/...) use current host and port
+  // and route smoothly through Nginx or the Vite proxy.
+  return '';
 }
 
 /**
  * Resolves room image URLs to ensure uploaded backend images load correctly across all environments
  * (localhost, local LAN IP 10.8.101.150, or production).
- * - Automatically prepends the backend API host when the image path starts with `/api/` or `/uploads/`.
- * - Preserves public frontend assets like `/rooms/...` and full URLs (http/https, data, blob).
+ * - Automatically routes uploaded room images (stored as /rooms/room_xxx or room_xxx) to the backend API.
+ * - Automatically prepends API base if configured, or leaves as relative URL for Nginx/Vite proxy.
+ * - Preserves public frontend static assets like `/rooms/executive-boardroom.jpg`.
  * - Provides an authentic CoopBank facility fallback if the URL is empty.
  */
 export function resolveImageUrl(url, fallback = '/rooms/executive-boardroom.jpg') {
@@ -32,16 +34,26 @@ export function resolveImageUrl(url, fallback = '/rooms/executive-boardroom.jpg'
     return trimmed;
   }
 
-  // If frontend public static asset (e.g. /rooms/...)
-  if (trimmed.startsWith('/rooms/')) {
-    return trimmed;
+  const apiBase = getApiBase();
+
+  // Handle uploaded room images (e.g. /rooms/room_xxxx, /uploads/rooms/room_xxxx, room_xxxx)
+  // Route them through the public API endpoint so Nginx (port 80) and Vite proxy serve them
+  if (
+    trimmed.includes('room_') &&
+    (trimmed.startsWith('/rooms/') || trimmed.startsWith('/uploads/') || trimmed.startsWith('room_'))
+  ) {
+    const filename = trimmed.substring(trimmed.lastIndexOf('/') + 1);
+    return `${apiBase}/api/v1/meeting-rooms/images/${filename}`;
   }
 
   // If backend endpoint (e.g. /api/v1/meeting-rooms/images/... or /uploads/...)
   if (trimmed.startsWith('/api') || trimmed.startsWith('/uploads')) {
-    const apiBase = getApiBase();
-    const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
-    return `${base}${trimmed}`;
+    return `${apiBase}${trimmed}`;
+  }
+
+  // If frontend public static stock asset (e.g. /rooms/executive-boardroom.jpg)
+  if (trimmed.startsWith('/rooms/')) {
+    return trimmed;
   }
 
   return trimmed;

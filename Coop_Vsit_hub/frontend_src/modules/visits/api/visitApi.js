@@ -2,6 +2,9 @@ import apiClient from '@/core/api/apiClient';
 
 export const toInstantIso = (val) => {
   if (!val) return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.toISOString();
+  }
   if (typeof val !== 'string') {
     try {
       return new Date(val).toISOString();
@@ -10,19 +13,18 @@ export const toInstantIso = (val) => {
     }
   }
   const trimmed = val.trim();
-  if (trimmed.endsWith('Z')) return trimmed;
-  // If format is YYYY-MM-DDTHH:mm, append :00Z
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
-    return `${trimmed}:00Z`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(trimmed)) {
-    return `${trimmed}Z`;
-  }
-  try {
-    return new Date(trimmed).toISOString();
-  } catch {
+  if (trimmed.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
     return trimmed;
   }
+  try {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  } catch {
+    // fallback
+  }
+  return trimmed;
 };
 
 export const visitApi = {

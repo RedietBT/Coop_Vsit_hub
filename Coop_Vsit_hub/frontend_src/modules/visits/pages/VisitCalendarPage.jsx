@@ -48,6 +48,75 @@ export const VisitCalendarPage = () => {
   const [capacityFilter, setCapacityFilter] = useState('ALL');
   const [isAdminRosterOpen, setIsAdminRosterOpen] = useState(false);
 
+  // Date & Time Helpers
+  const getLocalDateString = (d = new Date()) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const parseTimeTo12Hr = (time24) => {
+    if (!time24) return { hour: '09', minute: '00', period: 'AM' };
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr ? mStr.padStart(2, '0') : '00';
+    const period = h >= 12 ? 'PM' : 'AM';
+    if (h === 0) {
+      h = 12;
+    } else if (h > 12) {
+      h -= 12;
+    }
+    return {
+      hour: String(h).padStart(2, '0'),
+      minute: m,
+      period,
+    };
+  };
+
+  const format12To24 = (hour, minute, period) => {
+    let h = parseInt(hour, 10) || 12;
+    const m = String(minute).padStart(2, '0');
+    if (period === 'AM') {
+      if (h === 12) h = 0;
+    } else {
+      if (h < 12) h += 12;
+    }
+    return `${String(h).padStart(2, '0')}:${m}`;
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return 'Selected Date';
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+    return dateStr;
+  };
+
+  const calculateDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return '';
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    const startMins = sh * 60 + sm;
+    const endMins = eh * 60 + em;
+    const diff = endMins - startMins;
+    if (diff <= 0) return 'Invalid range';
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    if (hours > 0 && mins > 0) return `${hours} hr ${mins} mins`;
+    if (hours > 0) return `${hours} hr${hours > 1 ? 's' : ''}`;
+    return `${mins} mins`;
+  };
+
   // Calendar & Booking State (for detailed view)
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -59,7 +128,7 @@ export const VisitCalendarPage = () => {
   // Booking Form State
   const [formData, setFormData] = useState({
     title: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(new Date()),
     startTime: '09:00',
     endTime: '10:30',
     requestingDepartment: user?.department || 'Growth and Operations',
@@ -131,23 +200,30 @@ export const VisitCalendarPage = () => {
     try {
       const slots = await roomBookingApi.getRoomSlots(roomName);
       const formatted = (Array.isArray(slots) ? slots : []).map((s) => {
-        const d = s.scheduledStartTime ? s.scheduledStartTime.split('T')[0] : '';
-        const sTime = s.scheduledStartTime
-          ? new Date(s.scheduledStartTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
-        const eTime = s.scheduledEndTime
-          ? new Date(s.scheduledEndTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
+        let d = '';
+        let sTime = '';
+        let eTime = '';
+        if (s.scheduledStartTime) {
+          const startDate = new Date(s.scheduledStartTime);
+          d = getLocalDateString(startDate);
+          sTime = startDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
+        if (s.scheduledEndTime) {
+          const endDate = new Date(s.scheduledEndTime);
+          eTime = endDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
         return {
           ...s,
           date: d,
-          timeFormatted: `${sTime} - ${eTime}`,
+          timeFormatted: sTime && eTime ? `${sTime} - ${eTime}` : sTime || 'Reserved',
         };
       });
       setRoomSlots(formatted);
@@ -163,7 +239,7 @@ export const VisitCalendarPage = () => {
     setSelectedRoom(room);
     setFormData((prev) => ({
       ...prev,
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(new Date()),
       visitorCount: Math.min(room.capacity || 10, 4),
     }));
     loadRoomSlots(room.name);
@@ -203,7 +279,7 @@ export const VisitCalendarPage = () => {
   const activeHoverDateStr = hoveredDate
     ? formatDateKey(hoveredDate)
     : selectedDate
-    ? selectedDate.toISOString().split('T')[0]
+    ? getLocalDateString(selectedDate)
     : null;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
@@ -216,18 +292,29 @@ export const VisitCalendarPage = () => {
       return;
     }
     if (!formData.startTime || !formData.endTime) {
-      toast.error('Please specify meeting start and end times.');
+      toast.error('Please specify meeting start and end times in AM/PM.');
       return;
     }
-    if (formData.startTime >= formData.endTime) {
+
+    // Parse local date + time components accurately into Date objects
+    const localStart = new Date(`${formData.date}T${formData.startTime}:00`);
+    const localEnd = new Date(`${formData.date}T${formData.endTime}:00`);
+
+    if (isNaN(localStart.getTime()) || isNaN(localEnd.getTime())) {
+      toast.error('Please specify valid start and end times.');
+      return;
+    }
+
+    if (localStart >= localEnd) {
       toast.error('End time must be after start time.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const startIso = `${formData.date}T${formData.startTime}:00Z`;
-      const endIso = `${formData.date}T${formData.endTime}:00Z`;
+      // Accurately convert local date/time to UTC ISO timestamp
+      const startIso = localStart.toISOString();
+      const endIso = localEnd.toISOString();
 
       const payload = {
         roomName: selectedRoom.name,
@@ -591,13 +678,7 @@ export const VisitCalendarPage = () => {
                   <div className="flex items-center justify-between mb-1.5 shrink-0">
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
-                      Schedule on{' '}
-                      {activeHoverDateStr
-                        ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString(
-                            'en-US',
-                            { month: 'short', day: 'numeric', year: 'numeric' }
-                          )
-                        : 'Selected Date'}
+                      Schedule on {formatDisplayDate(activeHoverDateStr)}
                     </span>
                     <span className="text-[11px] text-slate-400">
                       (Hover over calendar days to inspect)
@@ -614,7 +695,7 @@ export const VisitCalendarPage = () => {
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-red-500" />
-                              <span>{slot.timeFormatted || 'Reserved Hours'}</span>
+                              <span className="font-mono">{slot.timeFormatted || 'Reserved Hours'}</span>
                             </div>
                             <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold uppercase">
                               Booked
@@ -669,52 +750,274 @@ export const VisitCalendarPage = () => {
                   />
                 </div>
 
-                {/* Date & Times (Multi-slot booking support) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Quick Meeting Slot Presets */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-[#00adef]" />
+                      Quick Slot Presets (AM / PM)
+                    </span>
+                    <span className="text-[10px] text-slate-400">One-click populate</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: '09:00 AM - 10:30 AM', start: '09:00', end: '10:30' },
+                      { label: '11:00 AM - 12:30 PM', start: '11:00', end: '12:30' },
+                      { label: '02:00 PM - 03:30 PM', start: '14:00', end: '15:30' },
+                      { label: '02:30 PM - 04:00 PM', start: '14:30', end: '16:00' },
+                      { label: '04:00 PM - 05:30 PM', start: '16:00', end: '17:30' },
+                    ].map((preset) => {
+                      const isSelected =
+                        formData.startTime === preset.start && formData.endTime === preset.end;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              startTime: preset.start,
+                              endTime: preset.end,
+                            }))
+                          }
+                          className={`px-2.5 py-1 text-xs rounded-xl font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#00adef] text-white shadow-xs'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50/50'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Date & 12-Hour AM/PM Times */}
+                <div className="space-y-3">
+                  {/* Reservation Date */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Reservation Date
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Reservation Date
+                      </label>
+                      <span className="text-[11px] font-semibold text-[#00adef]">
+                        {formatDisplayDate(formData.date)}
+                      </span>
+                    </div>
                     <input
                       type="date"
                       required
                       value={formData.date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, date: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData((prev) => ({ ...prev, date: val }));
+                        const parts = val.split('-').map(Number);
+                        if (parts.length === 3) {
+                          setSelectedDate(new Date(parts[0], parts[1] - 1, parts[2]));
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none cursor-pointer"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Start Time
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.startTime}
-                      onChange={(e) =>
-                        setFormData({ ...formData, startTime: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
-                    />
+                  {/* 12-Hour AM/PM Time Pickers */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* START TIME */}
+                    {(() => {
+                      const t = parseTimeTo12Hr(formData.startTime);
+                      const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                      const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                      return (
+                        <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">
+                              Start Time
+                            </label>
+                            <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                              {t.hour}:{t.minute} {t.period}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Hour Select */}
+                            <select
+                              value={t.hour}
+                              onChange={(e) => {
+                                const new24 = format12To24(e.target.value, t.minute, t.period);
+                                setFormData((prev) => ({ ...prev, startTime: new24 }));
+                              }}
+                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            >
+                              {hours.map((h) => (
+                                <option key={`start-h-${h}`} value={h}>
+                                  {h}
+                                </option>
+                              ))}
+                            </select>
+
+                            <span className="font-bold text-slate-400">:</span>
+
+                            {/* Minute Select */}
+                            <select
+                              value={t.minute}
+                              onChange={(e) => {
+                                const new24 = format12To24(t.hour, e.target.value, t.period);
+                                setFormData((prev) => ({ ...prev, startTime: new24 }));
+                              }}
+                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            >
+                              {minutes.map((m) => (
+                                <option key={`start-m-${m}`} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* AM/PM Toggle */}
+                            <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const new24 = format12To24(t.hour, t.minute, 'AM');
+                                  setFormData((prev) => ({ ...prev, startTime: new24 }));
+                                }}
+                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                  t.period === 'AM'
+                                    ? 'bg-[#00adef] text-white'
+                                    : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                              >
+                                AM
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const new24 = format12To24(t.hour, t.minute, 'PM');
+                                  setFormData((prev) => ({ ...prev, startTime: new24 }));
+                                }}
+                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                  t.period === 'PM'
+                                    ? 'bg-[#00adef] text-white'
+                                    : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                              >
+                                PM
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* END TIME */}
+                    {(() => {
+                      const t = parseTimeTo12Hr(formData.endTime);
+                      const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+                      const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                      return (
+                        <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">
+                              End Time
+                            </label>
+                            <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                              {t.hour}:{t.minute} {t.period}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Hour Select */}
+                            <select
+                              value={t.hour}
+                              onChange={(e) => {
+                                const new24 = format12To24(e.target.value, t.minute, t.period);
+                                setFormData((prev) => ({ ...prev, endTime: new24 }));
+                              }}
+                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            >
+                              {hours.map((h) => (
+                                <option key={`end-h-${h}`} value={h}>
+                                  {h}
+                                </option>
+                              ))}
+                            </select>
+
+                            <span className="font-bold text-slate-400">:</span>
+
+                            {/* Minute Select */}
+                            <select
+                              value={t.minute}
+                              onChange={(e) => {
+                                const new24 = format12To24(t.hour, e.target.value, t.period);
+                                setFormData((prev) => ({ ...prev, endTime: new24 }));
+                              }}
+                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            >
+                              {minutes.map((m) => (
+                                <option key={`end-m-${m}`} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* AM/PM Toggle */}
+                            <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const new24 = format12To24(t.hour, t.minute, 'AM');
+                                  setFormData((prev) => ({ ...prev, endTime: new24 }));
+                                }}
+                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                  t.period === 'AM'
+                                    ? 'bg-[#00adef] text-white'
+                                    : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                              >
+                                AM
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const new24 = format12To24(t.hour, t.minute, 'PM');
+                                  setFormData((prev) => ({ ...prev, endTime: new24 }));
+                                }}
+                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                  t.period === 'PM'
+                                    ? 'bg-[#00adef] text-white'
+                                    : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                              >
+                                PM
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      End Time
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.endTime}
-                      onChange={(e) =>
-                        setFormData({ ...formData, endTime: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
-                    />
-                  </div>
+                  {/* Selected Slot Summary Bar */}
+                  {(() => {
+                    const st = parseTimeTo12Hr(formData.startTime);
+                    const et = parseTimeTo12Hr(formData.endTime);
+                    const dur = calculateDuration(formData.startTime, formData.endTime);
+                    return (
+                      <div className="px-3.5 py-2 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between text-xs text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-[#00adef]" />
+                          <span className="font-semibold">Selected Window:</span>
+                          <span className="font-bold text-[#00adef] font-mono">
+                            {st.hour}:{st.minute} {st.period} – {et.hour}:{et.minute} {et.period}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-500">
+                          {dur}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Department & Expected Attendees */}

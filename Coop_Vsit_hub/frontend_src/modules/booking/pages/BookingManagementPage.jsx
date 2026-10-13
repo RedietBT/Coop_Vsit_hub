@@ -110,6 +110,16 @@ export const BookingManagementPage = () => {
     }
   }, [ledgerViewTab, ledgerSearch, ledgerRoomFilter, ledgerStatusFilter, currentPage, pageSize]);
 
+  // Local Date Helper
+  const getLocalDateString = (d = new Date()) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   // Load booked slots for the selected room
   const loadRoomSlots = useCallback(async (roomName) => {
     if (!roomName) return;
@@ -117,23 +127,30 @@ export const BookingManagementPage = () => {
     try {
       const slots = await roomBookingApi.getRoomSlots(roomName);
       const formatted = (Array.isArray(slots) ? slots : []).map((s) => {
-        const d = s.scheduledStartTime ? s.scheduledStartTime.split('T')[0] : '';
-        const sTime = s.scheduledStartTime
-          ? new Date(s.scheduledStartTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
-        const eTime = s.scheduledEndTime
-          ? new Date(s.scheduledEndTime).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
+        let d = '';
+        let sTime = '';
+        let eTime = '';
+        if (s.scheduledStartTime) {
+          const startDate = new Date(s.scheduledStartTime);
+          d = getLocalDateString(startDate);
+          sTime = startDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
+        if (s.scheduledEndTime) {
+          const endDate = new Date(s.scheduledEndTime);
+          eTime = endDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
         return {
           ...s,
           date: d,
-          timeFormatted: `${sTime} - ${eTime}`,
+          timeFormatted: sTime && eTime ? `${sTime} - ${eTime}` : sTime || 'Reserved',
         };
       });
       setRoomSlots(formatted);
@@ -273,11 +290,11 @@ export const BookingManagementPage = () => {
   const activeHoverDateStr = hoveredDate
     ? formatDateKey(hoveredDate)
     : selectedDate
-    ? selectedDate.toISOString().split('T')[0]
+    ? getLocalDateString(selectedDate)
     : null;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
-  const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : '';
+  const selectedDateStr = selectedDate ? getLocalDateString(selectedDate) : '';
   const selectedDateBookings = selectedDateStr ? getSlotsForDate(selectedDateStr) : [];
 
   return (
@@ -650,12 +667,14 @@ export const BookingManagementPage = () => {
                           ? new Date(booking.scheduledStartTime).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              hour12: true,
                             })
                           : '';
                         const eTime = booking.scheduledEndTime
                           ? new Date(booking.scheduledEndTime).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              hour12: true,
                             })
                           : '';
 
@@ -670,6 +689,7 @@ export const BookingManagementPage = () => {
                           ? new Date(booking.createdAt).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
+                              hour12: true,
                             })
                           : '';
 
@@ -1048,11 +1068,18 @@ export const BookingManagementPage = () => {
                       <Clock className="w-3.5 h-3.5 text-[#00adef]" />
                       Schedule on{' '}
                       {activeHoverDateStr
-                        ? new Date(activeHoverDateStr + 'T00:00:00').toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                        ? (() => {
+                            const parts = activeHoverDateStr.split('-').map(Number);
+                            if (parts.length === 3) {
+                              return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              });
+                            }
+                            return activeHoverDateStr;
+                          })()
                         : 'Selected Date'}
                     </span>
                     <span className="text-[11px] text-slate-400">
@@ -1291,6 +1318,7 @@ export const BookingManagementPage = () => {
                     ? new Date(inspectingBooking.scheduledStartTime).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        hour12: true,
                       })
                     : ''}{' '}
                   -{' '}
@@ -1298,6 +1326,7 @@ export const BookingManagementPage = () => {
                     ? new Date(inspectingBooking.scheduledEndTime).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        hour12: true,
                       })
                     : ''}
                 </p>

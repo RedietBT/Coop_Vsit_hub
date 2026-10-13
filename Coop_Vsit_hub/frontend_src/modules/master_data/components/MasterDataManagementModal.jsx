@@ -55,6 +55,7 @@ export const MasterDataManagementModal = () => {
     contactEmail: '',
   });
 
+  const [newRoomImageFile, setNewRoomImageFile] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export const MasterDataManagementModal = () => {
 
   const handleClose = () => {
     setEditingId(null);
+    setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
     setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
     closeMasterModal();
@@ -101,10 +103,34 @@ export const MasterDataManagementModal = () => {
 
     if (editingId) {
       await updateMeetingRoom(editingId, payload);
+      if (newRoomImageFile) {
+        try {
+          await masterDataApi.uploadRoomImage(editingId, newRoomImageFile);
+          fetchMeetingRooms(false);
+        } catch (imgErr) {
+          console.error('Failed to upload image during update', imgErr);
+        }
+      }
       setEditingId(null);
     } else {
-      await createMeetingRoom(payload);
+      // Clean payload: don't send temporary blob: preview URLs to the creation endpoint
+      const createPayload = {
+        ...payload,
+        imageUrl: payload.imageUrl && !payload.imageUrl.startsWith('blob:') && !payload.imageUrl.startsWith('data:')
+          ? payload.imageUrl
+          : null,
+      };
+      const res = await createMeetingRoom(createPayload);
+      if (newRoomImageFile && res?.success && res?.room?.id) {
+        try {
+          await masterDataApi.uploadRoomImage(res.room.id, newRoomImageFile);
+          fetchMeetingRooms(false);
+        } catch (imgErr) {
+          console.error('Failed to upload image for new room', imgErr);
+        }
+      }
     }
+    setNewRoomImageFile(null);
     setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
   };
 
@@ -127,13 +153,11 @@ export const MasterDataManagementModal = () => {
           setRoomForm((prev) => ({ ...prev, imageUrl: updated.imageUrl }));
         }
       } else {
-        // Convert to data url for preview before create
-        const reader = new FileReader();
-        reader.onload = () => {
-          setRoomForm((prev) => ({ ...prev, imageUrl: reader.result }));
-          toast.success('Photo ready for new room registration.');
-        };
-        reader.readAsDataURL(file);
+        // Keep file in state to upload as multipart file once the room ID is generated
+        setNewRoomImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setRoomForm((prev) => ({ ...prev, imageUrl: previewUrl }));
+        toast.success('Photo ready! It will be uploaded when you click Register Room.');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upload room image.');
