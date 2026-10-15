@@ -543,6 +543,16 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         // Dispatch notifications on cancellation
         try {
+            var roomOpt = StringUtils.hasText(booking.getRoomName())
+                    ? meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName().trim())
+                    : java.util.Optional.<com.example.coop_vsit_hub.master_data.entity.MeetingRoom>empty();
+
+            boolean isOwner = currentUser != null && (
+                    (booking.getBookedByUserId() != null && booking.getBookedByUserId().equals(currentUser.getId())) ||
+                    (booking.getBookedByEmail() != null && StringUtils.hasText(currentUser.getEmail()) && booking.getBookedByEmail().equalsIgnoreCase(currentUser.getEmail())) ||
+                    (booking.getBookedByUsername() != null && StringUtils.hasText(currentUser.getUsername()) && booking.getBookedByUsername().equalsIgnoreCase(currentUser.getUsername()))
+            );
+
             String dateStr = DateTimeFormatter.ofPattern("MMM dd, yyyy").withZone(ZoneOffset.UTC).format(booking.getScheduledStartTime());
             String timeStr = String.format("%s - %s UTC",
                     DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC).format(booking.getScheduledStartTime()),
@@ -847,7 +857,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         auditLoggerService.logEvent(
                 currentUser,
                 currentUser != null ? currentUser.getUsername() : "system",
-                AuditEventType.DATA_UPDATE,
+                AuditEventType.ROOM_BOOKING_UPDATED,
                 AuditStatus.SUCCESS,
                 null,
                 null,
