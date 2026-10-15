@@ -23,14 +23,19 @@ export const useMasterDataStore = create((set, get) => ({
         masterDataApi.getMeetingRooms(false),
       ]);
 
+      const departments = deptRes.status === 'fulfilled' ? deptRes.value : [];
+      const meetingRooms = roomRes.status === 'fulfilled' ? roomRes.value : [];
+
       set({
-        departments: deptRes.status === 'fulfilled' ? deptRes.value : [],
-        meetingRooms: roomRes.status === 'fulfilled' ? roomRes.value : [],
+        departments,
+        meetingRooms,
         isLoading: false,
       });
+      return { departments, meetingRooms };
     } catch (e) {
       console.warn('Failed to load master data:', e);
       set({ isLoading: false });
+      return { departments: [], meetingRooms: [] };
     }
   },
 
@@ -100,7 +105,7 @@ export const useMasterDataStore = create((set, get) => ({
       const created = await masterDataApi.createMeetingRoom(payload);
       soundPlayer.playNotificationChime();
       toast.success(`Meeting Room "${created.name}" created.`);
-      get().fetchAllMasterData();
+      await get().fetchAllMasterData();
       return { success: true, room: created };
     } catch (err) {
       const errorMsg =
@@ -114,8 +119,8 @@ export const useMasterDataStore = create((set, get) => ({
     try {
       const updated = await masterDataApi.updateMeetingRoom(id, payload);
       toast.success(`Meeting Room "${updated.name}" updated.`);
-      get().fetchAllMasterData();
-      return { success: true };
+      await get().fetchAllMasterData();
+      return { success: true, room: updated };
     } catch (err) {
       toast.error(
         err.response?.data?.message || 'Failed to update meeting room.'

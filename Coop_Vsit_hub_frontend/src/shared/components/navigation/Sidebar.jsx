@@ -140,6 +140,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === '/visits'}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
                       isActive

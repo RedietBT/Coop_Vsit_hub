@@ -148,6 +148,11 @@ export const MasterDataManagementModal = () => {
       if (roomId) {
         const updated = await masterDataApi.uploadRoomImage(roomId, file);
         toast.success('Room photo uploaded successfully!');
+        useMasterDataStore.setState((state) => ({
+          meetingRooms: state.meetingRooms.map((r) =>
+            r.id === roomId ? { ...r, ...updated } : r
+          ),
+        }));
         fetchMeetingRooms(false);
         if (editingId === roomId) {
           setRoomForm((prev) => ({ ...prev, imageUrl: updated.imageUrl }));

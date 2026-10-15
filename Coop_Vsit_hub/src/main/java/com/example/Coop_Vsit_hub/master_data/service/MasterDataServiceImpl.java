@@ -443,24 +443,14 @@ public class MasterDataServiceImpl implements MasterDataService {
     public List<UserDetailResponse> getEligibleCustodians(String department) {
         log.info("Fetching eligible room custodians (department filter: '{}')", department);
 
-        // Only users with management/approver roles can oversee/cancel meeting rooms
-        // Excludes unprivileged roles like ROLE_FRONT_DESK or ROLE_SECURITY_DESK
-        java.util.Set<RoleName> eligibleRoles = java.util.Set.of(
-                RoleName.ROLE_ADMIN,
-                RoleName.ROLE_SECRETARY,
-                RoleName.ROLE_RELATIONSHIP_MANAGER,
-                RoleName.ROLE_DIRECTOR
-        );
-
         List<User> users = userRepository.findAll().stream()
                 .filter(u -> u.isEnabled() && u.isAccountNonLocked())
-                .filter(u -> u.getRoles() != null && u.getRoles().stream().anyMatch(r -> eligibleRoles.contains(r.getName())))
                 .filter(u -> {
                     if (department == null || department.isBlank()) {
                         return true;
                     }
                     String targetDept = department.trim();
-                    boolean isGlobalAdmin = u.getRoles().stream().anyMatch(r ->
+                    boolean isGlobalAdmin = u.getRoles() != null && u.getRoles().stream().anyMatch(r ->
                             r.getName() == RoleName.ROLE_ADMIN || r.getName() == RoleName.ROLE_DIRECTOR);
                     if (isGlobalAdmin) {
                         return true;
@@ -468,8 +458,8 @@ public class MasterDataServiceImpl implements MasterDataService {
                     return u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(targetDept);
                 })
                 .sorted((a, b) -> {
-                    String nameA = a.getFullName() != null ? a.getFullName() : a.getUsername();
-                    String nameB = b.getFullName() != null ? b.getFullName() : b.getUsername();
+                    String nameA = a.getFullName() != null && !a.getFullName().isBlank() ? a.getFullName() : a.getUsername();
+                    String nameB = b.getFullName() != null && !b.getFullName().isBlank() ? b.getFullName() : b.getUsername();
                     return nameA.compareToIgnoreCase(nameB);
                 })
                 .toList();

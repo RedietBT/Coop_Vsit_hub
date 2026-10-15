@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DoorOpen,
@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import masterDataApi from '@/modules/master_data/api/masterDataApi';
+import userApi from '@/modules/users/api/userApi';
 import Button from '@/shared/components/ui/Button';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
@@ -66,6 +67,10 @@ export const BookingManagementPage = () => {
   const [roomImageFile, setRoomImageFile] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
+  // Available Users List for Person in Charge
+  const [usersList, setUsersList] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   // Form State
   const initialFormState = {
     name: '',
@@ -73,6 +78,7 @@ export const BookingManagementPage = () => {
     department: isSecretary ? userDept : '',
     capacity: 12,
     imageUrl: '',
+    assignedUserId: null,
     assignedUserName: '',
     contactEmail: '',
     description: '',
@@ -83,10 +89,42 @@ export const BookingManagementPage = () => {
   const [roomToDelete, setRoomToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch master data on mount
+  // Fetch users for Person in Charge dropdown
+  const fetchUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const data = await masterDataApi.getCustodians();
+      if (Array.isArray(data) && data.length > 0) {
+        setUsersList(data);
+      } else {
+        try {
+          const res = await userApi.getAllUsers({ size: 100 });
+          const list = res?.content || res || [];
+          setUsersList(Array.isArray(list) ? list : []);
+        } catch (_) {
+          setUsersList([]);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch custodians from masterDataApi, trying userApi:', e);
+      try {
+        const res = await userApi.getAllUsers({ size: 100 });
+        const list = res?.content || res || [];
+        setUsersList(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn('Failed to load users:', err);
+        setUsersList([]);
+      }
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
+  // Fetch master data & users on mount
   useEffect(() => {
     fetchAllMasterData();
-  }, [fetchAllMasterData]);
+    fetchUsers();
+  }, [fetchAllMasterData, fetchUsers]);
 
   // Authentic CoopBank default fallback rooms
   const defaultRooms = useMemo(
@@ -194,17 +232,31 @@ export const BookingManagementPage = () => {
     setRoomImageFile(null);
     setImagePreviewUrl(null);
     setIsRoomModalOpen(true);
+    fetchUsers();
   };
 
   // Open Room Edit Modal
   const handleOpenEditModal = (room) => {
     setEditingRoomId(room.id);
+
+    // Auto-detect assigned user from usersList if assignedUserId is missing
+    let matchedUserId = room.assignedUserId || null;
+    if (!matchedUserId && usersList.length > 0) {
+      const match = usersList.find(
+        (u) =>
+          (room.contactEmail && u.email && u.email.trim().toLowerCase() === room.contactEmail.trim().toLowerCase()) ||
+          (room.assignedUserName && (u.fullName === room.assignedUserName || u.username === room.assignedUserName))
+      );
+      if (match) matchedUserId = match.id;
+    }
+
     setFormData({
       name: room.name || '',
       floorLocation: room.floorLocation || '',
       department: isSecretary ? userDept : room.department || '',
       capacity: room.capacity || 12,
       imageUrl: room.imageUrl || '',
+      assignedUserId: matchedUserId,
       assignedUserName: room.assignedUserName || '',
       contactEmail: room.contactEmail || '',
       description: room.description || '',
@@ -212,6 +264,7 @@ export const BookingManagementPage = () => {
     setRoomImageFile(null);
     setImagePreviewUrl(null);
     setIsRoomModalOpen(true);
+    fetchUsers();
   };
 
   // Handle Photo Selection
@@ -239,6 +292,7 @@ export const BookingManagementPage = () => {
         department: isSecretary ? userDept : (formData.department?.trim() || null),
         capacity: parseInt(formData.capacity, 10) || 1,
         imageUrl: formData.imageUrl?.trim() || null,
+        assignedUserId: formData.assignedUserId || null,
         assignedUserName: formData.assignedUserName?.trim() || null,
         contactEmail: formData.contactEmail?.trim() || null,
         description: formData.description?.trim() || null,
@@ -250,27 +304,31 @@ export const BookingManagementPage = () => {
         // Update existing room
         const res = await updateMeetingRoom(editingRoomId, payload);
         if (!res?.success) throw new Error(res?.error || 'Failed to update meeting room');
-        toast.success(`Meeting Room "${formData.name}" updated successfully.`);
       } else {
         // Create new room
         const res = await createMeetingRoom(payload);
         if (!res?.success) throw new Error(res?.error || 'Failed to create meeting room');
         savedRoomId = res.room?.id;
-        toast.success(`Meeting Room "${formData.name}" registered successfully.`);
       }
 
       // If an image file was selected, upload it
       if (roomImageFile && savedRoomId) {
         try {
-          await masterDataApi.uploadRoomImage(savedRoomId, roomImageFile);
+          const uploadedRoom = await masterDataApi.uploadRoomImage(savedRoomId, roomImageFile);
           toast.success('Room photo uploaded successfully.');
+          // Immediately update state so UI renders the new image with zero delay
+          useMasterDataStore.setState((state) => ({
+            meetingRooms: state.meetingRooms.map((r) =>
+              r.id === savedRoomId ? { ...r, ...uploadedRoom } : r
+            ),
+          }));
         } catch (uploadErr) {
           console.warn('Image upload error:', uploadErr);
           toast.warning('Room details saved, but photo upload encountered an issue.');
         }
       }
 
-      // Refresh master data
+      // Refresh master data to ensure everything is strictly synchronized
       await fetchAllMasterData();
       setIsRoomModalOpen(false);
       setRoomImageFile(null);
@@ -553,8 +611,8 @@ export const BookingManagementPage = () => {
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1.5 font-bold text-slate-800">
                         <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span className="truncate">
-                          {room.assignedUserName || 'Designated Facility Custodian'}
+                        <span className={`truncate ${!room.assignedUserName ? 'text-slate-400 font-normal italic' : ''}`}>
+                          {room.assignedUserName || 'Not assigned yet'}
                         </span>
                       </div>
                       {room.contactEmail && (
@@ -624,8 +682,9 @@ export const BookingManagementPage = () => {
           isOpen={isRoomModalOpen}
           onClose={() => !isSavingRoom && setIsRoomModalOpen(false)}
           title={editingRoomId ? 'Edit Meeting Room Details' : 'Register New Meeting Room'}
+          maxWidth="max-w-3xl"
         >
-          <form onSubmit={handleSaveRoom} className="p-6 space-y-4 text-left">
+          <form onSubmit={handleSaveRoom} className="space-y-4 text-left">
             <div className="flex items-center gap-2 p-3 bg-blue-50 text-[#00adef] border border-blue-200 rounded-2xl text-xs font-medium">
               <DoorOpen className="w-4 h-4 shrink-0" />
               <span>
@@ -712,7 +771,7 @@ export const BookingManagementPage = () => {
             </div>
 
             {/* =================================================================== */}
-            {/* PERSON IN CHARGE OF THAT ROOM (HIGH PRIORITY CONFIGURATION SECTION) */}
+            {/* PERSON IN CHARGE OF THAT ROOM (FETCHED FROM USERS)                  */}
             {/* =================================================================== */}
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3">
               <div className="flex items-center justify-between">
@@ -720,9 +779,54 @@ export const BookingManagementPage = () => {
                   <Shield className="w-4 h-4 text-amber-600" />
                   <span>Person in Charge of Room (Custodian)</span>
                 </div>
-                <span className="text-[10px] text-amber-700 font-medium">Designated Contact</span>
+                <span className="text-[10px] text-amber-700 font-medium">Designated Staff Contact</span>
               </div>
 
+              {/* Users Dropdown */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Select Staff Member <span className="text-slate-400 font-normal">(Fetched from bank users)</span>
+                </label>
+                <select
+                  value={formData.assignedUserId || ''}
+                  onChange={(e) => {
+                    const selId = e.target.value;
+                    if (!selId) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        assignedUserId: null,
+                        assignedUserName: '',
+                        contactEmail: '',
+                      }));
+                      return;
+                    }
+                    const selected = usersList.find((u) => String(u.id) === String(selId));
+                    if (selected) {
+                      const name = selected.fullName || selected.username;
+                      setFormData((prev) => ({
+                        ...prev,
+                        assignedUserId: selected.id,
+                        assignedUserName: name,
+                        contactEmail: selected.email || '',
+                      }));
+                    }
+                  }}
+                  disabled={isLoadingUsers}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:border-amber-400 font-medium text-slate-800"
+                >
+                  <option value="">-- Select Person in Charge (or leave unassigned) --</option>
+                  {usersList.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName ? `${u.fullName} (${u.username})` : u.username} {u.department ? `• ${u.department}` : ''} — {u.email}
+                    </option>
+                  ))}
+                </select>
+                {isLoadingUsers && (
+                  <p className="text-[10px] text-slate-400 mt-1">Loading users...</p>
+                )}
+              </div>
+
+              {/* Custodian Name and Email Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -754,7 +858,7 @@ export const BookingManagementPage = () => {
               <div className="p-2.5 rounded-xl bg-amber-100/60 text-[11px] text-amber-900 flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  The person in charge oversees room access, receives automated reservation & cancellation notices, and is authorized to release or cancel bookings for this facility.
+                  The person in charge oversees room access, receives automated reservation &amp; cancellation notices, and is authorized to release or cancel bookings for this facility.
                 </span>
               </div>
             </div>
@@ -790,11 +894,16 @@ export const BookingManagementPage = () => {
                     onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                     className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none"
                   />
+                  {roomImageFile && (
+                    <p className="text-[10px] text-emerald-600 font-bold truncate">
+                      ✓ Ready to upload: {roomImageFile.name}
+                    </p>
+                  )}
                 </div>
 
                 <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-black text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs transition-all shrink-0">
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Upload File</span>
+                  <span>{roomImageFile ? 'Change Photo' : 'Upload Photo'}</span>
                   <input
                     type="file"
                     accept="image/*"

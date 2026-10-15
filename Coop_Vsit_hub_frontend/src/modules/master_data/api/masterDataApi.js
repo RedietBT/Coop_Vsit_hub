@@ -44,6 +44,12 @@ export const masterDataApi = {
     });
     return response.data;
   },
+  getCustodians: async (department) => {
+    const response = await apiClient.get('/api/v1/meeting-rooms/custodians', {
+      params: department ? { department } : {},
+    });
+    return response.data;
+  },
   deleteMeetingRoom: async (id) => {
     const response = await apiClient.delete(`/api/v1/meeting-rooms/${id}`);
     return response.data;
