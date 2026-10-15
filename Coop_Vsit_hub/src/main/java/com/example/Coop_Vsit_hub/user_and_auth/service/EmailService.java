@@ -104,8 +104,10 @@ public interface EmailService {
             String bookedByDept,
             String bookingCode,
             String meetingTitle,
-            Instant startTime,
-            Instant endTime,
+            Instant oldStartTime,
+            Instant oldEndTime,
+            Instant newStartTime,
+            Instant newEndTime,
             String purpose,
             int attendees,
             String updatedBy

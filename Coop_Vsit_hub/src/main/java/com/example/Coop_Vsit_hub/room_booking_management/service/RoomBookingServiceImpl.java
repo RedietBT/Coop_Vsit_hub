@@ -810,6 +810,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             throw new AccessDeniedException("Access Denied: Room cancellation and editing can only be performed by the reserving staff member, the person in charge of this room, or a Super Administrator.");
         }
 
+        Instant oldStart = booking.getScheduledStartTime();
+        Instant oldEnd = booking.getScheduledEndTime();
         Instant newStart = request.getScheduledStartTime() != null ? request.getScheduledStartTime() : booking.getScheduledStartTime();
         Instant newEnd = request.getScheduledEndTime() != null ? request.getScheduledEndTime() : booking.getScheduledEndTime();
 
@@ -892,6 +894,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 updated.getHostDepartment(),
                                 updated.getBookingCode(),
                                 updated.getMeetingTitle(),
+                                oldStart,
+                                oldEnd,
                                 updated.getScheduledStartTime(),
                                 updated.getScheduledEndTime(),
                                 updated.getMeetingAgenda(),
