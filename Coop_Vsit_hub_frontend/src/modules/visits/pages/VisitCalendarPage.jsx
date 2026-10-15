@@ -1132,7 +1132,7 @@ export const VisitCalendarPage = () => {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             {/* Hour Select */}
                             <select
                               value={t.hour}
@@ -1140,7 +1140,7 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(e.target.value, t.minute, t.period);
                                 setFormData((prev) => ({ ...prev, startTime: new24 }));
                               }}
-                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                              className="flex-1 min-w-[50px] px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                             >
                               {hours.map((h) => (
                                 <option key={`start-h-${h}`} value={h}>
@@ -1158,7 +1158,7 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(t.hour, e.target.value, t.period);
                                 setFormData((prev) => ({ ...prev, startTime: new24 }));
                               }}
-                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                              className="flex-1 min-w-[50px] px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                             >
                               {minutes.map((m) => (
                                 <option key={`start-m-${m}`} value={m}>
@@ -1168,17 +1168,17 @@ export const VisitCalendarPage = () => {
                             </select>
 
                             {/* AM/PM Toggle */}
-                            <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                            <div className="flex shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
                               <button
                                 type="button"
                                 onClick={() => {
                                   const new24 = format12To24(t.hour, t.minute, 'AM');
                                   setFormData((prev) => ({ ...prev, startTime: new24 }));
                                 }}
-                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
                                   t.period === 'AM'
-                                    ? 'bg-[#00adef] text-white'
-                                    : 'text-slate-500 hover:text-slate-800'
+                                    ? 'bg-[#00adef] text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
                                 }`}
                               >
                                 AM
@@ -1189,10 +1189,10 @@ export const VisitCalendarPage = () => {
                                   const new24 = format12To24(t.hour, t.minute, 'PM');
                                   setFormData((prev) => ({ ...prev, startTime: new24 }));
                                 }}
-                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
                                   t.period === 'PM'
-                                    ? 'bg-[#00adef] text-white'
-                                    : 'text-slate-500 hover:text-slate-800'
+                                    ? 'bg-[#00adef] text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
                                 }`}
                               >
                                 PM
@@ -1219,7 +1219,7 @@ export const VisitCalendarPage = () => {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             {/* Hour Select */}
                             <select
                               value={t.hour}
@@ -1227,7 +1227,7 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(e.target.value, t.minute, t.period);
                                 setFormData((prev) => ({ ...prev, endTime: new24 }));
                               }}
-                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                              className="flex-1 min-w-[50px] px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                             >
                               {hours.map((h) => (
                                 <option key={`end-h-${h}`} value={h}>
@@ -1245,7 +1245,7 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(t.hour, e.target.value, t.period);
                                 setFormData((prev) => ({ ...prev, endTime: new24 }));
                               }}
-                              className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                              className="flex-1 min-w-[50px] px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                             >
                               {minutes.map((m) => (
                                 <option key={`end-m-${m}`} value={m}>
@@ -1255,17 +1255,17 @@ export const VisitCalendarPage = () => {
                             </select>
 
                             {/* AM/PM Toggle */}
-                            <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                            <div className="flex shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
                               <button
                                 type="button"
                                 onClick={() => {
                                   const new24 = format12To24(t.hour, t.minute, 'AM');
                                   setFormData((prev) => ({ ...prev, endTime: new24 }));
                                 }}
-                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
                                   t.period === 'AM'
-                                    ? 'bg-[#00adef] text-white'
-                                    : 'text-slate-500 hover:text-slate-800'
+                                    ? 'bg-[#00adef] text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
                                 }`}
                               >
                                 AM
@@ -1276,10 +1276,10 @@ export const VisitCalendarPage = () => {
                                   const new24 = format12To24(t.hour, t.minute, 'PM');
                                   setFormData((prev) => ({ ...prev, endTime: new24 }));
                                 }}
-                                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
                                   t.period === 'PM'
-                                    ? 'bg-[#00adef] text-white'
-                                    : 'text-slate-500 hover:text-slate-800'
+                                    ? 'bg-[#00adef] text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
                                 }`}
                               >
                                 PM
@@ -1426,6 +1426,7 @@ export const VisitCalendarPage = () => {
           isOpen={!!editingBooking}
           onClose={() => !isUpdating && setEditingBooking(null)}
           title="Edit & Reschedule Reservation"
+          maxWidth="max-w-2xl"
         >
           {(() => {
             // Live overlap detection against other confirmed slots
@@ -1448,7 +1449,7 @@ export const VisitCalendarPage = () => {
             }
 
             return (
-              <form onSubmit={handleUpdateBookingSubmit} className="p-6 space-y-4 text-left">
+              <form onSubmit={handleUpdateBookingSubmit} className="space-y-4 text-left">
                 {/* Reference Banner */}
                 <div className="flex items-center justify-between p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl">
                   <div>
@@ -1487,7 +1488,7 @@ export const VisitCalendarPage = () => {
                     required
                     value={editFormData.title}
                     onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                    className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                     placeholder="e.g. Q3 Financial Review"
                   />
                 </div>
@@ -1502,33 +1503,33 @@ export const VisitCalendarPage = () => {
                     required
                     value={editFormData.date}
                     onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
-                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                    className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                   />
                 </div>
 
                 {/* 12-Hour Time Pickers */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Start Time */}
                   {(() => {
                     const t = parseTimeTo12Hr(editFormData.startTime);
                     const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
                     const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
                     return (
-                      <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                      <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-700">Start Time</label>
-                          <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
                             {t.hour}:{t.minute} {t.period}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <select
                             value={t.hour}
                             onChange={(e) => {
                               const new24 = format12To24(e.target.value, t.minute, t.period);
                               setEditFormData((prev) => ({ ...prev, startTime: new24 }));
                             }}
-                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            className="flex-1 min-w-[54px] px-2.5 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                           >
                             {hours.map((h) => (
                               <option key={`edit-start-h-${h}`} value={h}>{h}</option>
@@ -1541,21 +1542,21 @@ export const VisitCalendarPage = () => {
                               const new24 = format12To24(t.hour, e.target.value, t.period);
                               setEditFormData((prev) => ({ ...prev, startTime: new24 }));
                             }}
-                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            className="flex-1 min-w-[54px] px-2.5 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                           >
                             {minutes.map((m) => (
                               <option key={`edit-start-m-${m}`} value={m}>{m}</option>
                             ))}
                           </select>
-                          <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                          <div className="flex shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5 shadow-2xs">
                             <button
                               type="button"
                               onClick={() => {
                                 const new24 = format12To24(t.hour, t.minute, 'AM');
                                 setEditFormData((prev) => ({ ...prev, startTime: new24 }));
                               }}
-                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
-                                t.period === 'AM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              className={`px-3 py-1 text-xs font-black rounded-lg cursor-pointer transition-colors ${
+                                t.period === 'AM' ? 'bg-[#00adef] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                               }`}
                             >
                               AM
@@ -1566,8 +1567,8 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(t.hour, t.minute, 'PM');
                                 setEditFormData((prev) => ({ ...prev, startTime: new24 }));
                               }}
-                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
-                                t.period === 'PM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              className={`px-3 py-1 text-xs font-black rounded-lg cursor-pointer transition-colors ${
+                                t.period === 'PM' ? 'bg-[#00adef] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                               }`}
                             >
                               PM
@@ -1584,21 +1585,21 @@ export const VisitCalendarPage = () => {
                     const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
                     const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
                     return (
-                      <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                      <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-700">End Time</label>
-                          <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
                             {t.hour}:{t.minute} {t.period}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <select
                             value={t.hour}
                             onChange={(e) => {
                               const new24 = format12To24(e.target.value, t.minute, t.period);
                               setEditFormData((prev) => ({ ...prev, endTime: new24 }));
                             }}
-                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            className="flex-1 min-w-[54px] px-2.5 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                           >
                             {hours.map((h) => (
                               <option key={`edit-end-h-${h}`} value={h}>{h}</option>
@@ -1611,21 +1612,21 @@ export const VisitCalendarPage = () => {
                               const new24 = format12To24(t.hour, e.target.value, t.period);
                               setEditFormData((prev) => ({ ...prev, endTime: new24 }));
                             }}
-                            className="flex-1 px-2 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
+                            className="flex-1 min-w-[54px] px-2.5 py-1.5 text-xs font-bold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                           >
                             {minutes.map((m) => (
                               <option key={`edit-end-m-${m}`} value={m}>{m}</option>
                             ))}
                           </select>
-                          <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5">
+                          <div className="flex shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white p-0.5 shadow-2xs">
                             <button
                               type="button"
                               onClick={() => {
                                 const new24 = format12To24(t.hour, t.minute, 'AM');
                                 setEditFormData((prev) => ({ ...prev, endTime: new24 }));
                               }}
-                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
-                                t.period === 'AM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              className={`px-3 py-1 text-xs font-black rounded-lg cursor-pointer transition-colors ${
+                                t.period === 'AM' ? 'bg-[#00adef] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                               }`}
                             >
                               AM
@@ -1636,8 +1637,8 @@ export const VisitCalendarPage = () => {
                                 const new24 = format12To24(t.hour, t.minute, 'PM');
                                 setEditFormData((prev) => ({ ...prev, endTime: new24 }));
                               }}
-                              className={`px-2 py-1 text-[11px] font-bold rounded-lg cursor-pointer ${
-                                t.period === 'PM' ? 'bg-[#00adef] text-white' : 'text-slate-500'
+                              className={`px-3 py-1 text-xs font-black rounded-lg cursor-pointer transition-colors ${
+                                t.period === 'PM' ? 'bg-[#00adef] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                               }`}
                             >
                               PM

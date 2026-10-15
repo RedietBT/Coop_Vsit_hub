@@ -854,6 +854,84 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         RoomBooking updated = roomBookingRepository.save(booking);
 
+        // Dispatch email and in-app notification to the designated room contact/custodian upon reservation update/reschedule
+        try {
+            var roomOpt = StringUtils.hasText(updated.getRoomName())
+                    ? meetingRoomRepository.findByNameIgnoreCase(updated.getRoomName().trim())
+                    : java.util.Optional.<MeetingRoom>empty();
+
+            java.util.Set<String> roomCustodianEmails = new java.util.LinkedHashSet<>();
+            if (roomOpt.isPresent()) {
+                MeetingRoom room = roomOpt.get();
+                if (StringUtils.hasText(room.getContactEmail())) {
+                    roomCustodianEmails.add(room.getContactEmail().trim());
+                }
+                if (room.getAssignedUserId() != null) {
+                    userRepository.findById(room.getAssignedUserId())
+                            .map(User::getEmail)
+                            .filter(StringUtils::hasText)
+                            .map(String::trim)
+                            .ifPresent(roomCustodianEmails::add);
+                }
+            }
+
+            String updatedByName = currentUser != null && StringUtils.hasText(currentUser.getFullName())
+                    ? currentUser.getFullName()
+                    : (currentUser != null && StringUtils.hasText(currentUser.getUsername()) ? currentUser.getUsername() : "Staff Member");
+
+            for (String contactEmail : roomCustodianEmails) {
+                log.info("Sending reservation update email to designated person '{}' for room '{}', booking '{}'",
+                        contactEmail, updated.getRoomName(), updated.getBookingCode());
+
+                if (emailService != null) {
+                    try {
+                        emailService.sendRoomBookingUpdatedContactNotification(
+                                contactEmail,
+                                updated.getRoomName(),
+                                updated.getBookedByName(),
+                                updated.getHostDepartment(),
+                                updated.getBookingCode(),
+                                updated.getMeetingTitle(),
+                                updated.getScheduledStartTime(),
+                                updated.getScheduledEndTime(),
+                                updated.getMeetingAgenda(),
+                                updated.getExpectedAttendees() != null ? updated.getExpectedAttendees() : 1,
+                                updatedByName
+                        );
+                    } catch (Exception e) {
+                        log.warn("Failed to send room update notification email to {} for {}: {}",
+                                contactEmail, updated.getBookingCode(), e.getMessage());
+                    }
+                }
+
+                // If designated contact is a registered user, send in-app notification too
+                userRepository.findByEmailIgnoreCase(contactEmail).ifPresent(contactUser -> {
+                    if (notificationService != null && (currentUser == null || !contactUser.getId().equals(currentUser.getId()))) {
+                        String contactMsg = String.format(
+                                "The reservation for room '%s' (%s) was updated/rescheduled by %s. Ref: %s.",
+                                updated.getRoomName(), updated.getMeetingTitle(), updatedByName, updated.getBookingCode()
+                        );
+                        try {
+                            notificationService.notifyUser(
+                                    contactUser,
+                                    "Reservation Updated: " + updated.getRoomName(),
+                                    contactMsg,
+                                    NotificationType.VISIT_APPROVED,
+                                    updated.getId(),
+                                    updated.getBookingCode(),
+                                    false
+                            );
+                        } catch (Exception e) {
+                            log.warn("Failed to send in-app notification to {} for {}: {}",
+                                    contactEmail, updated.getBookingCode(), e.getMessage());
+                        }
+                    }
+                });
+            }
+        } catch (Exception e) {
+            log.warn("Failed to dispatch update notifications for booking {}: {}", bookingId, e.getMessage(), e);
+        }
+
         auditLoggerService.logEvent(
                 currentUser,
                 currentUser != null ? currentUser.getUsername() : "system",

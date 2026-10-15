@@ -96,4 +96,18 @@ public interface EmailService {
             int attendees,
             String hostDept
     );
+
+    void sendRoomBookingUpdatedContactNotification(
+            String contactEmail,
+            String roomName,
+            String bookedByName,
+            String bookedByDept,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String purpose,
+            int attendees,
+            String updatedBy
+    );
 }
