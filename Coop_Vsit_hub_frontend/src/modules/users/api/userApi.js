@@ -41,6 +41,11 @@ export const userApi = {
     return response.data;
   },
 
+  testAdConnection: async () => {
+    const response = await apiClient.get('/api/v1/users/ad-test-connection');
+    return response.data;
+  },
+
   updateUser: async (id, payload) => {
     const response = await apiClient.put(`/api/v1/users/${id}`, payload);
     return response.data;

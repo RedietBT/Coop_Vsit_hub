@@ -279,10 +279,106 @@ public class ActiveDirectoryAuthService {
     );
 
     /**
-     * Looks up a user in Active Directory by email (or sAMAccountName) using the service account bind.
+     * Diagnostic method to test the live connection to Active Directory.
+     * Checks socket reachability, LDAPS SSL handshake, and bind authentication.
+     *
+     * @return map with connection status, latency, domain controller URL, and diagnostic details.
+     */
+    public Map<String, Object> testConnection() {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("adEnabled", adEnabled);
+        status.put("adUrl", adUrl);
+        status.put("adDomain", adDomain);
+        status.put("adBaseDn", adBaseDn);
+        status.put("trustAllSsl", trustAllSsl);
+        status.put("hasServiceAccountUser", org.springframework.util.StringUtils.hasText(adUsername));
+        status.put("hasServiceAccountPassword", org.springframework.util.StringUtils.hasText(adPassword));
+
+        String bindUserDisplay = org.springframework.util.StringUtils.hasText(adUsername)
+                ? resolveBindUser(adUsername)
+                : "(None configured)";
+        status.put("bindUser", bindUserDisplay);
+
+        if (!adEnabled) {
+            status.put("connected", false);
+            status.put("status", "DISABLED");
+            status.put("message", "Active Directory integration is currently disabled (coopbank.ad.enabled=false). Real LDAPS queries are bypassed and using mock fallback.");
+            status.put("suggestion", "Set AD_ENABLED=true in your environment or application.properties to enable live AD synchronization.");
+            return status;
+        }
+
+        if (!org.springframework.util.StringUtils.hasText(adUsername) || !org.springframework.util.StringUtils.hasText(adPassword)) {
+            status.put("connected", false);
+            status.put("status", "CREDENTIALS_MISSING");
+            status.put("message", "Active Directory service account credentials (coopbank.ad.username / coopbank.ad.password) are not configured.");
+            status.put("suggestion", "Provide coopbank.ad.username and coopbank.ad.password in application.properties or .env to allow searching the AD directory.");
+            return status;
+        }
+
+        long start = System.currentTimeMillis();
+        DirContext ctx = null;
+        try {
+            ctx = createDirContext(resolveBindUser(adUsername), resolveBindPassword(adPassword));
+            long latency = System.currentTimeMillis() - start;
+
+            // Perform a lightweight search to test read permissions on base DN
+            SearchControls sc = new SearchControls();
+            sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            sc.setCountLimit(1);
+            sc.setReturningAttributes(new String[]{"sAMAccountName", "mail"});
+            ctx.search("", "(&(objectClass=user)(sAMAccountName=*))", sc);
+
+            status.put("connected", true);
+            status.put("status", "CONNECTED");
+            status.put("latencyMs", latency);
+            status.put("message", "Successfully connected and authenticated with CoopBank Active Directory at " + adUrl + " (" + latency + "ms).");
+            return status;
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - start;
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) {
+                root = root.getCause();
+            }
+            if (root instanceof NamingException ne && ne.getRootCause() != null) {
+                root = ne.getRootCause();
+            }
+
+            String rootMsg = root.getMessage() != null ? root.getMessage() : e.getMessage();
+            status.put("connected", false);
+            status.put("status", "FAILED");
+            status.put("latencyMs", duration);
+            status.put("error", rootMsg);
+            status.put("errorType", root.getClass().getSimpleName());
+
+            String suggestion = "Please verify bank network route, VPN connection, and firewall access to " + adUrl + ".";
+            if (rootMsg != null) {
+                if (rootMsg.contains("timed out") || rootMsg.contains("ConnectException")) {
+                    suggestion = "Connection timed out. Ensure you are connected to the CoopBank internal intranet or VPN, and " + adUrl + " is reachable.";
+                } else if (rootMsg.contains("PKIX") || rootMsg.contains("certificate")) {
+                    suggestion = "SSL certificate validation failed. Enable coopbank.ad.ssl.trust-all=true for internal/self-signed bank certificates.";
+                } else if (rootMsg.contains("49") || rootMsg.contains("Invalid Credentials") || rootMsg.contains("AcceptSecurityContext")) {
+                    suggestion = "Active Directory rejected the bind credentials. Verify the service account username and password.";
+                } else if (rootMsg.contains("32") || rootMsg.contains("NameNotFoundException")) {
+                    suggestion = "Base DN '" + adBaseDn + "' not found. Verify domain structure (e.g. DC=coopbank,DC=local vs DC=coopbank,DC=com,DC=et).";
+                }
+            }
+            status.put("suggestion", suggestion);
+            status.put("message", "Active Directory connection failed: " + rootMsg);
+            return status;
+
+        } finally {
+            if (ctx != null) {
+                try { ctx.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    /**
+     * Looks up a user in Active Directory by email, username, or name using the service account bind.
      * Does NOT require the user's password — safe for admin diagnostics and onboarding auto-fill.
      *
-     * @param emailOrUsername the email address or sAMAccountName to search for
+     * @param emailOrUsername the email address, sAMAccountName, or staff name to search for
      * @return map of AD attributes if found, or empty map if not found
      */
     public Map<String, Object> lookupByEmail(String emailOrUsername) {
@@ -302,14 +398,20 @@ public class ActiveDirectoryAuthService {
             sc.setCountLimit(10);
             String[] fields = {
                 "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
+                "displayName", "cn", "name", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
                 "title", "memberOf"
             };
             sc.setReturningAttributes(fields);
 
             String escapedSam = escapeLdapFilter(samName);
             String escapedClean = escapeLdapFilter(clean);
-            String filter = "(&(objectClass=user)(|(sAMAccountName=" + escapedSam + ")(userPrincipalName=" + escapedClean + ")(mail=" + escapedClean + ")))";
+            String filter = "(&(objectClass=user)(!(objectClass=computer))(|"
+                    + "(sAMAccountName=" + escapedSam + ")"
+                    + "(userPrincipalName=" + escapedClean + ")"
+                    + "(mail=" + escapedClean + ")"
+                    + "(displayName=" + escapedClean + ")"
+                    + "(cn=" + escapedClean + ")"
+                    + "))";
 
             NamingEnumeration<SearchResult> answer = ctx.search("", filter, sc);
             List<Map<String, Object>> results = new ArrayList<>();
@@ -339,13 +441,25 @@ public class ActiveDirectoryAuthService {
                 results.add(entry);
             }
 
+            // If exact match didn't find anything, try substring search via searchUsers
             if (results.isEmpty()) {
+                List<Map<String, Object>> fallbackList = searchUsers(clean, 1);
+                if (!fallbackList.isEmpty()) {
+                    Map<String, Object> fallbackStaff = fallbackList.get(0);
+                    Map<String, Object> fallbackRes = new LinkedHashMap<>();
+                    fallbackRes.put("found", true);
+                    fallbackRes.put("staff", fallbackStaff);
+                    fallbackRes.put("adAttributes", fallbackStaff);
+                    fallbackRes.put("existsInLocalDb", Boolean.TRUE.equals(fallbackStaff.get("existsInLocalDb")));
+                    return fallbackRes;
+                }
+
                 log.warn("AD lookup: user '{}' not found in Active Directory. Checking mock fallback.", clean);
                 Map<String, Object> mockRes = findMockStaff(clean);
                 if (Boolean.TRUE.equals(mockRes.get("found"))) {
                     return mockRes;
                 }
-                return Map.of("found", false, "searchedFor", clean, "adUrl", adUrl, "baseDn", adBaseDn);
+                return Map.of("found", false, "searchedFor", clean, "adUrl", adUrl, "baseDn", adBaseDn, "message", "Staff '" + clean + "' was not found in Active Directory.");
             }
 
             Map<String, Object> adAttrs = results.get(0);
@@ -375,6 +489,9 @@ public class ActiveDirectoryAuthService {
             String firstName = (String) adAttrs.get("givenName");
             String lastName  = (String) adAttrs.get("sn");
             String displayName = (String) adAttrs.get("displayName");
+            if (displayName == null) {
+                displayName = (String) adAttrs.get("cn");
+            }
             if ((firstName == null || firstName.isBlank()) && displayName != null) {
                 String[] parts = displayName.split("\\s+");
                 firstName = parts[0];
@@ -453,7 +570,7 @@ public class ActiveDirectoryAuthService {
             sc.setCountLimit(maxResults);
             String[] fields = {
                 "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
+                "displayName", "cn", "name", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
                 "title", "memberOf"
             };
             sc.setReturningAttributes(fields);
@@ -465,17 +582,30 @@ public class ActiveDirectoryAuthService {
             StringBuilder filterBuilder = new StringBuilder();
             filterBuilder.append("(&(objectClass=user)(!(objectClass=computer))(|");
             filterBuilder.append("(sAMAccountName=").append(escapedSam).append("*)");
+            filterBuilder.append("(sAMAccountName=*").append(escapedSam).append("*)");
             filterBuilder.append("(mail=").append(escaped).append("*)");
+            filterBuilder.append("(mail=*").append(escapedSam).append("*)");
             filterBuilder.append("(userPrincipalName=").append(escaped).append("*)");
+            filterBuilder.append("(userPrincipalName=*").append(escapedSam).append("*)");
             filterBuilder.append("(displayName=*").append(escaped).append("*)");
+            filterBuilder.append("(displayName=*").append(escapedSam).append("*)");
+            filterBuilder.append("(cn=*").append(escaped).append("*)");
+            filterBuilder.append("(cn=*").append(escapedSam).append("*)");
+            filterBuilder.append("(name=*").append(escaped).append("*)");
             filterBuilder.append("(givenName=").append(escaped).append("*)");
+            filterBuilder.append("(givenName=").append(escapedSam).append("*)");
             filterBuilder.append("(sn=").append(escaped).append("*)");
+            filterBuilder.append("(sn=").append(escapedSam).append("*)");
 
-            // If user typed multi-word name (e.g. "Dawit Alemu")
-            String[] parts = clean.split("\\s+");
+            // Split multi-word or dotted query (e.g. "Dawit Alemu" or "dawit.alemu")
+            String[] parts = clean.split("[\\s.]+");
             if (parts.length >= 2) {
-                filterBuilder.append("(&(givenName=").append(escapeLdapFilter(parts[0])).append("*)")
-                             .append("(sn=").append(escapeLdapFilter(parts[parts.length - 1])).append("*))");
+                String p1 = escapeLdapFilter(parts[0]);
+                String p2 = escapeLdapFilter(parts[parts.length - 1]);
+                filterBuilder.append("(&(givenName=").append(p1).append("*)")
+                             .append("(sn=").append(p2).append("*))");
+                filterBuilder.append("(&(givenName=").append(p2).append("*)")
+                             .append("(sn=").append(p1).append("*))");
             }
             filterBuilder.append("))");
 
@@ -510,6 +640,9 @@ public class ActiveDirectoryAuthService {
                 String givenName = getAttr(attrs, "givenName");
                 String sn = getAttr(attrs, "sn");
                 String displayName = getAttr(attrs, "displayName");
+                if (displayName == null) {
+                    displayName = getAttr(attrs, "cn");
+                }
                 String department = getAttr(attrs, "department");
                 String telephoneNumber = getAttr(attrs, "telephoneNumber");
                 String title = getAttr(attrs, "title");
@@ -582,10 +715,25 @@ public class ActiveDirectoryAuthService {
 
     private Map<String, Object> findMockStaff(String identifier) {
         String clean = identifier.toLowerCase().trim();
+        String samName = clean.contains("@") ? clean.substring(0, clean.indexOf("@")) : clean;
         for (Map<String, String> m : MOCK_AD_STAFF) {
-            if (m.get("username").equalsIgnoreCase(clean)
-                    || m.get("email").equalsIgnoreCase(clean)
-                    || m.get("displayName").equalsIgnoreCase(clean)) {
+            String u = m.get("username").toLowerCase();
+            String e = m.get("email").toLowerCase();
+            String f = m.get("firstName").toLowerCase();
+            String l = m.get("lastName").toLowerCase();
+            String d = m.get("displayName").toLowerCase();
+
+            boolean match = u.equals(clean)
+                    || u.equals(samName)
+                    || e.equals(clean)
+                    || d.equalsIgnoreCase(clean)
+                    || f.equalsIgnoreCase(clean)
+                    || l.equalsIgnoreCase(clean)
+                    || d.contains(clean)
+                    || u.contains(clean)
+                    || e.contains(clean);
+
+            if (match) {
                 boolean inDb = userRepository.findByEmail(m.get("email")).isPresent()
                             || userRepository.findByUsername(m.get("username")).isPresent();
                 Map<String, Object> staff = new LinkedHashMap<>(m);
@@ -602,7 +750,7 @@ public class ActiveDirectoryAuthService {
                 return res;
             }
         }
-        return Map.of("found", false, "searchedFor", identifier, "message", "Staff not found in Active Directory.");
+        return Map.of("found", false, "searchedFor", identifier, "message", "Staff '" + identifier + "' not found in Active Directory or mock directory.");
     }
 
     private List<Map<String, Object>> searchMockStaff(String query, int limit) {

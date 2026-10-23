@@ -80,4 +80,18 @@ public class AdDiagnosticsController {
 
         return ResponseEntity.ok(adAuthService.searchUsers(query, limit));
     }
+
+    /**
+     * Diagnostic endpoint to test the live connection to Active Directory.
+     * Verifies network reachability, SSL handshake, and bind credentials.
+     */
+    @GetMapping("/test-connection")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN) or hasRole('ADMIN')")
+    @Operation(
+        summary = "Test Active Directory LDAPS connection",
+        description = "Verifies network connectivity, SSL handshake, and bind authentication against Active Directory domain controller."
+    )
+    public ResponseEntity<Map<String, Object>> testAdConnection() {
+        return ResponseEntity.ok(adAuthService.testConnection());
+    }
 }

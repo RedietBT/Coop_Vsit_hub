@@ -21,6 +21,11 @@ import {
   AlertCircle,
   RefreshCw,
   ExternalLink,
+  Wifi,
+  WifiOff,
+  Server,
+  HelpCircle,
+  Info,
 } from 'lucide-react';
 import useUserStore from '../store/userStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
@@ -112,12 +117,18 @@ export const OnboardUserModal = () => {
   const { isOnboardModalOpen, closeOnboardModal, onboardUser } = useUserStore();
   const { departments, fetchAllMasterData } = useMasterDataStore();
 
-  // Active Directory Live Search & Autocomplete state
+  // Active Directory Live Search state
+  const [adSearchQuery, setAdSearchQuery] = useState('');
   const [adSuggestions, setAdSuggestions] = useState([]);
   const [isSearchingAd, setIsSearchingAd] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedAdStaff, setSelectedAdStaff] = useState(null);
   const [isLookingUpUsername, setIsLookingUpUsername] = useState(false);
+
+  // AD Connection Test state
+  const [isTestingAd, setIsTestingAd] = useState(false);
+  const [adConnectionStatus, setAdConnectionStatus] = useState(null);
+  const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState(false);
 
   const searchDebounceRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -169,22 +180,42 @@ export const OnboardUserModal = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle live search as the user types in the email field
-  const handleEmailInputChange = (e) => {
-    const value = e.target.value;
-    setValue('email', value, { shouldValidate: true });
-
-    // If an AD user was previously selected, typing will disconnect AD link unless re-selected
-    if (selectedAdStaff && selectedAdStaff.email !== value) {
-      setSelectedAdStaff(null);
-      setValue('isAdUser', false);
+  // Check Active Directory connection
+  const handleTestAdConnection = async () => {
+    setIsTestingAd(true);
+    try {
+      const res = await userApi.testAdConnection();
+      setAdConnectionStatus(res);
+      setIsDiagnosticModalOpen(true);
+      if (res && res.connected) {
+        toast.success(`AD Connected (${res.latencyMs || 0}ms): ${res.adUrl}`);
+      } else {
+        toast.warning(res?.message || 'Active Directory connection test completed with warnings.');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to connect to backend AD diagnostic endpoint.';
+      setAdConnectionStatus({
+        connected: false,
+        status: 'ERROR',
+        message: errorMsg,
+        suggestion: 'Verify the backend server is running and your user has ROLE_ADMIN authority.',
+      });
+      setIsDiagnosticModalOpen(true);
+      toast.error('AD Connection test failed.');
+    } finally {
+      setIsTestingAd(false);
     }
+  };
+
+  // Perform live search when typing in the dedicated search bar or email field
+  const handleSearchChange = (query) => {
+    setAdSearchQuery(query);
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
 
-    const trimmed = value.trim();
+    const trimmed = query.trim();
     if (trimmed.length >= 2) {
       setIsSearchingAd(true);
       setIsDropdownOpen(true);
@@ -211,6 +242,7 @@ export const OnboardUserModal = () => {
   const handleSelectAdUser = (staff) => {
     setSelectedAdStaff(staff);
     setValue('isAdUser', true);
+    setAdSearchQuery(staff.displayName || staff.username || staff.email);
 
     // Populate all spaces (form inputs) from AD profile
     setValue('username', staff.username || '', { shouldValidate: true });
@@ -252,19 +284,20 @@ export const OnboardUserModal = () => {
 
   // Lookup by System Username directly
   const handleLookupUsername = async () => {
-    if (!currentUsername || currentUsername.trim().length < 2) {
-      toast.error('Please enter a username to look up in Active Directory.');
+    const target = currentUsername || adSearchQuery || currentEmail;
+    if (!target || target.trim().length < 2) {
+      toast.error('Please enter a name, username, or email to look up in Active Directory.');
       return;
     }
 
     setIsLookingUpUsername(true);
     try {
-      const res = await userApi.lookupAdUser(currentUsername.trim());
+      const res = await userApi.lookupAdUser(target.trim());
       if (res && res.found && res.staff) {
         handleSelectAdUser(res.staff);
       } else {
         toast.error(
-          res?.message || `User "${currentUsername}" was not found in Active Directory.`
+          res?.message || `User "${target}" was not found in Active Directory. Try using "Check AD Connection" to verify server status.`
         );
       }
     } catch (err) {
@@ -298,7 +331,9 @@ export const OnboardUserModal = () => {
     reset();
     setSelectedAdStaff(null);
     setAdSuggestions([]);
+    setAdSearchQuery('');
     setIsDropdownOpen(false);
+    setIsDiagnosticModalOpen(false);
     closeOnboardModal();
   };
 
@@ -318,401 +353,596 @@ export const OnboardUserModal = () => {
   };
 
   return (
-    <Modal
-      isOpen={isOnboardModalOpen}
-      onClose={handleClose}
-      title="Onboard New Staff Member"
-      subtitle="Register a CoopBank staff member with role-based system access."
-      maxWidth="max-w-2xl"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-left">
-        {/* Active Directory Linked Badge Banner */}
-        {selectedAdStaff && (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50 via-emerald-50/60 to-white border border-sky-200/90 shadow-xs flex items-center justify-between gap-3 animate-fadeIn">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#00adef] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+    <>
+      <Modal
+        isOpen={isOnboardModalOpen}
+        onClose={handleClose}
+        title="Onboard New Staff Member"
+        subtitle="Register a CoopBank staff member with role-based system access."
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4 text-left">
+          {/* Top Active Directory Bar & Check Connection Button */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-50/80 via-slate-50 to-white border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00adef] to-[#0081b8] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                 AD
               </div>
-              <div className="min-w-0 text-left">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-slate-900 truncate">
-                    {selectedAdStaff.displayName || selectedAdStaff.username}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    AD Verified
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 truncate">
-                  Authenticates via Bank Active Directory. Password fields bypassed.
+              <div>
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  Bank Active Directory (LDAPS)
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Search by your name or email to auto-fill all spaces below.
                 </p>
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
-              onClick={handleUnlinkAd}
-              className="text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-1 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all shrink-0 cursor-pointer"
+              variant="outline"
+              size="sm"
+              onClick={handleTestAdConnection}
+              isLoading={isTestingAd}
+              icon={Wifi}
+              className="text-xs font-bold shrink-0 self-start sm:self-center"
             >
-              Unlink AD
-            </button>
-          </div>
-        )}
-
-        {/* Corporate Email with Live Search Dropdown */}
-        <div className="relative" ref={dropdownRef}>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-              Corporate Email Address <span className="text-rose-500">*</span>
-            </label>
-            <span className="text-[11px] font-semibold text-[#00adef] flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#f58220]" />
-              Live Active Directory search
-            </span>
+              Check AD Connection
+            </Button>
           </div>
 
-          <div className="relative rounded-xl shadow-xs">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Mail className="w-4 h-4" />
-            </div>
-
-            <input
-              type="email"
-              placeholder="Search by name, email, or username (e.g. dawit / dalemu@coopbank.com.et)"
-              value={currentEmail}
-              onChange={handleEmailInputChange}
-              onFocus={() => {
-                if (adSuggestions.length > 0) setIsDropdownOpen(true);
-              }}
-              className={`w-full text-sm rounded-xl border pl-10 pr-10 py-2.5 transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
-                errors.email
-                  ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 ring-1 ring-rose-500'
-                  : 'border-slate-300 hover:border-slate-400 focus:border-[#00adef] focus:ring-[#00adef]/25'
-              }`}
-            />
-
-            <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-              {isSearchingAd ? (
-                <Loader2 className="w-4 h-4 animate-spin text-[#00adef]" />
-              ) : currentEmail.length >= 2 ? (
-                <Search className="w-4 h-4 text-slate-400" />
-              ) : null}
-            </div>
-          </div>
-
-          {errors.email && (
-            <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />
-              {errors.email.message}
-            </p>
-          )}
-
-          {/* Floating Dropdown Autocomplete Menu */}
-          {isDropdownOpen && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden divide-y divide-slate-100 animate-fadeIn max-h-72 overflow-y-auto">
-              <div className="px-3 py-2 bg-slate-50/80 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#00adef]" />
-                  CoopBank Active Directory Results
-                </span>
-                <span>{adSuggestions.length} found</span>
+          {/* Active Directory Linked Banner (When staff member is selected) */}
+          {selectedAdStaff && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-sky-50/50 to-white border border-emerald-200/90 shadow-xs flex items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-900 truncate">
+                      {selectedAdStaff.displayName || `${selectedAdStaff.firstName} ${selectedAdStaff.lastName}`}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      @{selectedAdStaff.username}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                    {selectedAdStaff.email} • {selectedAdStaff.department || 'CoopBank'}
+                  </p>
+                </div>
               </div>
 
-              {isSearchingAd ? (
-                <div className="p-6 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#00adef]" />
-                  <span className="text-xs font-medium">Searching Active Directory...</span>
+              <button
+                type="button"
+                onClick={handleUnlinkAd}
+                className="text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-1 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all shrink-0 cursor-pointer"
+              >
+                Unlink AD
+              </button>
+            </div>
+          )}
+
+          {/* Dedicated Name / Email / Username Search Bar with Live Typeahead Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                Search Active Directory (Name, Email, or Username)
+              </label>
+              <span className="text-[11px] font-semibold text-[#00adef] flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#f58220]" />
+                Live Autocomplete
+              </span>
+            </div>
+
+            <div className="relative rounded-xl shadow-xs">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Search className="w-4 h-4 text-slate-400" />
+              </div>
+
+              <input
+                type="text"
+                placeholder="Type your name (e.g. Elshaday / Dawit), username, or email..."
+                value={adSearchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => {
+                  if (adSuggestions.length > 0) setIsDropdownOpen(true);
+                }}
+                className="w-full text-sm rounded-xl border border-slate-300 pl-10 pr-10 py-2.5 transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400 hover:border-slate-400 focus:outline-none focus:border-[#00adef] focus:ring-2 focus:ring-[#00adef]/25"
+              />
+
+              <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                {isSearchingAd ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-[#00adef]" />
+                ) : adSearchQuery.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdSearchQuery('');
+                      setAdSuggestions([]);
+                      setIsDropdownOpen(false);
+                    }}
+                    className="pointer-events-auto text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 mt-1">
+              Start typing just your name — choosing yourself from the list below populates all fields automatically.
+            </p>
+
+            {/* Floating Dropdown Autocomplete Menu */}
+            {isDropdownOpen && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden divide-y divide-slate-100 animate-fadeIn max-h-72 overflow-y-auto">
+                <div className="px-3 py-2 bg-slate-50/90 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-100">
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#00adef]" />
+                    Matching Bank Staff ({adSuggestions.length})
+                  </span>
+                  <span className="text-[10px] text-slate-400">Click to auto-populate</span>
                 </div>
-              ) : adSuggestions.length > 0 ? (
-                adSuggestions.map((staff) => {
-                  const initials = `${(staff.firstName || 'C')[0]}${(staff.lastName || 'B')[0]}`.toUpperCase();
-                  const isCurrentSelected = selectedAdStaff?.username === staff.username;
 
-                  return (
-                    <div
-                      key={staff.username}
-                      onClick={() => handleSelectAdUser(staff)}
-                      className={`p-3 text-left flex items-center justify-between gap-3 cursor-pointer transition-all hover:bg-sky-50/70 ${
-                        isCurrentSelected ? 'bg-sky-50/90 border-l-4 border-[#00adef]' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00adef] to-[#0081b8] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                          {initials}
-                        </div>
+                {isSearchingAd ? (
+                  <div className="p-6 flex flex-col items-center justify-center text-slate-400 gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-[#00adef]" />
+                    <span className="text-xs font-medium">Searching Active Directory...</span>
+                  </div>
+                ) : adSuggestions.length > 0 ? (
+                  adSuggestions.map((staff) => {
+                    const initials = `${(staff.firstName || 'C')[0]}${(staff.lastName || 'B')[0]}`.toUpperCase();
+                    const isCurrentSelected = selectedAdStaff?.username === staff.username;
 
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900 truncate">
-                              {staff.displayName || `${staff.firstName} ${staff.lastName}`}
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                              @{staff.username}
-                            </span>
+                    return (
+                      <div
+                        key={staff.username}
+                        onClick={() => handleSelectAdUser(staff)}
+                        className={`p-3 text-left flex items-center justify-between gap-3 cursor-pointer transition-all hover:bg-sky-50/70 ${
+                          isCurrentSelected ? 'bg-sky-50/90 border-l-4 border-[#00adef]' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00adef] to-[#0081b8] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                            {initials}
                           </div>
 
-                          <p className="text-[11px] text-slate-500 truncate">
-                            {staff.email}
-                          </p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-900 truncate">
+                                {staff.displayName || `${staff.firstName} ${staff.lastName}`}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                @{staff.username}
+                              </span>
+                            </div>
 
-                          {(staff.department || staff.jobTitle) && (
-                            <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                              <Building2 className="w-2.5 h-2.5" />
-                              {staff.department || 'CoopBank Staff'}
-                              {staff.jobTitle ? ` • ${staff.jobTitle}` : ''}
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {staff.email}
                             </p>
+
+                            {(staff.department || staff.jobTitle) && (
+                              <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                                <Building2 className="w-2.5 h-2.5" />
+                                {staff.department || 'CoopBank Staff'}
+                                {staff.jobTitle ? ` • ${staff.jobTitle}` : ''}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {staff.existsInLocalDb ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              Already in Hub
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                              <Check className="w-2.5 h-2.5" />
+                              Populate
+                            </span>
                           )}
                         </div>
                       </div>
-
-                      <div className="shrink-0 flex items-center gap-1.5">
-                        {staff.existsInLocalDb ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            Already in Hub
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                            <Check className="w-2.5 h-2.5" />
-                            Select
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-4 text-center text-xs text-slate-500">
-                  <p className="font-semibold text-slate-700">No staff found matching "{currentEmail}"</p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    You can type the email address manually to onboard a local system user.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Username & Fetch Button */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="w-full text-left">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-                System Username <span className="text-rose-500">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={handleLookupUsername}
-                disabled={isLookingUpUsername || !currentUsername}
-                className="text-[10px] font-bold text-[#00adef] hover:text-[#0081b8] disabled:text-slate-400 flex items-center gap-1 cursor-pointer transition-colors"
-                title="Search Active Directory using this username"
-              >
-                {isLookingUpUsername ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                    );
+                  })
                 ) : (
-                  <RefreshCw className="w-3 h-3" />
+                  <div className="p-4 text-center text-xs text-slate-500 space-y-2">
+                    <p className="font-semibold text-slate-700">No staff found matching "{adSearchQuery}"</p>
+                    <p className="text-[11px] text-slate-400">
+                      If you are sure your account exists in Active Directory, click below to verify connectivity.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestAdConnection}
+                      icon={Wifi}
+                      className="text-xs mx-auto"
+                    >
+                      Check AD Connection
+                    </Button>
+                  </div>
                 )}
-                Fetch from AD
-              </button>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-left pt-2">
+            {/* System Username & Corporate Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="w-full text-left">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    System Username <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleLookupUsername}
+                    disabled={isLookingUpUsername}
+                    className="text-[10px] font-bold text-[#00adef] hover:text-[#0081b8] disabled:text-slate-400 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Search Active Directory by this username"
+                  >
+                    {isLookingUpUsername ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3 h-3" />
+                    )}
+                    Fetch from AD
+                  </button>
+                </div>
+
+                <div className="relative rounded-xl shadow-xs">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="dalemu"
+                    {...register('username')}
+                    className={`w-full text-sm rounded-xl border pl-10 pr-3.5 py-2.5 transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+                      errors.username
+                        ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 ring-1 ring-rose-500'
+                        : 'border-slate-300 hover:border-slate-400 focus:border-[#00adef] focus:ring-[#00adef]/25'
+                    }`}
+                  />
+                </div>
+                {errors.username && (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {errors.username.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Corporate Email Address */}
+              <div className="w-full text-left">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    Corporate Email Address <span className="text-rose-500">*</span>
+                  </label>
+                </div>
+
+                <div className="relative rounded-xl shadow-xs">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    placeholder="dalemu@coopbank.com.et"
+                    {...register('email')}
+                    className={`w-full text-sm rounded-xl border pl-10 pr-3.5 py-2.5 transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+                      errors.email
+                        ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 ring-1 ring-rose-500'
+                        : 'border-slate-300 hover:border-slate-400 focus:border-[#00adef] focus:ring-[#00adef]/25'
+                    }`}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="relative rounded-xl shadow-xs">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <User className="w-4 h-4" />
-              </div>
-              <input
-                type="text"
-                placeholder="dalemu"
-                {...register('username')}
-                className={`w-full text-sm rounded-xl border pl-10 pr-3.5 py-2.5 transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
-                  errors.username
-                    ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 ring-1 ring-rose-500'
-                    : 'border-slate-300 hover:border-slate-400 focus:border-[#00adef] focus:ring-[#00adef]/25'
-                }`}
+            {/* First & Last Name Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="First Name"
+                placeholder="Dawit"
+                icon={User}
+                error={errors.firstName?.message}
+                required
+                {...register('firstName')}
+              />
+              <Input
+                label="Last Name"
+                placeholder="Alemu"
+                icon={User}
+                error={errors.lastName?.message}
+                required
+                {...register('lastName')}
               />
             </div>
-            {errors.username && (
-              <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                {errors.username.message}
-              </p>
-            )}
-          </div>
 
-          {/* Phone Field */}
-          <Input
-            label="Phone Number"
-            placeholder="+251911223344"
-            icon={Phone}
-            error={errors.phone?.message}
-            {...register('phone')}
-          />
-        </div>
-
-        {/* First & Last Name Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="First Name"
-            placeholder="Dawit"
-            icon={User}
-            error={errors.firstName?.message}
-            required
-            {...register('firstName')}
-          />
-          <Input
-            label="Last Name"
-            placeholder="Alemu"
-            icon={User}
-            error={errors.lastName?.message}
-            required
-            {...register('lastName')}
-          />
-        </div>
-
-        {/* Department & Job Title */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
-              Department <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative rounded-xl shadow-xs">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Building2 className="w-4 h-4" />
+            {/* Department & Job Title */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-1.5">
+                  Department <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative rounded-xl shadow-xs">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <select
+                    className="w-full text-xs font-semibold pl-10 pr-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef] focus:ring-2 focus:ring-[#00adef]/25 transition-all"
+                    {...register('department')}
+                  >
+                    {departments.length > 0 ? (
+                      departments.map((d) => (
+                        <option key={d.id || d.name} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="Digital Banking & Payments">Digital Banking & Payments</option>
+                    )}
+                    {watch('department') &&
+                      !departments.some((d) => d.name === watch('department')) && (
+                        <option value={watch('department')}>{watch('department')}</option>
+                      )}
+                  </select>
+                </div>
               </div>
-              <select
-                className="w-full text-xs font-semibold pl-10 pr-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-[#00adef] focus:ring-2 focus:ring-[#00adef]/25 transition-all"
-                {...register('department')}
-              >
-                {departments.length > 0 ? (
-                  departments.map((d) => (
-                    <option key={d.id || d.name} value={d.name}>
-                      {d.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="Digital Banking & Payments">Digital Banking & Payments</option>
-                )}
-                {/* Fallback option if AD department isn't in master data list */}
-                {watch('department') &&
-                  !departments.some((d) => d.name === watch('department')) && (
-                    <option value={watch('department')}>{watch('department')}</option>
-                  )}
-              </select>
+
+              <Input
+                label="Job Title / Position"
+                placeholder="Senior Digital Peering Manager"
+                icon={Briefcase}
+                {...register('jobTitle')}
+              />
             </div>
-          </div>
 
-          <Input
-            label="Job Title / Position"
-            placeholder="Senior Digital Peering Manager"
-            icon={Briefcase}
-            {...register('jobTitle')}
-          />
-        </div>
-
-        {/* Password Fields OR AD Single Sign-on Card */}
-        {isAdUser ? (
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-left space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
-              <Lock className="w-4 h-4 text-[#00adef]" />
-              Active Directory Single Sign-On Enabled
-            </div>
-            <p className="text-xs text-slate-500">
-              This staff member will log into Visit Hub using their existing CoopBank Active Directory Windows / Domain password.
-              No local temporary password is required.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Phone Field */}
             <Input
-              label="Initial Temporary Password"
-              type="password"
-              placeholder="••••••••••••"
-              error={errors.password?.message}
-              required
-              {...register('password')}
+              label="Phone Number"
+              placeholder="+251911223344"
+              icon={Phone}
+              error={errors.phone?.message}
+              {...register('phone')}
             />
-            <Input
-              label="Confirm Temporary Password"
-              type="password"
-              placeholder="••••••••••••"
-              error={errors.confirmPassword?.message}
-              required
-              {...register('confirmPassword')}
-            />
-          </div>
-        )}
 
-        {/* Role Assignment Checkboxes */}
-        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              System Authorization Roles <span className="text-rose-500">*</span>
-            </span>
-            {errors.roleNames && (
-              <span className="text-[11px] font-bold text-rose-500">
-                {errors.roleNames.message}
-              </span>
+            {/* Password Fields OR AD Single Sign-on Card */}
+            {isAdUser ? (
+              <div className="p-4 rounded-2xl bg-sky-50/70 border border-sky-200/90 text-left space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <Lock className="w-4 h-4 text-[#00adef]" />
+                  Active Directory Single Sign-On Enabled
+                </div>
+                <p className="text-xs text-slate-600">
+                  This staff member will log into Visit Hub using their existing CoopBank Active Directory Windows domain password.
+                  No local temporary password is required.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Initial Temporary Password"
+                  type="password"
+                  placeholder="••••••••••••"
+                  error={errors.password?.message}
+                  required
+                  {...register('password')}
+                />
+                <Input
+                  label="Confirm Temporary Password"
+                  type="password"
+                  placeholder="••••••••••••"
+                  error={errors.confirmPassword?.message}
+                  required
+                  {...register('confirmPassword')}
+                />
+              </div>
             )}
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {AVAILABLE_ROLES.map((role) => {
-              const isSelected = selectedRoles.includes(role.id);
-              return (
-                <div
-                  key={role.id}
-                  onClick={() => handleRoleToggle(role.id)}
-                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-white border-[#00adef] shadow-xs ring-2 ring-[#00adef]/20'
-                      : 'bg-white/80 border-slate-200 hover:bg-white'
+            {/* Role Assignment Checkboxes */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  System Authorization Roles <span className="text-rose-500">*</span>
+                </span>
+                {errors.roleNames && (
+                  <span className="text-[11px] font-bold text-rose-500">
+                    {errors.roleNames.message}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {AVAILABLE_ROLES.map((role) => {
+                  const isSelected = selectedRoles.includes(role.id);
+                  return (
+                    <div
+                      key={role.id}
+                      onClick={() => handleRoleToggle(role.id)}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-white border-[#00adef] shadow-xs ring-2 ring-[#00adef]/20'
+                          : 'bg-white/80 border-slate-200 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p
+                          className={`text-xs font-bold ${
+                            isSelected ? 'text-[#00adef]' : 'text-slate-800'
+                          }`}
+                        >
+                          {role.label}
+                        </p>
+                        <div
+                          className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] font-bold ${
+                            isSelected
+                              ? 'bg-[#00adef] border-[#00adef] text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected ? '✓' : ''}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">{role.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                variant="orange"
+                icon={UserPlus}
+                isLoading={isSubmitting}
+              >
+                Complete Onboarding
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* Active Directory Connection Diagnostic Modal */}
+      {isDiagnosticModalOpen && (
+        <Modal
+          isOpen={isDiagnosticModalOpen}
+          onClose={() => setIsDiagnosticModalOpen(false)}
+          title="Active Directory Connection Diagnostics"
+          subtitle="Real-time connectivity and configuration check with CoopBank Domain Controller."
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-4 text-left">
+            {/* Status Card */}
+            <div
+              className={`p-4 rounded-2xl border flex items-start gap-3.5 ${
+                adConnectionStatus?.connected
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : adConnectionStatus?.status === 'DISABLED'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`}
+            >
+              {adConnectionStatus?.connected ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              ) : adConnectionStatus?.status === 'DISABLED' ? (
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              ) : (
+                <WifiOff className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              )}
+
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-wider">
+                  {adConnectionStatus?.connected
+                    ? `CONNECTED (${adConnectionStatus.latencyMs}ms)`
+                    : adConnectionStatus?.status || 'CONNECTION FAILED'}
+                </p>
+                <p className="text-xs font-medium leading-relaxed">
+                  {adConnectionStatus?.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Diagnostic Details Grid */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">AD Enabled in Backend</span>
+                <span
+                  className={`font-bold ${
+                    adConnectionStatus?.adEnabled ? 'text-emerald-600' : 'text-amber-600'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <p
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-[#00adef]' : 'text-slate-800'
-                      }`}
-                    >
-                      {role.label}
-                    </p>
-                    <div
-                      className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] font-bold ${
-                        isSelected
-                          ? 'bg-[#00adef] border-[#00adef] text-white'
-                          : 'border-slate-300 bg-white'
-                      }`}
-                    >
-                      {isSelected ? '✓' : ''}
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">{role.desc}</p>
-                </div>
-              );
-            })}
+                  {adConnectionStatus?.adEnabled ? 'YES (true)' : 'NO (false - mock active)'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Domain Controller URL</span>
+                <span className="font-mono font-bold text-slate-800">
+                  {adConnectionStatus?.adUrl || 'ldaps://10.1.72.10:636'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">AD Base DN</span>
+                <span className="font-mono font-semibold text-slate-700">
+                  {adConnectionStatus?.adBaseDn || 'DC=coopbank,DC=local'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Service Bind User</span>
+                <span className="font-mono font-semibold text-slate-700">
+                  {adConnectionStatus?.bindUser || '(Not configured)'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-medium">SSL Trust-All Mode</span>
+                <span className="font-semibold text-slate-700">
+                  {adConnectionStatus?.trustAllSsl ? 'Enabled (Accepts internal certificates)' : 'Standard'}
+                </span>
+              </div>
+            </div>
+
+            {/* Suggestion / Remediation Advice */}
+            {adConnectionStatus?.suggestion && (
+              <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-[#00adef]">
+                  <Info className="w-3.5 h-3.5" />
+                  Recommended Action
+                </p>
+                <p className="text-[11px] leading-relaxed text-slate-700">
+                  {adConnectionStatus.suggestion}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestAdConnection}
+                isLoading={isTestingAd}
+                icon={RefreshCw}
+              >
+                Re-test Connection
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setIsDiagnosticModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            variant="orange"
-            icon={UserPlus}
-            isLoading={isSubmitting}
-          >
-            Complete Onboarding
-          </Button>
-        </div>
-      </form>
-    </Modal>
+        </Modal>
+      )}
+    </>
   );
 };
 

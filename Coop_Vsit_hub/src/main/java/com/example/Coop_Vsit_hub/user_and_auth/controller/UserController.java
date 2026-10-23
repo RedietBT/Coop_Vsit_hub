@@ -170,4 +170,11 @@ public class UserController {
         String target = (identifier != null && !identifier.isBlank()) ? identifier : email;
         return ResponseEntity.ok(adAuthService.lookupByEmail(target));
     }
+
+    @GetMapping("/ad-test-connection")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @Operation(summary = "Test Active Directory LDAPS connection", description = "Verifies network connectivity, SSL handshake, and bind authentication against Active Directory domain controller.")
+    public ResponseEntity<Map<String, Object>> testAdConnection() {
+        return ResponseEntity.ok(adAuthService.testConnection());
+    }
 }
