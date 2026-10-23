@@ -2,6 +2,7 @@ package com.example.coop_vsit_hub.user_and_auth.controller;
 
 import com.example.coop_vsit_hub.user_and_auth.dto.*;
 import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
+import com.example.coop_vsit_hub.user_and_auth.service.ActiveDirectoryAuthService;
 import com.example.coop_vsit_hub.user_and_auth.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +34,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final ActiveDirectoryAuthService adAuthService;
 
     @GetMapping
     @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
@@ -146,5 +148,26 @@ public class UserController {
                 "message", "User account successfully deleted.",
                 "deletedUserId", id.toString()
         ));
+    }
+
+    @GetMapping("/ad-search")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @Operation(summary = "Live search staff in Active Directory", description = "Searches Active Directory by query across names, emails, and usernames for staff onboarding typeahead.")
+    public ResponseEntity<List<Map<String, Object>>> searchAdUsers(
+            @Parameter(description = "Search query (name, email, or username)")
+            @RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        return ResponseEntity.ok(adAuthService.searchUsers(query, limit));
+    }
+
+    @GetMapping("/ad-lookup")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN)")
+    @Operation(summary = "Look up a staff user in Active Directory", description = "Fetches staff user details from Active Directory to autofill onboarding form fields.")
+    public ResponseEntity<Map<String, Object>> lookupAdUser(
+            @Parameter(description = "Staff email address or sAMAccountName")
+            @RequestParam(value = "identifier", required = false) String identifier,
+            @RequestParam(value = "email", required = false) String email) {
+        String target = (identifier != null && !identifier.isBlank()) ? identifier : email;
+        return ResponseEntity.ok(adAuthService.lookupByEmail(target));
     }
 }

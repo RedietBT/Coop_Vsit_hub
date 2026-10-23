@@ -70,4 +70,18 @@ public class RegisterRequest {
      * When true, password change and email verification requirements are bypassed.
      */
     private Boolean isAdUser;
+
+    public void setRoleNames(Set<RoleName> roleNames) {
+        this.roles = roleNames;
+    }
+
+    public void setPhone(String phone) {
+        if (this.phoneNumber == null) {
+            this.phoneNumber = phone;
+        }
+    }
+
+    public void setJobTitle(String jobTitle) {
+        // Optional position title metadata
+    }
 }

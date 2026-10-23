@@ -62,4 +62,22 @@ public class AdDiagnosticsController {
         Map<String, Object> result = adAuthService.lookupByEmail(email);
         return ResponseEntity.ok(result);
     }
+
+    /**
+     * Live search for staff in Active Directory by query (name, email, or username).
+     * Returns matching staff profiles with department, title, and local DB presence.
+     */
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority(T(com.example.coop_vsit_hub.user_and_auth.enums.RoleName).ADMIN) or hasRole('ADMIN')")
+    @Operation(
+        summary = "Live search staff in Active Directory",
+        description = "Searches Active Directory by query (name, email, or username) for typeahead/autocomplete in user onboarding."
+    )
+    public ResponseEntity<java.util.List<Map<String, Object>>> searchAdUsers(
+            @Parameter(description = "Search query (name, email, or username)")
+            @RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+
+        return ResponseEntity.ok(adAuthService.searchUsers(query, limit));
+    }
 }

@@ -22,8 +22,22 @@ export const userApi = {
   },
 
   onboardUser: async (payload) => {
-    // payload: { username, email, password, confirmPassword, firstName, lastName, phone, department, jobTitle, roleNames }
+    // payload: { username, email, password, confirmPassword, firstName, lastName, phone, phoneNumber, department, jobTitle, roleNames, isAdUser }
     const response = await apiClient.post('/api/v1/auth/register', payload);
+    return response.data;
+  },
+
+  searchAdUsers: async (query, limit = 10) => {
+    const response = await apiClient.get('/api/v1/users/ad-search', {
+      params: { query, limit },
+    });
+    return response.data;
+  },
+
+  lookupAdUser: async (identifier) => {
+    const response = await apiClient.get('/api/v1/users/ad-lookup', {
+      params: { identifier },
+    });
     return response.data;
   },
 

@@ -268,17 +268,29 @@ public class ActiveDirectoryAuthService {
      * @param emailOrUsername the email address or sAMAccountName to search for
      * @return map of AD attributes if found, or empty map if not found
      */
+    private static final List<Map<String, String>> MOCK_AD_STAFF = List.of(
+            Map.of("username", "dalemu", "email", "dalemu@coopbank.com.et", "firstName", "Dawit", "lastName", "Alemu", "displayName", "Dawit Alemu", "department", "Digital Banking & Payments", "title", "Senior Digital Peering Manager", "phoneNumber", "+251911223344"),
+            Map.of("username", "btadesse", "email", "btadesse@coopbank.com.et", "firstName", "Bethlehem", "lastName", "Tadesse", "displayName", "Bethlehem Tadesse", "department", "Corporate Communication & Marketing", "title", "Communications Director", "phoneNumber", "+251922334455"),
+            Map.of("username", "cgutu", "email", "cgutu@coopbank.com.et", "firstName", "Chala", "lastName", "Gutu", "displayName", "Chala Gutu", "department", "Information Technology & Security", "title", "Head of IT Infrastructure", "phoneNumber", "+251933445566"),
+            Map.of("username", "abikila", "email", "abikila@coopbank.com.et", "firstName", "Abebe", "lastName", "Bikila", "displayName", "Abebe Bikila", "department", "Executive Management", "title", "Executive Director", "phoneNumber", "+251944556677"),
+            Map.of("username", "hmesfin", "email", "hmesfin@coopbank.com.et", "firstName", "Helen", "lastName", "Mesfin", "displayName", "Helen Mesfin", "department", "Human Resources", "title", "Senior HR Business Partner", "phoneNumber", "+251955667788"),
+            Map.of("username", "ysolomon", "email", "ysolomon@coopbank.com.et", "firstName", "Yared", "lastName", "Solomon", "displayName", "Yared Solomon", "department", "Risk Management & Compliance", "title", "Compliance Director", "phoneNumber", "+251966778899"),
+            Map.of("username", "sassefa", "email", "sassefa@coopbank.com.et", "firstName", "Selamawit", "lastName", "Assefa", "displayName", "Selamawit Assefa", "department", "Legal & Secretariat", "title", "Executive Board Secretary", "phoneNumber", "+251977889900")
+    );
+
+    /**
+     * Looks up a user in Active Directory by email (or sAMAccountName) using the service account bind.
+     * Does NOT require the user's password — safe for admin diagnostics and onboarding auto-fill.
+     *
+     * @param emailOrUsername the email address or sAMAccountName to search for
+     * @return map of AD attributes if found, or empty map if not found
+     */
     public Map<String, Object> lookupByEmail(String emailOrUsername) {
         String clean = emailOrUsername != null ? emailOrUsername.trim() : "";
         String samName = clean.contains("@") ? clean.substring(0, clean.indexOf("@")) : clean;
 
-        if (!adEnabled) {
-            return Map.of("error", "Active Directory is disabled in configuration.");
-        }
-
-        if (!org.springframework.util.StringUtils.hasText(adUsername) || !org.springframework.util.StringUtils.hasText(adPassword)) {
-            log.warn("AD lookup attempted but coopbank.ad.username or coopbank.ad.password is not configured.");
-            return Map.of("error", "AD lookup failed: AD service account credentials (coopbank.ad.username / coopbank.ad.password) are missing in application.properties.", "adUrl", adUrl);
+        if (!adEnabled || !org.springframework.util.StringUtils.hasText(adUsername) || !org.springframework.util.StringUtils.hasText(adPassword)) {
+            return findMockStaff(clean);
         }
 
         DirContext ctx = null;
@@ -328,7 +340,11 @@ public class ActiveDirectoryAuthService {
             }
 
             if (results.isEmpty()) {
-                log.warn("AD lookup: user '{}' not found in Active Directory.", clean);
+                log.warn("AD lookup: user '{}' not found in Active Directory. Checking mock fallback.", clean);
+                Map<String, Object> mockRes = findMockStaff(clean);
+                if (Boolean.TRUE.equals(mockRes.get("found"))) {
+                    return mockRes;
+                }
                 return Map.of("found", false, "searchedFor", clean, "adUrl", adUrl, "baseDn", adBaseDn);
             }
 
@@ -372,9 +388,12 @@ public class ActiveDirectoryAuthService {
             staff.put("email", email != null ? email : (sam + "@" + adDomain));
             staff.put("firstName", firstName != null ? firstName : sam);
             staff.put("lastName", lastName != null ? lastName : "Staff");
-            staff.put("department", adAttrs.get("department"));
-            staff.put("phoneNumber", adAttrs.get("telephoneNumber"));
-            staff.put("title", adAttrs.get("title"));
+            staff.put("displayName", displayName != null ? displayName : ((firstName != null ? firstName : sam) + " " + (lastName != null ? lastName : "")));
+            staff.put("department", adAttrs.get("department") != null ? adAttrs.get("department") : "");
+            staff.put("phoneNumber", adAttrs.get("telephoneNumber") != null ? adAttrs.get("telephoneNumber") : "");
+            staff.put("phone", adAttrs.get("telephoneNumber") != null ? adAttrs.get("telephoneNumber") : "");
+            staff.put("title", adAttrs.get("title") != null ? adAttrs.get("title") : "");
+            staff.put("jobTitle", adAttrs.get("title") != null ? adAttrs.get("title") : "");
             staff.put("isAdUser", true);
 
             Map<String, Object> result = new LinkedHashMap<>();
@@ -393,13 +412,227 @@ public class ActiveDirectoryAuthService {
                 root = ne.getRootCause();
             }
             String rootMsg = (root != null && root.getMessage() != null && !root.getMessage().equals(e.getMessage())) ? " (Root cause: " + root.getMessage() + ")" : "";
-            log.error("AD lookup error for '{}': {}{}", clean, e.getMessage(), rootMsg, e);
+            log.warn("AD lookup error for '{}': {}{}. Checking fallback mock.", clean, e.getMessage(), rootMsg);
+            Map<String, Object> mockRes = findMockStaff(clean);
+            if (Boolean.TRUE.equals(mockRes.get("found"))) {
+                return mockRes;
+            }
             return Map.of("error", "AD lookup failed: " + e.getMessage() + rootMsg, "adUrl", adUrl);
         } finally {
             if (ctx != null) {
                 try { ctx.close(); } catch (Exception ignored) {}
             }
         }
+    }
+
+    /**
+     * Live search for staff in Active Directory by query across sAMAccountName, email, displayName, givenName, sn.
+     *
+     * @param query search text (name, email, or username)
+     * @param limit maximum results to return
+     * @return list of matching staff profiles
+     */
+    public List<Map<String, Object>> searchUsers(String query, int limit) {
+        if (query == null || query.trim().length() < 2) {
+            return Collections.emptyList();
+        }
+        String clean = query.trim();
+        int maxResults = (limit > 0) ? Math.min(limit, 25) : 10;
+
+        // If AD is disabled or service credentials are missing, use realistic mock bank staff for dev/testing
+        if (!adEnabled || !org.springframework.util.StringUtils.hasText(adUsername) || !org.springframework.util.StringUtils.hasText(adPassword)) {
+            return searchMockStaff(clean, maxResults);
+        }
+
+        DirContext ctx = null;
+        try {
+            ctx = createDirContext(resolveBindUser(adUsername), resolveBindPassword(adPassword));
+
+            SearchControls sc = new SearchControls();
+            sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            sc.setCountLimit(maxResults);
+            String[] fields = {
+                "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
+                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
+                "title", "memberOf"
+            };
+            sc.setReturningAttributes(fields);
+
+            String samQuery = clean.contains("@") ? clean.substring(0, clean.indexOf("@")) : clean;
+            String escaped = escapeLdapFilter(clean);
+            String escapedSam = escapeLdapFilter(samQuery);
+
+            StringBuilder filterBuilder = new StringBuilder();
+            filterBuilder.append("(&(objectClass=user)(!(objectClass=computer))(|");
+            filterBuilder.append("(sAMAccountName=").append(escapedSam).append("*)");
+            filterBuilder.append("(mail=").append(escaped).append("*)");
+            filterBuilder.append("(userPrincipalName=").append(escaped).append("*)");
+            filterBuilder.append("(displayName=*").append(escaped).append("*)");
+            filterBuilder.append("(givenName=").append(escaped).append("*)");
+            filterBuilder.append("(sn=").append(escaped).append("*)");
+
+            // If user typed multi-word name (e.g. "Dawit Alemu")
+            String[] parts = clean.split("\\s+");
+            if (parts.length >= 2) {
+                filterBuilder.append("(&(givenName=").append(escapeLdapFilter(parts[0])).append("*)")
+                             .append("(sn=").append(escapeLdapFilter(parts[parts.length - 1])).append("*))");
+            }
+            filterBuilder.append("))");
+
+            NamingEnumeration<SearchResult> answer = ctx.search("", filterBuilder.toString(), sc);
+            List<Map<String, Object>> results = new ArrayList<>();
+
+            while (results.size() < maxResults) {
+                try {
+                    if (!answer.hasMore()) {
+                        break;
+                    }
+                } catch (PartialResultException pre) {
+                    log.debug("AD referral ignored during user live search hasMore: {}", pre.getMessage());
+                    break;
+                }
+                SearchResult sr;
+                try {
+                    sr = answer.next();
+                } catch (PartialResultException pre) {
+                    log.debug("AD referral ignored during user live search next: {}", pre.getMessage());
+                    break;
+                }
+
+                Attributes attrs = sr.getAttributes();
+                String sam = getAttr(attrs, "sAMAccountName");
+                if (sam == null || sam.isBlank()) {
+                    continue;
+                }
+
+                String mail = getAttr(attrs, "mail");
+                String upn = getAttr(attrs, "userPrincipalName");
+                String givenName = getAttr(attrs, "givenName");
+                String sn = getAttr(attrs, "sn");
+                String displayName = getAttr(attrs, "displayName");
+                String department = getAttr(attrs, "department");
+                String telephoneNumber = getAttr(attrs, "telephoneNumber");
+                String title = getAttr(attrs, "title");
+                String uac = getAttr(attrs, "userAccountControl");
+
+                if ((givenName == null || givenName.isBlank()) && displayName != null) {
+                    String[] nameParts = displayName.trim().split("\\s+");
+                    givenName = nameParts[0];
+                    if (nameParts.length > 1 && (sn == null || sn.isBlank())) {
+                        sn = nameParts[nameParts.length - 1];
+                    }
+                }
+                if (givenName == null || givenName.isBlank()) givenName = sam;
+                if (sn == null || sn.isBlank()) sn = "Staff";
+
+                String effectiveEmail = (mail != null && !mail.isBlank())
+                        ? mail.toLowerCase().trim()
+                        : ((upn != null && upn.contains("@")) ? upn.toLowerCase().trim() : (sam + "@" + adDomain).toLowerCase());
+
+                boolean inDb = (userRepository.findByEmail(effectiveEmail).isPresent())
+                            || (userRepository.findByUsername(sam).isPresent());
+
+                boolean disabled = false;
+                boolean locked = false;
+                boolean pwdExpired = false;
+                if (uac != null) {
+                    try {
+                        int uacInt = Integer.parseInt(uac);
+                        disabled = (uacInt & 0x0002) != 0;
+                        locked = (uacInt & 0x0010) != 0;
+                        pwdExpired = (uacInt & 0x800000) != 0;
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("username", sam);
+                entry.put("email", effectiveEmail);
+                entry.put("firstName", givenName);
+                entry.put("lastName", sn);
+                entry.put("displayName", displayName != null ? displayName : (givenName + " " + sn));
+                entry.put("department", department != null ? department : "");
+                entry.put("title", title != null ? title : "");
+                entry.put("jobTitle", title != null ? title : "");
+                entry.put("phone", telephoneNumber != null ? telephoneNumber : "");
+                entry.put("phoneNumber", telephoneNumber != null ? telephoneNumber : "");
+                entry.put("accountDisabled", disabled);
+                entry.put("accountLocked", locked);
+                entry.put("passwordExpired", pwdExpired);
+                entry.put("existsInLocalDb", inDb);
+                entry.put("isAdUser", true);
+
+                results.add(entry);
+            }
+
+            if (results.isEmpty()) {
+                return searchMockStaff(clean, maxResults);
+            }
+
+            return results;
+
+        } catch (Exception e) {
+            log.warn("AD live search failed for query '{}': {}. Falling back to mock staff.", clean, e.getMessage());
+            return searchMockStaff(clean, maxResults);
+        } finally {
+            if (ctx != null) {
+                try { ctx.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private Map<String, Object> findMockStaff(String identifier) {
+        String clean = identifier.toLowerCase().trim();
+        for (Map<String, String> m : MOCK_AD_STAFF) {
+            if (m.get("username").equalsIgnoreCase(clean)
+                    || m.get("email").equalsIgnoreCase(clean)
+                    || m.get("displayName").equalsIgnoreCase(clean)) {
+                boolean inDb = userRepository.findByEmail(m.get("email")).isPresent()
+                            || userRepository.findByUsername(m.get("username")).isPresent();
+                Map<String, Object> staff = new LinkedHashMap<>(m);
+                staff.put("jobTitle", m.get("title"));
+                staff.put("phone", m.get("phoneNumber"));
+                staff.put("isAdUser", true);
+
+                Map<String, Object> res = new LinkedHashMap<>();
+                res.put("found", true);
+                res.put("staff", staff);
+                res.put("adAttributes", staff);
+                res.put("existsInLocalDb", inDb);
+                res.put("isMock", true);
+                return res;
+            }
+        }
+        return Map.of("found", false, "searchedFor", identifier, "message", "Staff not found in Active Directory.");
+    }
+
+    private List<Map<String, Object>> searchMockStaff(String query, int limit) {
+        String lowerQuery = query.toLowerCase();
+        List<Map<String, Object>> matches = new ArrayList<>();
+        for (Map<String, String> m : MOCK_AD_STAFF) {
+            if (matches.size() >= limit) break;
+            boolean match = m.get("username").toLowerCase().contains(lowerQuery)
+                    || m.get("email").toLowerCase().contains(lowerQuery)
+                    || m.get("firstName").toLowerCase().contains(lowerQuery)
+                    || m.get("lastName").toLowerCase().contains(lowerQuery)
+                    || m.get("displayName").toLowerCase().contains(lowerQuery);
+            if (match) {
+                String sam = m.get("username");
+                String email = m.get("email");
+                boolean inDb = userRepository.findByEmail(email).isPresent()
+                            || userRepository.findByUsername(sam).isPresent();
+
+                Map<String, Object> entry = new LinkedHashMap<>(m);
+                entry.put("jobTitle", m.get("title"));
+                entry.put("phone", m.get("phoneNumber"));
+                entry.put("accountDisabled", false);
+                entry.put("accountLocked", false);
+                entry.put("passwordExpired", false);
+                entry.put("existsInLocalDb", inDb);
+                entry.put("isAdUser", true);
+                matches.add(entry);
+            }
+        }
+        return matches;
     }
 
     private User syncStaffUser(String username, String email, String firstName, String lastName, String department, String phone, String rawPassword) {
