@@ -111,9 +111,6 @@ public class MasterDataServiceImpl implements MasterDataService {
         return DepartmentDto.from(updated);
     }
 
-    @Override
-    @Transactional
-    @CacheEvict(value = "departments", allEntries = true)
     private void propagateDepartmentRename(String oldName, String newName) {
         userRepository.findAll().stream()
                 .filter(user -> user.getDepartment() != null && user.getDepartment().equalsIgnoreCase(oldName))
@@ -137,6 +134,10 @@ public class MasterDataServiceImpl implements MasterDataService {
 
         log.info("Propagated department rename from '{}' to '{}' across users, rooms, bookings, and visits.", oldName, newName);
     }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "departments", allEntries = true)
     public void deleteDepartment(UUID id) {
         log.info("Deleting department ID: {}", id);
         Department dept = departmentRepository.findById(id)
