@@ -11,6 +11,7 @@ export const useVisitStore = create((set, get) => ({
   pageSize: 10,
   isLoading: false,
   error: null,
+  fetchRequestId: 0,
 
   filters: {
     search: '',
@@ -92,7 +93,8 @@ export const useVisitStore = create((set, get) => ({
     }),
 
   fetchVisits: async () => {
-    set({ isLoading: true, error: null });
+    const requestId = get().fetchRequestId + 1;
+    set({ isLoading: true, error: null, fetchRequestId: requestId });
     try {
       const { filters, currentPage, pageSize } = get();
       const params = {
@@ -108,6 +110,7 @@ export const useVisitStore = create((set, get) => ({
       };
 
       const data = await visitApi.getAllVisits(params);
+      if (get().fetchRequestId !== requestId) return;
 
       set({
         visits: data.content || data || [],
@@ -116,6 +119,7 @@ export const useVisitStore = create((set, get) => ({
         isLoading: false,
       });
     } catch (err) {
+      if (get().fetchRequestId !== requestId) return;
       const errorMsg =
         err.response?.data?.message || 'Failed to fetch visits list.';
       set({ isLoading: false, error: errorMsg });

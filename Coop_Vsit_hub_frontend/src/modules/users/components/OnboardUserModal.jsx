@@ -346,9 +346,11 @@ export const OnboardUserModal = () => {
   };
 
   const onSubmit = async (data) => {
+    const usingAdAuthentication = Boolean(data.isAdUser || selectedAdStaff?.isAdUser);
     const payload = {
       ...data,
-      isAdUser: Boolean(isAdUser),
+      isAdUser: usingAdAuthentication,
+      password: usingAdAuthentication ? null : data.password?.trim() || null,
       roles: data.roleNames,
       roleNames: data.roleNames,
       phoneNumber: data.phone?.trim() || null,

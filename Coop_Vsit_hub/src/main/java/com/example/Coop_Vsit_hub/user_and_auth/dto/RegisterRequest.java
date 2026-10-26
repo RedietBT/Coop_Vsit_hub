@@ -66,6 +66,14 @@ public class RegisterRequest {
     private String password;
 
     /**
+     * Treat an empty password as absent. AD users authenticate with their domain password,
+     * and Bean Validation's @Size allows null but not an empty string.
+     */
+    public void setPassword(String password) {
+        this.password = password == null || password.trim().isEmpty() ? null : password;
+    }
+
+    /**
      * Set to true if the user is authenticated via Active Directory.
      * When true, password change and email verification requirements are bypassed.
      */

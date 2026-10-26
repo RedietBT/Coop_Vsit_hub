@@ -10,6 +10,7 @@ const STATUS_PILLS = [
   { label: 'In Progress', value: 'IN_PROGRESS' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Rejected', value: 'REJECTED' },
+  { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
 export const VisitFilterToolbar = () => {

@@ -258,10 +258,17 @@ export const BookingManagementPage = () => {
         return { label: status || 'Unknown', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
     }
   };
+  const getEffectiveBookingStatus = (booking) => {
+    if (booking.status === 'CONFIRMED' && booking.scheduledEndTime && new Date(booking.scheduledEndTime).getTime() <= Date.now()) return 'COMPLETED';
+    return booking.status;
+  };
 
   const renderBookingCard = (booking, canCancel = true) => {
-    const statusBadge = getStatusBadge(booking.status);
-    const isConfirmed = booking.status === 'CONFIRMED';
+
+
+    const effectiveStatus = getEffectiveBookingStatus(booking);
+    const statusBadge = getStatusBadge(effectiveStatus);
+    const isConfirmed = effectiveStatus === 'CONFIRMED';
     return (
       <div
         key={booking.id}
@@ -349,6 +356,37 @@ export const BookingManagementPage = () => {
     );
   };
 
+  const renderBookingTable = (bookings, canCancel = true) => (
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+              <th className="px-4 py-3">Meeting</th><th className="px-4 py-3">Room</th><th className="px-4 py-3">Schedule</th><th className="px-4 py-3">Booker</th><th className="px-4 py-3">Attendees</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {bookings.map((booking) => {
+              const effectiveStatus = getEffectiveBookingStatus(booking);
+              const statusBadge = getStatusBadge(effectiveStatus);
+              const canCancelBooking = canCancel && effectiveStatus === 'CONFIRMED';
+              return (
+                <tr key={booking.id} className="hover:bg-slate-50/70">
+                  <td className="px-4 py-3 min-w-[190px]"><p className="font-bold text-slate-900">{booking.meetingTitle || '(No Title)'}</p><p className="font-mono text-[10px] text-slate-400 mt-1">#{booking.bookingCode || '—'}</p></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><span className="inline-flex items-center gap-1.5 font-semibold text-slate-700"><DoorOpen className="w-3.5 h-3.5 text-slate-400" />{booking.roomName || '—'}</span></td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-600"><div><span className="font-semibold">Start:</span> {formatBookingTime(booking.scheduledStartTime)}</div><div className="mt-1"><span className="font-semibold">End:</span> {formatBookingTime(booking.scheduledEndTime)}</div></td>
+                  <td className="px-4 py-3 min-w-[150px] text-slate-600"><p>{booking.bookedByName || '—'}</p>{booking.hostDepartment && <p className="text-[10px] text-slate-400 mt-1">{booking.hostDepartment}</p>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">{booking.expectedAttendees || '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${statusBadge.cls}`}>{statusBadge.label}</span></td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{canCancelBooking ? <Button variant="ghost" size="sm" icon={XCircle} onClick={() => setCancellingBookingId(booking.id)} className="text-red-600 hover:bg-red-50 border border-red-100">Cancel</Button> : <span className="text-[10px] text-slate-400">—</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
   // Authentic CoopBank default fallback rooms
   const defaultRooms = useMemo(
     () => [
@@ -759,7 +797,7 @@ export const BookingManagementPage = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {myBookings.map((booking) => renderBookingCard(booking, true))}
+              {renderBookingTable(myBookings, true)}
 
               {/* Pagination */}
               {myBookingsTotalPages > 1 && (
@@ -841,7 +879,7 @@ export const BookingManagementPage = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {allBookings.map((booking) => renderBookingCard(booking, isAdmin || isSecretary))}
+              {renderBookingTable(allBookings, isAdmin || isSecretary)}
 
               {allBookingsTotalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 pt-2">
