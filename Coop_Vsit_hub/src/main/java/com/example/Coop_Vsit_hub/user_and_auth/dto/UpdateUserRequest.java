@@ -18,16 +18,16 @@ public class UpdateUserRequest {
     @NotBlank(message = "First name is required.")
     @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']+$",
-        message = "First name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "First name must contain only letters, spaces, hyphens, or apostrophes."
     )
     @Schema(example = "Abebe")
     private String firstName;
 
     @Size(max = 50, message = "Middle name cannot exceed 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Middle name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "Middle name must contain only letters, spaces, hyphens, or apostrophes."
     )
     @Schema(example = "Bekele")
     private String middleName;
@@ -35,8 +35,8 @@ public class UpdateUserRequest {
     @NotBlank(message = "Last name is required.")
     @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']+$",
-        message = "Last name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "Last name must contain only letters, spaces, hyphens, or apostrophes."
     )
     @Schema(example = "Kebede")
     private String lastName;

@@ -5,6 +5,7 @@ import com.example.coop_vsit_hub.room_booking_management.model.RoomBooking;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,6 +54,12 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
     );
+
+    @Modifying
+    @Query("UPDATE RoomBooking b SET b.status = com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus.COMPLETED " +
+           "WHERE b.status = com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus.CONFIRMED " +
+           "AND b.scheduledEndTime IS NOT NULL AND b.scheduledEndTime <= :now")
+    int markExpiredConfirmedBookingsCompleted(@Param("now") Instant now);
 
     List<RoomBooking> findByBookedByUserId(UUID bookedByUserId);
 

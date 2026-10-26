@@ -25,6 +25,8 @@ export const useUserStore = create((set, get) => ({
   isOnboardModalOpen: false,
   isRolesModalOpen: false,
   roleTargetUser: null,
+  isEditModalOpen: false,
+  userToEdit: null,
 
   setFilters: (newFilters) => {
     set((state) => ({
@@ -52,6 +54,9 @@ export const useUserStore = create((set, get) => ({
 
   openRolesModal: (user) => set({ roleTargetUser: user, isRolesModalOpen: true }),
   closeRolesModal: () => set({ roleTargetUser: null, isRolesModalOpen: false }),
+
+  openEditModal: (user) => set({ userToEdit: user, isEditModalOpen: true }),
+  closeEditModal: () => set({ userToEdit: null, isEditModalOpen: false }),
 
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
@@ -121,6 +126,18 @@ export const useUserStore = create((set, get) => ({
     }
   },
 
+  updateUserProfile: async (userId, payload) => {
+    try {
+      const updated = await userApi.updateUser(userId, payload);
+      toast.success(`Staff profile for "${updated.username || payload.email}" updated successfully.`);
+      get().fetchUsers();
+      return { success: true, user: updated };
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to update staff profile.';
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  },
   assignRoles: async (userId, roleNames) => {
     try {
       const updated = await userApi.updateUserRoles(userId, { roleNames });

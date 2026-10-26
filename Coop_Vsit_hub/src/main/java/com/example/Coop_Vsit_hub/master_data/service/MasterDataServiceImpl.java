@@ -9,6 +9,8 @@ import com.example.coop_vsit_hub.user_and_auth.dto.UserDetailResponse;
 import com.example.coop_vsit_hub.user_and_auth.enums.RoleName;
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.user_and_auth.repository.UserRepository;
+import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository;
+import com.example.coop_vsit_hub.visit_management.repository.VisitRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -28,6 +30,8 @@ public class MasterDataServiceImpl implements MasterDataService {
     private final DepartmentRepository departmentRepository;
     private final MeetingRoomRepository meetingRoomRepository;
     private final UserRepository userRepository;
+    private final RoomBookingRepository roomBookingRepository;
+    private final VisitRepository visitRepository;
 
     @org.springframework.beans.factory.annotation.Value("${coopbank.rooms.upload-dir:uploads/rooms/}")
     private String roomsUploadDir;
@@ -89,7 +93,12 @@ public class MasterDataServiceImpl implements MasterDataService {
             throw new IllegalArgumentException("Another department with name '" + request.getName() + "' already exists.");
         }
 
-        dept.setName(request.getName().trim());
+        String oldName = dept.getName();
+        String newName = request.getName().trim();
+        if (!oldName.equals(newName)) {
+            propagateDepartmentRename(oldName, newName);
+        }
+        dept.setName(newName);
         if (request.getCode() != null) {
             dept.setCode(request.getCode().trim().toUpperCase());
         }
@@ -105,6 +114,29 @@ public class MasterDataServiceImpl implements MasterDataService {
     @Override
     @Transactional
     @CacheEvict(value = "departments", allEntries = true)
+    private void propagateDepartmentRename(String oldName, String newName) {
+        userRepository.findAll().stream()
+                .filter(user -> user.getDepartment() != null && user.getDepartment().equalsIgnoreCase(oldName))
+                .forEach(user -> user.setDepartment(newName));
+        userRepository.flush();
+
+        meetingRoomRepository.findAll().stream()
+                .filter(room -> room.getDepartment() != null && room.getDepartment().equalsIgnoreCase(oldName))
+                .forEach(room -> room.setDepartment(newName));
+        meetingRoomRepository.flush();
+
+        roomBookingRepository.findAll().stream()
+                .filter(booking -> booking.getHostDepartment() != null && booking.getHostDepartment().equalsIgnoreCase(oldName))
+                .forEach(booking -> booking.setHostDepartment(newName));
+        roomBookingRepository.flush();
+
+        visitRepository.findAll().stream()
+                .filter(visit -> visit.getRequestingDepartment() != null && visit.getRequestingDepartment().equalsIgnoreCase(oldName))
+                .forEach(visit -> visit.setRequestingDepartment(newName));
+        visitRepository.flush();
+
+        log.info("Propagated department rename from '{}' to '{}' across users, rooms, bookings, and visits.", oldName, newName);
+    }
     public void deleteDepartment(UUID id) {
         log.info("Deleting department ID: {}", id);
         Department dept = departmentRepository.findById(id)

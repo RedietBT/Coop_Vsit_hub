@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -50,6 +51,14 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @org.springframework.beans.factory.annotation.Value("${coopbank.app.admin-email:}")
     private String configuredAdminEmail;
 
+    @Scheduled(fixedDelayString = "${coopbank.room-bookings.completion-interval-ms:60000}")
+    @Transactional
+    public void markExpiredBookingsCompleted() {
+        int updated = roomBookingRepository.markExpiredConfirmedBookingsCompleted(Instant.now());
+        if (updated > 0) {
+            log.info("Automatically marked {} expired room booking(s) as COMPLETED.", updated);
+        }
+    }
     @Override
     @Transactional
     public RoomBookingResponse createBooking(CreateRoomBookingRequest request, User currentUser) {

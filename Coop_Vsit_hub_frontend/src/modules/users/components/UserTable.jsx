@@ -14,11 +14,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  Edit3,
 } from 'lucide-react';
 import useUserStore from '../store/userStore';
 import useAuthStore from '@/modules/auth/store/authStore';
 import Badge from '@/shared/components/ui/Badge';
 import Spinner from '@/shared/components/ui/Spinner';
+import EditUserModal from './EditUserModal';
 
 export const UserTable = () => {
   const {
@@ -29,6 +31,7 @@ export const UserTable = () => {
     isLoading,
     setPage,
     openRolesModal,
+    openEditModal,
     unlockAccount,
     toggleEnableStatus,
     deleteUser,
@@ -212,6 +215,17 @@ export const UserTable = () => {
                         {/* Dropdown Menu */}
                         {openDropdownId === u.id && (
                           <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-40 animate-fadeIn text-left">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openEditModal(u);
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-[#00adef] flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-4 h-4 text-[#00adef]" />
+                              <span>Edit Profile</span>
+                            </button>
                             {/* 1. Assign Roles */}
                             <button
                               type="button"
@@ -322,6 +336,7 @@ export const UserTable = () => {
           </button>
         </div>
       </div>
+      <EditUserModal />
     </div>
   );
 };
