@@ -24,6 +24,7 @@ public class RoomBookingResponse {
     private String bookedByName;
     private String bookedByUsername;
     private String bookedByEmail;
+    private String bookedByPhone;
     private String guestOrganizationName;
     private String guestName;
     private Integer expectedAttendees;

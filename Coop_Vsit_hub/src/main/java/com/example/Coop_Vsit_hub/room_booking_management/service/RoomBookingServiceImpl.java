@@ -45,6 +45,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     private final com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
     private final com.example.coop_vsit_hub.user_and_auth.repository.UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
+    private final com.example.coop_vsit_hub.visit_management.repository.VisitRepository visitRepository;
 
     @org.springframework.beans.factory.annotation.Value("${coopbank.app.admin-email:}")
     private String configuredAdminEmail;
@@ -115,6 +116,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         String bookedByEmail = currentUser != null && StringUtils.hasText(currentUser.getEmail())
                 ? currentUser.getEmail()
                 : (StringUtils.hasText(request.getBookedByEmail()) ? request.getBookedByEmail().trim() : null);
+        String bookedByPhone = currentUser != null && StringUtils.hasText(currentUser.getPhoneNumber())
+                ? currentUser.getPhoneNumber()
+                : (StringUtils.hasText(request.getBookedByPhone()) ? request.getBookedByPhone().trim() : null);
 
         RoomBooking booking = RoomBooking.builder()
                 .bookingCode(bookingCode)
@@ -125,6 +129,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .bookedByName(bookedByName)
                 .bookedByUsername(bookedByUsername)
                 .bookedByEmail(bookedByEmail)
+                .bookedByPhone(bookedByPhone)
                 .guestOrganizationName(StringUtils.hasText(request.getGuestOrganizationName()) ? request.getGuestOrganizationName().trim() : null)
                 .guestName(StringUtils.hasText(request.getGuestName()) ? request.getGuestName().trim() : null)
                 .expectedAttendees(request.getExpectedAttendees() != null && request.getExpectedAttendees() > 0 ? request.getExpectedAttendees() : 1)
@@ -143,6 +148,56 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             throw new IllegalStateException(String.format(
                     "Meeting room '%s' is already booked for the selected time window. Please choose another slot.",
                     roomName), ex);
+        }
+
+        // Auto-register corresponding Visit so it immediately displays in Visits Lifecycle Management & Front Desk
+        try {
+            User requester = currentUser;
+            if (requester == null && StringUtils.hasText(saved.getBookedByEmail())) {
+                requester = userRepository.findByEmailIgnoreCase(saved.getBookedByEmail().trim()).orElse(null);
+            }
+            if (requester == null && StringUtils.hasText(saved.getBookedByUsername())) {
+                requester = userRepository.findByUsername(saved.getBookedByUsername().trim()).orElse(null);
+            }
+            if (requester == null) {
+                requester = userRepository.findByUsername("admin").orElse(null);
+            }
+            if (requester == null) {
+                requester = userRepository.findAll().stream().findFirst().orElse(null);
+            }
+
+            if (requester != null && visitRepository != null) {
+                String guestDisplay = StringUtils.hasText(saved.getGuestName())
+                        ? saved.getGuestName().trim()
+                        : (StringUtils.hasText(saved.getGuestOrganizationName()) ? saved.getGuestOrganizationName().trim() : saved.getBookedByName());
+
+                com.example.coop_vsit_hub.visit_management.model.Visit visit = com.example.coop_vsit_hub.visit_management.model.Visit.builder()
+                        .visitCode(generateVisitCode())
+                        .title(saved.getMeetingTitle())
+                        .requestingDepartment(saved.getHostDepartment())
+                        .visitType(com.example.coop_vsit_hub.visit_management.enums.VisitType.EXTERNAL)
+                        .visitObjective(StringUtils.hasText(saved.getMeetingAgenda()) ? saved.getMeetingAgenda().trim() : ("Boardroom meeting in " + saved.getRoomName()))
+                        .priorityLevel(com.example.coop_vsit_hub.visit_management.enums.VisitPriority.MEDIUM)
+                        .status(com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SCHEDULED)
+                        .locationRoom(saved.getRoomName())
+                        .visitorCount(saved.getExpectedAttendees() != null && saved.getExpectedAttendees() > 0 ? saved.getExpectedAttendees() : 1)
+                        .guestCategory(StringUtils.hasText(saved.getGuestOrganizationName())
+                                ? com.example.coop_vsit_hub.visit_management.enums.GuestCategory.ORGANIZATION
+                                : com.example.coop_vsit_hub.visit_management.enums.GuestCategory.INDIVIDUAL)
+                        .visitorFirstName(guestDisplay)
+                        .requester(requester)
+                        .scheduledStartTime(saved.getScheduledStartTime())
+                        .scheduledEndTime(saved.getScheduledEndTime())
+                        .linkedBookingId(saved.getId())
+                        .build();
+
+                com.example.coop_vsit_hub.visit_management.model.Visit savedVisit = visitRepository.saveAndFlush(visit);
+                saved.setLinkedVisitId(savedVisit.getId());
+                roomBookingRepository.saveAndFlush(saved);
+                log.info("Auto-registered linked visit '{}' for room booking '{}'", savedVisit.getVisitCode(), saved.getBookingCode());
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to auto-register linked visit for room booking {}: {}", saved.getBookingCode(), ex.getMessage(), ex);
         }
 
         // Notify System Admins via Email / In-App Notification
@@ -209,7 +264,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                     saved.getScheduledEndTime(),
                                     saved.getMeetingAgenda(),
                                     saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
-                                    saved.getHostDepartment()
+                                    saved.getHostDepartment(),
+                                    saved.getBookedByPhone()
                             );
                             alreadyEmailed.add(bookerEmail);
                         } catch (Exception e) {
@@ -235,6 +291,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                     saved.getRoomName(),
                                     saved.getBookedByName(),
                                     saved.getHostDepartment(),
+                                    saved.getBookedByPhone(),
                                     saved.getBookingCode(),
                                     saved.getMeetingTitle(),
                                     saved.getGuestName(),
@@ -296,6 +353,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getRoomName(),
                                         saved.getBookedByName(),
                                         saved.getHostDepartment(),
+                                        saved.getBookedByPhone(),
                                         saved.getBookingCode(),
                                         saved.getMeetingTitle(),
                                         saved.getGuestName(),
@@ -359,6 +417,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getRoomName(),
                                         saved.getBookedByName(),
                                         saved.getHostDepartment(),
+                                        saved.getBookedByPhone(),
                                         saved.getBookingCode(),
                                         saved.getMeetingTitle(),
                                         saved.getScheduledStartTime(),
@@ -366,6 +425,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getMeetingAgenda(),
                                         saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
                                         false,
+                                        null,
                                         null
                                 );
                             } catch (Exception e) {
@@ -541,6 +601,19 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking.setCancelledAt(Instant.now());
         RoomBooking updated = roomBookingRepository.save(booking);
 
+        if (booking.getLinkedVisitId() != null && visitRepository != null) {
+            try {
+                visitRepository.findById(booking.getLinkedVisitId()).ifPresent(v -> {
+                    v.setStatus(com.example.coop_vsit_hub.visit_management.enums.VisitStatus.CANCELLED);
+                    v.setDecisionNotes("Room booking cancelled: " + reason);
+                    visitRepository.save(v);
+                    log.info("Cancelled linked visit '{}' for room booking '{}'", v.getVisitCode(), booking.getBookingCode());
+                });
+            } catch (Exception ex) {
+                log.warn("Failed to cancel linked visit for room booking {}: {}", booking.getBookingCode(), ex.getMessage());
+            }
+        }
+
         // Dispatch notifications on cancellation
         try {
             var roomOpt = StringUtils.hasText(booking.getRoomName())
@@ -605,6 +678,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                             StringUtils.hasText(bookerName) ? bookerName.trim() : "Colleague",
                             booking.getRoomName(),
                             StringUtils.hasText(booking.getBookedByName()) ? booking.getBookedByName() : (bookerName != null ? bookerName : "Staff Member"),
+                            booking.getBookedByPhone(),
                             booking.getBookingCode(),
                             booking.getMeetingTitle(),
                             booking.getScheduledStartTime(),
@@ -666,6 +740,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 booking.getRoomName(),
                                 booking.getBookedByName(),
                                 booking.getHostDepartment(),
+                                booking.getBookedByPhone(),
                                 booking.getBookingCode(),
                                 booking.getMeetingTitle(),
                                 booking.getScheduledStartTime(),
@@ -744,6 +819,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 deptUser.getFullName(),
                                 booking.getRoomName(),
                                 booking.getBookedByName(),
+                                booking.getBookedByPhone(),
                                 booking.getBookingCode(),
                                 booking.getMeetingTitle(),
                                 booking.getScheduledStartTime(),
@@ -892,6 +968,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 updated.getRoomName(),
                                 updated.getBookedByName(),
                                 updated.getHostDepartment(),
+                                updated.getBookedByPhone(),
                                 updated.getBookingCode(),
                                 updated.getMeetingTitle(),
                                 oldStart,
@@ -1021,6 +1098,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .bookedByName(b.getBookedByName())
                 .bookedByUsername(b.getBookedByUsername())
                 .bookedByEmail(b.getBookedByEmail())
+                .bookedByPhone(b.getBookedByPhone())
                 .guestOrganizationName(b.getGuestOrganizationName())
                 .guestName(b.getGuestName())
                 .expectedAttendees(b.getExpectedAttendees())
@@ -1038,5 +1116,18 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())
                 .build();
+    }
+
+    private String generateVisitCode() {
+        String yearMonth = DateTimeFormatter.ofPattern("yyyyMM").withZone(ZoneOffset.UTC).format(Instant.now());
+        String prefix = "VIS-" + yearMonth + "-";
+        long nextNum = visitRepository.countByVisitCodeStartingWith(prefix) + 1;
+
+        String code = String.format("%s%05d", prefix, nextNum);
+        while (visitRepository.existsByVisitCode(code)) {
+            nextNum++;
+            code = String.format("%s%05d", prefix, nextNum);
+        }
+        return code;
     }
 }

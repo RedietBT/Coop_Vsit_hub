@@ -52,6 +52,9 @@ public class RoomBooking {
     @Column(name = "booked_by_email", length = 150)
     private String bookedByEmail;
 
+    @Column(name = "booked_by_phone", length = 50)
+    private String bookedByPhone;
+
     @Column(name = "guest_organization_name", length = 150)
     private String guestOrganizationName;
 

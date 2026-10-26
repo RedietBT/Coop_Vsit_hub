@@ -570,6 +570,9 @@ export const StaffTrackerPage = () => {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-medium text-slate-800">{b.bookedByName || 'Coop Staff'}</div>
+                        {b.bookedByPhone && (
+                          <div className="text-[10px] text-emerald-600 font-medium">{b.bookedByPhone}</div>
+                        )}
                         <div className="text-[10px] text-slate-400">{b.hostDepartment || 'Staff Hub'}</div>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">

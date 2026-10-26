@@ -25,4 +25,5 @@ public class CreateRoomBookingRequest {
     private String bookedByName;
     private String bookedByEmail;
     private String bookedByUsername;
+    private String bookedByPhone;
 }

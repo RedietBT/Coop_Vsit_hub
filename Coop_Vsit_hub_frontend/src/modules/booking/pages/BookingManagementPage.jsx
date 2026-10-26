@@ -26,12 +26,18 @@ import {
   Lock,
   Check,
   AlertTriangle,
+  BookOpen,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 import masterDataApi from '@/modules/master_data/api/masterDataApi';
 import userApi from '@/modules/users/api/userApi';
+import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import Button from '@/shared/components/ui/Button';
 import Modal from '@/shared/components/ui/Modal';
 import Input from '@/shared/components/ui/Input';
@@ -55,10 +61,33 @@ export const BookingManagementPage = () => {
     deleteMeetingRoom,
   } = useMasterDataStore();
 
+  // Active Tab: 'rooms' | 'myReservations' | 'allBookings'
+  const [activeTab, setActiveTab] = useState('myReservations');
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [capacityFilter, setCapacityFilter] = useState('ALL');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
+
+  // My Reservations State
+  const [myBookings, setMyBookings] = useState([]);
+  const [isLoadingMyBookings, setIsLoadingMyBookings] = useState(false);
+  const [myBookingsPage, setMyBookingsPage] = useState(0);
+  const [myBookingsTotalPages, setMyBookingsTotalPages] = useState(0);
+  const [myBookingsTotalElements, setMyBookingsTotalElements] = useState(0);
+  const [myBookingsSearch, setMyBookingsSearch] = useState('');
+  const [myBookingsStatusFilter, setMyBookingsStatusFilter] = useState('');
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
+  const [isCancellingBooking, setIsCancellingBooking] = useState(false);
+
+  // All Bookings State (Admin/Secretary)
+  const [allBookings, setAllBookings] = useState([]);
+  const [isLoadingAllBookings, setIsLoadingAllBookings] = useState(false);
+  const [allBookingsPage, setAllBookingsPage] = useState(0);
+  const [allBookingsTotalPages, setAllBookingsTotalPages] = useState(0);
+  const [allBookingsTotalElements, setAllBookingsTotalElements] = useState(0);
+  const [allBookingsSearch, setAllBookingsSearch] = useState('');
+  const [allBookingsStatusFilter, setAllBookingsStatusFilter] = useState('');
 
   // Room Creation / Edit Modal State
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -125,6 +154,200 @@ export const BookingManagementPage = () => {
     fetchAllMasterData();
     fetchUsers();
   }, [fetchAllMasterData, fetchUsers]);
+
+  // Fetch My Bookings
+  const fetchMyBookings = useCallback(async (pageNum = 0) => {
+    setIsLoadingMyBookings(true);
+    try {
+      const res = await roomBookingApi.getMyBookings({
+        page: pageNum,
+        size: 10,
+        search: myBookingsSearch || undefined,
+        status: myBookingsStatusFilter || undefined,
+        sortBy: 'scheduledStartTime',
+        sortDirection: 'desc',
+      });
+      setMyBookings(res?.content || []);
+      setMyBookingsTotalPages(res?.totalPages || 0);
+      setMyBookingsTotalElements(res?.totalElements || 0);
+      setMyBookingsPage(pageNum);
+    } catch (err) {
+      console.warn('Failed to load my bookings:', err);
+      setMyBookings([]);
+    } finally {
+      setIsLoadingMyBookings(false);
+    }
+  }, [myBookingsSearch, myBookingsStatusFilter]);
+
+  // Fetch All Bookings (Admin view)
+  const fetchAllBookings = useCallback(async (pageNum = 0) => {
+    setIsLoadingAllBookings(true);
+    try {
+      const res = await roomBookingApi.getBookings({
+        page: pageNum,
+        size: 10,
+        search: allBookingsSearch || undefined,
+        status: allBookingsStatusFilter || undefined,
+        sortBy: 'scheduledStartTime',
+        sortDirection: 'desc',
+      });
+      setAllBookings(res?.content || []);
+      setAllBookingsTotalPages(res?.totalPages || 0);
+      setAllBookingsTotalElements(res?.totalElements || 0);
+      setAllBookingsPage(pageNum);
+    } catch (err) {
+      console.warn('Failed to load all bookings:', err);
+      setAllBookings([]);
+    } finally {
+      setIsLoadingAllBookings(false);
+    }
+  }, [allBookingsSearch, allBookingsStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'myReservations') {
+      fetchMyBookings(0);
+    } else if (activeTab === 'allBookings' && (isAdmin || isSecretary)) {
+      fetchAllBookings(0);
+    }
+  }, [activeTab, fetchMyBookings, fetchAllBookings, isAdmin, isSecretary]);
+
+  const handleCancelBooking = async (bookingId) => {
+    setIsCancellingBooking(true);
+    try {
+      await roomBookingApi.cancelBooking(bookingId);
+      toast.success('Reservation cancelled successfully.');
+      setCancellingBookingId(null);
+      fetchMyBookings(myBookingsPage);
+      if (activeTab === 'allBookings') fetchAllBookings(allBookingsPage);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel reservation.');
+    } finally {
+      setIsCancellingBooking(false);
+    }
+  };
+
+  const formatBookingTime = (isoString) => {
+    if (!isoString) return '—';
+    try {
+      return new Date(isoString).toLocaleString('en-US', {
+        timeZone: 'Africa/Addis_Ababa',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'CONFIRMED':
+        return { label: 'Confirmed', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'CANCELLED':
+        return { label: 'Cancelled', cls: 'bg-red-50 text-red-700 border-red-200' };
+      case 'COMPLETED':
+        return { label: 'Completed', cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+      case 'NO_SHOW':
+        return { label: 'No Show', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+      default:
+        return { label: status || 'Unknown', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+  };
+
+  const renderBookingCard = (booking, canCancel = true) => {
+    const statusBadge = getStatusBadge(booking.status);
+    const isConfirmed = booking.status === 'CONFIRMED';
+    return (
+      <div
+        key={booking.id}
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden"
+      >
+        <div className="flex items-start gap-4 p-4">
+          {/* Room thumbnail */}
+          <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+            <img
+              src={resolveImageUrl(booking.roomImageUrl) || '/rooms/executive-boardroom.jpg'}
+              alt={booking.roomName}
+              onError={(e) => { e.target.onerror = null; e.target.src = '/rooms/executive-boardroom.jpg'; }}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <div>
+                <p className="font-bold text-sm text-slate-900 truncate">{booking.meetingTitle || '(No Title)'}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                  <DoorOpen className="w-3 h-3 shrink-0" />
+                  {booking.roomName || '—'}
+                  {booking.bookingCode && (
+                    <span className="ml-1 font-mono text-[10px] text-slate-400">#{booking.bookingCode}</span>
+                  )}
+                </p>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${statusBadge.cls}`}>
+                {statusBadge.label}
+              </span>
+            </div>
+
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                <span><span className="font-semibold">Start:</span> {formatBookingTime(booking.scheduledStartTime)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                <span><span className="font-semibold">End:</span> {formatBookingTime(booking.scheduledEndTime)}</span>
+              </div>
+              {booking.bookedByName && (
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <User className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span>{booking.bookedByName}</span>
+                  {booking.hostDepartment && <span className="text-slate-400">· {booking.hostDepartment}</span>}
+                </div>
+              )}
+              {booking.expectedAttendees && (
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <Users className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span>{booking.expectedAttendees} attendees expected</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {canCancel && isConfirmed && (
+          <div className="px-4 pb-4 flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Calendar}
+              onClick={() => navigate('/visits/calendar')}
+              className="text-[#00adef] hover:bg-blue-50 border border-blue-100"
+            >
+              View Calendar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={XCircle}
+              onClick={() => setCancellingBookingId(booking.id)}
+              className="text-red-600 hover:bg-red-50 border border-red-100"
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Authentic CoopBank default fallback rooms
   const defaultRooms = useMemo(
@@ -360,7 +583,7 @@ export const BookingManagementPage = () => {
   return (
     <div className="space-y-6 text-left animate-fadeIn pb-16">
       {/* ========================================================================= */}
-      {/* 1. HEADER BANNER WITH DIRECT "REGISTER MEETING ROOM" PRIORITY ACTION      */}
+      {/* 1. HEADER BANNER                                                          */}
       {/* ========================================================================= */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -369,15 +592,14 @@ export const BookingManagementPage = () => {
             <span>Executive Facilities & Meeting Rooms</span>
           </div>
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
-            Meeting Rooms
+            Meeting Rooms & Reservations
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Register and manage bank meeting facilities, assign persons in charge, and configure room specifications.
+            View your reservations, manage meeting facilities, and configure room specifications.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* PRIORITY #1: Register New Meeting Room Button */}
           {(isAdmin || isSecretary) && (
             <Button
               variant="orange"
@@ -390,7 +612,6 @@ export const BookingManagementPage = () => {
             </Button>
           )}
 
-          {/* Quick link to Booking Calendar */}
           <Button
             variant="cyan"
             size="md"
@@ -398,13 +619,17 @@ export const BookingManagementPage = () => {
             icon={CalendarDays}
             className="shadow-md hover:shadow-lg font-bold"
           >
-            Booking Calendar
+            Book a Room
           </Button>
 
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => fetchAllMasterData()}
+            onClick={() => {
+              fetchAllMasterData();
+              if (activeTab === 'myReservations') fetchMyBookings(0);
+              else if (activeTab === 'allBookings') fetchAllBookings(0);
+            }}
             disabled={isLoading}
             icon={RefreshCw}
             className="text-slate-600 hover:text-slate-900"
@@ -413,6 +638,275 @@ export const BookingManagementPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB SWITCHER                                                              */}
+      {/* ========================================================================= */}
+      <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-1 w-fit">
+        <button
+          onClick={() => setActiveTab('myReservations')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+            activeTab === 'myReservations'
+              ? 'bg-[#00adef] text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          My Reservations
+          {myBookingsTotalElements > 0 && (
+            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeTab === 'myReservations' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {myBookingsTotalElements}
+            </span>
+          )}
+        </button>
+
+        {(isAdmin || isSecretary) && (
+          <button
+            onClick={() => setActiveTab('allBookings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+              activeTab === 'allBookings'
+                ? 'bg-[#00adef] text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            All Bookings
+            {allBookingsTotalElements > 0 && (
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'allBookings' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {allBookingsTotalElements}
+              </span>
+            )}
+          </button>
+        )}
+
+        <button
+          onClick={() => setActiveTab('rooms')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+            activeTab === 'rooms'
+              ? 'bg-[#00adef] text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <DoorOpen className="w-3.5 h-3.5" />
+          Manage Rooms
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MY RESERVATIONS TAB                                                       */}
+      {/* ========================================================================= */}
+      {activeTab === 'myReservations' && (
+        <div className="space-y-4">
+          {/* Search & Filter */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by room or meeting title..."
+                value={myBookingsSearch}
+                onChange={(e) => setMyBookingsSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchMyBookings(0)}
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef] focus:outline-none transition-all"
+              />
+            </div>
+            <select
+              value={myBookingsStatusFilter}
+              onChange={(e) => { setMyBookingsStatusFilter(e.target.value); }}
+              className="text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:outline-none"
+            >
+              <option value="">All Statuses</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="NO_SHOW">No Show</option>
+            </select>
+            <Button size="sm" variant="ghost" onClick={() => fetchMyBookings(0)} icon={Search} className="shrink-0">
+              Search
+            </Button>
+          </div>
+
+          {/* Bookings List */}
+          {isLoadingMyBookings ? (
+            <div className="bg-white p-16 rounded-3xl border border-dashed border-slate-200 flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <div className="w-10 h-10 border-2 border-[#00adef] border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-slate-400 font-medium">Loading your reservations...</p>
+              </div>
+            </div>
+          ) : myBookings.length === 0 ? (
+            <div className="bg-white p-16 rounded-3xl border border-dashed border-slate-300 text-center space-y-3">
+              <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="font-heading font-bold text-base text-slate-800">No Reservations Found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {myBookingsSearch || myBookingsStatusFilter
+                  ? 'No reservations match your search criteria.'
+                  : "You haven't made any room reservations yet. Book a meeting room from the Booking Calendar."}
+              </p>
+              <Button
+                variant="cyan"
+                size="sm"
+                icon={CalendarDays}
+                onClick={() => navigate('/visits/calendar')}
+                className="mt-2"
+              >
+                Book a Room Now
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myBookings.map((booking) => renderBookingCard(booking, true))}
+
+              {/* Pagination */}
+              {myBookingsTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => fetchMyBookings(myBookingsPage - 1)}
+                    disabled={myBookingsPage === 0}
+                    className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-semibold text-slate-600">
+                    Page {myBookingsPage + 1} of {myBookingsTotalPages}
+                  </span>
+                  <button
+                    onClick={() => fetchMyBookings(myBookingsPage + 1)}
+                    disabled={myBookingsPage >= myBookingsTotalPages - 1}
+                    className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ALL BOOKINGS TAB (Admin/Secretary)                                        */}
+      {/* ========================================================================= */}
+      {activeTab === 'allBookings' && (isAdmin || isSecretary) && (
+        <div className="space-y-4">
+          {/* Search & Filter */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by room, title, or booker..."
+                value={allBookingsSearch}
+                onChange={(e) => setAllBookingsSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchAllBookings(0)}
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef] focus:outline-none transition-all"
+              />
+            </div>
+            <select
+              value={allBookingsStatusFilter}
+              onChange={(e) => setAllBookingsStatusFilter(e.target.value)}
+              className="text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:bg-white focus:outline-none"
+            >
+              <option value="">All Statuses</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="NO_SHOW">No Show</option>
+            </select>
+            <Button size="sm" variant="ghost" onClick={() => fetchAllBookings(0)} icon={Search} className="shrink-0">
+              Search
+            </Button>
+          </div>
+
+          {isLoadingAllBookings ? (
+            <div className="bg-white p-16 rounded-3xl border border-dashed border-slate-200 flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <div className="w-10 h-10 border-2 border-[#00adef] border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-slate-400 font-medium">Loading all bookings...</p>
+              </div>
+            </div>
+          ) : allBookings.length === 0 ? (
+            <div className="bg-white p-16 rounded-3xl border border-dashed border-slate-300 text-center space-y-3">
+              <CalendarDays className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="font-heading font-bold text-base text-slate-800">No Bookings Found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {allBookingsSearch || allBookingsStatusFilter
+                  ? 'No bookings match your search criteria.'
+                  : 'No room bookings have been submitted yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allBookings.map((booking) => renderBookingCard(booking, isAdmin || isSecretary))}
+
+              {allBookingsTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => fetchAllBookings(allBookingsPage - 1)}
+                    disabled={allBookingsPage === 0}
+                    className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-semibold text-slate-600">
+                    Page {allBookingsPage + 1} of {allBookingsTotalPages}
+                  </span>
+                  <button
+                    onClick={() => fetchAllBookings(allBookingsPage + 1)}
+                    disabled={allBookingsPage >= allBookingsTotalPages - 1}
+                    className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cancel Reservation Confirmation Modal */}
+      {cancellingBookingId && (
+        <Modal
+          isOpen={!!cancellingBookingId}
+          onClose={() => !isCancellingBooking && setCancellingBookingId(null)}
+          title="Cancel Reservation"
+        >
+          <div className="p-6 space-y-4 text-left">
+            <div className="flex items-start gap-3 p-4 bg-red-50 text-red-800 border border-red-200 rounded-2xl">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-sm text-red-900">Cancel this reservation?</p>
+                <p className="text-red-700 leading-relaxed">
+                  The meeting room slot will be released and made available for other bookings. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button variant="ghost" onClick={() => setCancellingBookingId(null)} disabled={isCancellingBooking}>
+                Keep Reservation
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleCancelBooking(cancellingBookingId)}
+                disabled={isCancellingBooking}
+                icon={XCircle}
+              >
+                {isCancellingBooking ? 'Cancelling...' : 'Cancel Reservation'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ROOMS TAB                                                                 */}
+      {/* ========================================================================= */}
+      {activeTab === 'rooms' && (<>
 
       {/* ========================================================================= */}
       {/* 2. STATS OVERVIEW CARDS                                                   */}
@@ -996,6 +1490,7 @@ export const BookingManagementPage = () => {
           </div>
         </Modal>
       )}
+    </>)}
     </div>
   );
 };

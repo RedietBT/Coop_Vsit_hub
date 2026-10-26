@@ -25,6 +25,7 @@ import {
   XCircle,
   Trash2,
   Edit2,
+  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -544,6 +545,9 @@ export const VisitCalendarPage = () => {
         roomName: selectedRoom.name,
         meetingTitle: formData.title.trim(),
         hostDepartment: selectedRoom.department || user?.department || 'Executive Office',
+        bookedByName: user?.fullName || '',
+        bookedByEmail: user?.email || '',
+        bookedByPhone: user?.phoneNumber || user?.phone || '',
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
         expectedAttendees: parseInt(formData.visitorCount, 10) || 1,
@@ -948,6 +952,16 @@ export const VisitCalendarPage = () => {
                                     <span className="text-slate-400">({slot.hostDepartment})</span>
                                   )}
                                 </span>
+                                {slot.bookedByPhone && (
+                                  <a
+                                    href={`tel:${slot.bookedByPhone}`}
+                                    className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Phone className="w-3 h-3" />
+                                    <span>{slot.bookedByPhone}</span>
+                                  </a>
+                                )}
                                 {slot.expectedAttendees && (
                                   <span className="flex items-center gap-1 text-slate-400">
                                     <Users className="w-3 h-3" />

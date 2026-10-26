@@ -502,6 +502,7 @@ public class VisitServiceImpl implements VisitService {
                                 saved.getLocationRoom(),
                                 requester.getFullName(),
                                 requester.getDepartment(),
+                                requester.getPhoneNumber(),
                                 saved.getVisitCode(),
                                 saved.getTitle(),
                                 saved.getGuestDisplayName(),

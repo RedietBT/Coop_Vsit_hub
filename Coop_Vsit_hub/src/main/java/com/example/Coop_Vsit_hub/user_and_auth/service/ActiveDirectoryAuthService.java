@@ -16,6 +16,7 @@ import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.PartialResultException;
+import javax.naming.SizeLimitExceededException;
 import javax.naming.directory.*;
 import java.util.*;
 
@@ -59,6 +60,24 @@ public class ActiveDirectoryAuthService {
             System.setProperty("com.sun.jndi.ldap.object.disableEndpointIdentification", "true");
             log.warn("LDAP endpoint identification disabled for internal bank LDAPS compatibility.");
         }
+        if (!org.springframework.util.StringUtils.hasText(adUsername)) {
+            String envUser = System.getenv("AD_USERNAME");
+            if (!org.springframework.util.StringUtils.hasText(envUser)) {
+                envUser = System.getenv("COOPBANK_AD_USERNAME");
+            }
+            if (org.springframework.util.StringUtils.hasText(envUser)) {
+                this.adUsername = envUser;
+            }
+        }
+        if (!org.springframework.util.StringUtils.hasText(adPassword)) {
+            String envPass = System.getenv("AD_PASSWORD");
+            if (!org.springframework.util.StringUtils.hasText(envPass)) {
+                envPass = System.getenv("COOPBANK_AD_PASSWORD");
+            }
+            if (org.springframework.util.StringUtils.hasText(envPass)) {
+                this.adPassword = envPass;
+            }
+        }
     }
 
     public boolean isAdEnabled() {
@@ -87,9 +106,9 @@ public class ActiveDirectoryAuthService {
         String trimmed = rawPassword.trim();
         if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
             (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-            return trimmed.substring(1, trimmed.length() - 1);
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
         }
-        return rawPassword;
+        return trimmed;
     }
 
     private DirContext createDirContext(String principal, String password) throws NamingException {
@@ -158,8 +177,8 @@ public class ActiveDirectoryAuthService {
             sc.setCountLimit(2);
             String[] fields = {
                 "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                "displayName", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
-                "title", "memberOf"
+                "displayName", "department", "telephoneNumber", "mobile", "ipPhone", "homePhone", "otherTelephone",
+                "userAccountControl", "distinguishedName", "title", "memberOf"
             };
             sc.setReturningAttributes(fields);
 
@@ -174,8 +193,8 @@ public class ActiveDirectoryAuthService {
                     if (!answer.hasMore()) {
                         break;
                     }
-                } catch (PartialResultException pre) {
-                    log.debug("Active Directory referral ignored during authentication search: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("Active Directory referral/size limit ignored during authentication search: {}", pre.getMessage());
                     break;
                 }
                 try {
@@ -183,8 +202,8 @@ public class ActiveDirectoryAuthService {
                     if (sr != null) {
                         break;
                     }
-                } catch (PartialResultException pre) {
-                    log.debug("Active Directory referral ignored during authentication next: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("Active Directory referral/size limit ignored during authentication next: {}", pre.getMessage());
                     break;
                 }
             }
@@ -398,8 +417,8 @@ public class ActiveDirectoryAuthService {
             sc.setCountLimit(10);
             String[] fields = {
                 "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                "displayName", "cn", "name", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
-                "title", "memberOf"
+                "displayName", "cn", "name", "department", "telephoneNumber", "mobile", "ipPhone", "homePhone", "otherTelephone",
+                "userAccountControl", "distinguishedName", "title", "memberOf"
             };
             sc.setReturningAttributes(fields);
 
@@ -420,15 +439,15 @@ public class ActiveDirectoryAuthService {
                     if (!answer.hasMore()) {
                         break;
                     }
-                } catch (PartialResultException pre) {
-                    log.debug("Active Directory referral ignored during user lookup hasMore: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("Active Directory referral/size limit reached during user lookup hasMore: {}", pre.getMessage());
                     break;
                 }
                 SearchResult sr;
                 try {
                     sr = answer.next();
-                } catch (PartialResultException pre) {
-                    log.debug("Active Directory referral ignored during user lookup next: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("Active Directory referral/size limit reached during user lookup next: {}", pre.getMessage());
                     break;
                 }
                 Attributes attrs = sr.getAttributes();
@@ -506,9 +525,10 @@ public class ActiveDirectoryAuthService {
             staff.put("firstName", firstName != null ? firstName : sam);
             staff.put("lastName", lastName != null ? lastName : "Staff");
             staff.put("displayName", displayName != null ? displayName : ((firstName != null ? firstName : sam) + " " + (lastName != null ? lastName : "")));
+            String resolvedPhone = resolvePhoneFromAttributes(adAttrs);
             staff.put("department", adAttrs.get("department") != null ? adAttrs.get("department") : "");
-            staff.put("phoneNumber", adAttrs.get("telephoneNumber") != null ? adAttrs.get("telephoneNumber") : "");
-            staff.put("phone", adAttrs.get("telephoneNumber") != null ? adAttrs.get("telephoneNumber") : "");
+            staff.put("phoneNumber", resolvedPhone);
+            staff.put("phone", resolvedPhone);
             staff.put("title", adAttrs.get("title") != null ? adAttrs.get("title") : "");
             staff.put("jobTitle", adAttrs.get("title") != null ? adAttrs.get("title") : "");
             staff.put("isAdUser", true);
@@ -570,8 +590,8 @@ public class ActiveDirectoryAuthService {
             sc.setCountLimit(maxResults);
             String[] fields = {
                 "sAMAccountName", "mail", "userPrincipalName", "givenName", "sn",
-                "displayName", "cn", "name", "department", "telephoneNumber", "userAccountControl", "distinguishedName",
-                "title", "memberOf"
+                "displayName", "cn", "name", "department", "telephoneNumber", "mobile", "ipPhone", "homePhone", "otherTelephone",
+                "userAccountControl", "distinguishedName", "title", "memberOf"
             };
             sc.setReturningAttributes(fields);
 
@@ -617,15 +637,15 @@ public class ActiveDirectoryAuthService {
                     if (!answer.hasMore()) {
                         break;
                     }
-                } catch (PartialResultException pre) {
-                    log.debug("AD referral ignored during user live search hasMore: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("AD referral/size limit reached during user live search hasMore: {}", pre.getMessage());
                     break;
                 }
                 SearchResult sr;
                 try {
                     sr = answer.next();
-                } catch (PartialResultException pre) {
-                    log.debug("AD referral ignored during user live search next: {}", pre.getMessage());
+                } catch (PartialResultException | SizeLimitExceededException pre) {
+                    log.debug("AD referral/size limit reached during user live search next: {}", pre.getMessage());
                     break;
                 }
 
@@ -683,11 +703,12 @@ public class ActiveDirectoryAuthService {
                 entry.put("firstName", givenName);
                 entry.put("lastName", sn);
                 entry.put("displayName", displayName != null ? displayName : (givenName + " " + sn));
+                String resolvedPhone = resolvePhone(attrs);
                 entry.put("department", department != null ? department : "");
                 entry.put("title", title != null ? title : "");
                 entry.put("jobTitle", title != null ? title : "");
-                entry.put("phone", telephoneNumber != null ? telephoneNumber : "");
-                entry.put("phoneNumber", telephoneNumber != null ? telephoneNumber : "");
+                entry.put("phone", resolvedPhone != null ? resolvedPhone : "");
+                entry.put("phoneNumber", resolvedPhone != null ? resolvedPhone : "");
                 entry.put("accountDisabled", disabled);
                 entry.put("accountLocked", locked);
                 entry.put("passwordExpired", pwdExpired);
@@ -921,7 +942,7 @@ public class ActiveDirectoryAuthService {
         String sn = getAttr(attrs, "sn");
         String displayName = getAttr(attrs, "displayName");
         String department = getAttr(attrs, "department");
-        String telephoneNumber = getAttr(attrs, "telephoneNumber");
+        String phone = resolvePhone(attrs);
         String title = getAttr(attrs, "title");
         String memberOf = getAttr(attrs, "memberOf");
 
@@ -939,10 +960,32 @@ public class ActiveDirectoryAuthService {
                 .firstName(givenName != null ? givenName : samAccountName)
                 .lastName(sn != null ? sn : "Staff")
                 .department(department)
-                .phone(telephoneNumber)
+                .phone(phone)
                 .title(title)
                 .memberOf(memberOf)
                 .build();
+    }
+
+    private String resolvePhone(Attributes attrs) throws NamingException {
+        if (attrs == null) return null;
+        for (String key : new String[]{"telephoneNumber", "mobile", "ipPhone", "homePhone", "otherTelephone"}) {
+            String val = getAttr(attrs, key);
+            if (org.springframework.util.StringUtils.hasText(val)) {
+                return val.trim();
+            }
+        }
+        return null;
+    }
+
+    private String resolvePhoneFromAttributes(Map<String, Object> attrs) {
+        if (attrs == null) return "";
+        for (String key : new String[]{"telephoneNumber", "mobile", "ipPhone", "homePhone", "otherTelephone"}) {
+            Object val = attrs.get(key);
+            if (val != null && org.springframework.util.StringUtils.hasText(val.toString())) {
+                return val.toString().trim();
+            }
+        }
+        return "";
     }
 
     private String getAttr(Attributes attrs, String name) throws NamingException {

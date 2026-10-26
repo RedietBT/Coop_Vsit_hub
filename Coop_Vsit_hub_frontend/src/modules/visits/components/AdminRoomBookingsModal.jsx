@@ -13,6 +13,7 @@ import {
   Sparkles,
   ExternalLink,
   Users,
+  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import visitApi from '../api/visitApi';
@@ -79,6 +80,7 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
       b.title?.toLowerCase().includes(q) ||
       b.bookedByName?.toLowerCase().includes(q) ||
       b.bookedByEmail?.toLowerCase().includes(q) ||
+      b.bookedByPhone?.toLowerCase().includes(q) ||
       b.bookedByDepartment?.toLowerCase().includes(q);
     return matchRoom && matchSearch;
   });
@@ -241,7 +243,17 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
                             <User className="w-3.5 h-3.5 text-amber-500" />
                             <span>{b.bookedByName || 'Bank Staff'}</span>
                           </div>
-                          <p className="text-[11px] text-slate-500 font-mono">{b.bookedByEmail}</p>
+                          {b.bookedByEmail && (
+                            <p className="text-[11px] text-slate-500 font-mono">{b.bookedByEmail}</p>
+                          )}
+                          {b.bookedByPhone && (
+                            <p className="text-[11px] text-slate-600 font-medium flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <a href={`tel:${b.bookedByPhone}`} className="hover:underline text-emerald-700">
+                                {b.bookedByPhone}
+                              </a>
+                            </p>
+                          )}
                           <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-medium">
                             {b.bookedByDepartment || 'CoopBank Staff'}
                           </span>

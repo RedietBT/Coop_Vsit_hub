@@ -138,6 +138,7 @@ public class EmailServiceImpl implements EmailService {
             String roomName,
             String bookedByName,
             String bookedByDept,
+            String bookedByPhone,
             String visitCode,
             String visitTitle,
             String guestName,
@@ -169,6 +170,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #00adef; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
                     + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #0284c7; font-weight: bold;'>" + (roomName != null && !roomName.isBlank() ? roomName : "Unspecified Room") + "</span></p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "General Division") + ")</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>🔖 Visit / Reference:</strong> " + (visitCode != null ? visitCode : "Direct Reservation") + " — " + (visitTitle != null ? visitTitle : "Executive Briefing") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👥 Guest / Delegation:</strong> " + (guestName != null ? guestName : "Visitor") + (organizationName != null ? " (" + organizationName + ")" : "") + " — " + visitorCount + " Guest(s)</p>"
                     + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
@@ -198,6 +202,7 @@ public class EmailServiceImpl implements EmailService {
             String roomName,
             String bookedByName,
             String bookedByDept,
+            String bookedByPhone,
             String visitCode,
             String visitTitle,
             String guestName,
@@ -230,6 +235,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #047857; font-weight: bold;'>" + (roomName != null ? roomName : "Department Room") + "</span></p>"
                     + "<p style='margin: 4px 0;'><strong>🏛️ Department:</strong> " + (departmentName != null ? departmentName : "Department") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Division") + ")</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>🔖 Visit / Reference:</strong> " + (visitCode != null ? visitCode : "Direct Reservation") + " — " + (visitTitle != null ? visitTitle : "Executive Briefing") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👥 Guest / Delegation:</strong> " + (guestName != null ? guestName : "Visitor") + (organizationName != null ? " (" + organizationName + ")" : "") + " — " + visitorCount + " Guest(s)</p>"
                     + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
@@ -257,6 +265,7 @@ public class EmailServiceImpl implements EmailService {
             String recipientName,
             String roomName,
             String bookedByName,
+            String bookedByPhone,
             String bookingCode,
             String meetingTitle,
             Instant startTime,
@@ -295,6 +304,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Room Reservation") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Originally Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + "</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #b91c1c; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
                     + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
                     + "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> <span style='font-weight: bold; color: #991b1b;'>" + (cancelledBy != null ? cancelledBy : "Administrator") + "</span></p>"
@@ -355,6 +367,7 @@ public class EmailServiceImpl implements EmailService {
             String roomName,
             String bookedByName,
             String bookedByDept,
+            String bookedByPhone,
             String bookingCode,
             String meetingTitle,
             Instant startTime,
@@ -405,6 +418,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Title / Subject:</strong> " + (meetingTitle != null ? meetingTitle : "Executive Meeting") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
                     + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
                     + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
@@ -443,7 +459,8 @@ public class EmailServiceImpl implements EmailService {
             Instant endTime,
             String purpose,
             int attendees,
-            String hostDept
+            String hostDept,
+            String bookedByPhone
     ) {
         if (recipientEmail == null || recipientEmail.isBlank()) {
             return;
@@ -476,6 +493,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>🏛️ Department:</strong> " + (hostDept != null ? hostDept : "Staff Hub") + "</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Contact Phone:</strong> " + bookedByPhone + "</p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
                     + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
                     + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
@@ -507,6 +527,7 @@ public class EmailServiceImpl implements EmailService {
             String roomName,
             String bookedByName,
             String bookedByDept,
+            String bookedByPhone,
             String bookingCode,
             String meetingTitle,
             Instant oldStartTime,
@@ -552,6 +573,9 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Reserving Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
+                    + (bookedByPhone != null && !bookedByPhone.isBlank()
+                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
+                        : "")
                     + "<p style='margin: 4px 0;'><strong>👥 Expected Attendees:</strong> " + attendees + " person(s)</p>"
                     + (purpose != null && !purpose.isBlank()
                         ? "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + purpose + "</p>"
