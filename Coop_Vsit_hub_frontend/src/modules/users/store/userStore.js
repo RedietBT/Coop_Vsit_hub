@@ -105,7 +105,14 @@ export const useUserStore = create((set, get) => ({
       get().fetchStatsAndRoles();
       return { success: true, user: newUser };
     } catch (err) {
+      const fieldErrors = err.response?.data?.fieldErrors;
+      const fieldErrorMessage = fieldErrors
+        ? Object.entries(fieldErrors)
+            .map(([field, message]) => field + ': ' + message)
+            .join(' ')
+        : '';
       const errorMsg =
+        fieldErrorMessage ||
         err.response?.data?.message ||
         err.response?.data?.error ||
         'Failed to onboard staff user.';

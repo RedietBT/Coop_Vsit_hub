@@ -43,8 +43,16 @@ const onboardSchema = z
       .min(3, 'Username must be at least 3 characters')
       .max(50, 'Username too long'),
     email: z.string().trim().email('Invalid email address format'),
-    firstName: z.string().trim().min(2, 'First name required'),
-    lastName: z.string().trim().min(2, 'Last name required'),
+    firstName: z
+      .string()
+      .trim()
+      .min(2, 'First name required')
+      .regex(/^[\p{L}]+(?:[\s'-]+[\p{L}]+)*$/u, 'First name contains invalid characters'),
+    lastName: z
+      .string()
+      .trim()
+      .min(2, 'Last name required')
+      .regex(/^[\p{L}]+(?:[\s'-]+[\p{L}]+)*$/u, 'Last name contains invalid characters'),
     phone: z.string().optional(),
     department: z.string().min(1, 'Department is required'),
     jobTitle: z.string().optional(),
@@ -343,7 +351,7 @@ export const OnboardUserModal = () => {
       isAdUser: Boolean(isAdUser),
       roles: data.roleNames,
       roleNames: data.roleNames,
-      phoneNumber: data.phone,
+      phoneNumber: data.phone?.trim() || null,
     };
 
     const result = await onboardUser(payload);

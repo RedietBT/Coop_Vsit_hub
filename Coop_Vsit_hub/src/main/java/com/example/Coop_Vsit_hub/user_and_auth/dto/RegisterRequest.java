@@ -30,30 +30,30 @@ public class RegisterRequest {
     @NotBlank(message = "First name is required.")
     @Size(max = 50, message = "First name cannot exceed 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']+$",
-        message = "First name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "First name must contain only letters, spaces, hyphens, or apostrophes."
     )
     private String firstName;
 
     @Size(max = 50, message = "Middle name cannot exceed 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']*$",
-        message = "Middle name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "Middle name must contain only letters, spaces, hyphens, or apostrophes."
     )
     private String middleName;
 
     @NotBlank(message = "Last name is required.")
     @Size(max = 50, message = "Last name cannot exceed 50 characters.")
     @Pattern(
-        regexp = "^[a-zA-Z\\s\\-']+$",
-        message = "Last name must contain only alphabetic characters, spaces, hyphens, or apostrophes."
+        regexp = "^[\\p{L}]+(?:[\\s'-]+[\\p{L}]+)*$",
+        message = "Last name must contain only letters, spaces, hyphens, or apostrophes."
     )
     private String lastName;
 
     @Size(max = 100, message = "Department cannot exceed 100 characters.")
     private String department;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be a valid phone format (10-15 digits, optional + prefix).")
+    @Pattern(regexp = "^$|^\\+?[0-9]{10,15}$", message = "Phone number must be a valid phone format (10-15 digits, optional + prefix).")
     private String phoneNumber;
 
     private Set<RoleName> roles;
