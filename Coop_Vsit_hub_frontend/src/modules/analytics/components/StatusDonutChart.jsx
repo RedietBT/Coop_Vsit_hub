@@ -10,6 +10,7 @@ import {
 
 const STATUS_COLORS = {
   APPROVED: '#10b981', // Emerald
+  SCHEDULED: '#14b8a6', // Teal-blue
   IN_PROGRESS: '#00adef', // Cyan
   COMPLETED: '#0d9488', // Teal
   SUBMITTED: '#e38524', // Warm Orange

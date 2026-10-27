@@ -315,6 +315,10 @@ export const VisitCalendarPage = () => {
       toast.error('Past dates cannot be rescheduled. Please choose today or a future date.');
       return;
     }
+    if (isPastTimeToday(editFormData.date, editFormData.startTime)) {
+      toast.error('The selected start time has already passed. Please choose a later time.');
+      return;
+    }
     if (!editFormData.title.trim()) {
       toast.error('Please enter a meeting title.');
       return;
@@ -478,6 +482,23 @@ export const VisitCalendarPage = () => {
   // Calendar Helpers
   const todayKey = getLocalDateString(new Date());
   const isPastDateKey = (dateKey) => Boolean(dateKey && dateKey < todayKey);
+  const getCurrentMinutesInEastAfrica = () => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Addis_Ababa',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+    return hour * 60 + minute;
+  };
+  const timeToMinutes = (time) => {
+    const [hour, minute] = String(time || '').split(':').map(Number);
+    return Number.isFinite(hour) && Number.isFinite(minute) ? hour * 60 + minute : NaN;
+  };
+  const isPastTimeToday = (dateKey, time) =>
+    dateKey === todayKey && timeToMinutes(time) < getCurrentMinutesInEastAfrica();
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -522,6 +543,10 @@ export const VisitCalendarPage = () => {
     e.preventDefault();
     if (isBookingDatePast) {
       toast.error('Past dates are read-only. Please choose today or a future date to make a booking.');
+      return;
+    }
+    if (isPastTimeToday(formData.date, formData.startTime)) {
+      toast.error('The selected start time has already passed. Please choose a later time.');
       return;
     }
     if (!formData.title.trim()) {
@@ -1149,7 +1174,7 @@ export const VisitCalendarPage = () => {
                     {(() => {
                       const t = parseTimeTo12Hr(formData.startTime);
                       const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-                      const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                      const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                       return (
                         <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                           <div className="flex items-center justify-between">
@@ -1236,7 +1261,7 @@ export const VisitCalendarPage = () => {
                     {(() => {
                       const t = parseTimeTo12Hr(formData.endTime);
                       const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-                      const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                      const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                       return (
                         <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                           <div className="flex items-center justify-between">
@@ -1426,7 +1451,7 @@ export const VisitCalendarPage = () => {
                     type="submit"
                     variant="orange"
                     size="lg"
-                    disabled={isSubmitting || isBookingDatePast}
+                    disabled={isSubmitting || isBookingDatePast || isPastTimeToday(formData.date, formData.startTime)}
                     className="w-full justify-center py-3 text-sm font-bold shadow-md hover:shadow-lg"
                   >
                     {isSubmitting ? 'Booking Room...' : `Confirm & Book ${selectedRoom.name}`}
@@ -1546,7 +1571,7 @@ export const VisitCalendarPage = () => {
                   {(() => {
                     const t = parseTimeTo12Hr(editFormData.startTime);
                     const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-                    const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                    const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                     return (
                       <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                         <div className="flex items-center justify-between">
@@ -1616,7 +1641,7 @@ export const VisitCalendarPage = () => {
                   {(() => {
                     const t = parseTimeTo12Hr(editFormData.endTime);
                     const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-                    const minutes = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+                    const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                     return (
                       <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                         <div className="flex items-center justify-between">
@@ -1723,7 +1748,7 @@ export const VisitCalendarPage = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isUpdating || !!slotConflict}
+                    disabled={isUpdating || !!slotConflict || isPastDateKey(editFormData.date) || isPastTimeToday(editFormData.date, editFormData.startTime)}
                     className="bg-[#00adef] hover:bg-[#0095ce] text-white"
                   >
                     {isUpdating ? 'Saving Changes...' : 'Save & Reschedule'}
