@@ -16,7 +16,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import visitApi from '../api/visitApi';
+import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
@@ -31,8 +31,20 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   const fetchBookings = async () => {
     setIsLoading(true);
     try {
-      const data = await visitApi.getAdminRoomBookings();
-      setBookings(Array.isArray(data) ? data : []);
+      const response = await roomBookingApi.getBookings({ page: 0, size: 100, sortBy: 'scheduledStartTime', sortDirection: 'desc' });
+      const data = Array.isArray(response) ? response : response?.content || [];
+      setBookings(data.map((booking) => ({
+        ...booking,
+        bookingId: booking.id,
+        visitId: booking.linkedVisitId || booking.id,
+        visitCode: booking.linkedVisitCode || booking.bookingCode,
+        title: booking.meetingTitle,
+        purpose: booking.meetingAgenda,
+        guestDisplayName: booking.guestName || booking.guestOrganizationName,
+        visitorCount: booking.expectedAttendees,
+        bookedByDepartment: booking.hostDepartment,
+        status: booking.status || 'CONFIRMED',
+      })));
     } catch (err) {
       console.error('Failed to load admin room bookings:', err);
       toast.error('Failed to retrieve room bookings roster.');
@@ -47,13 +59,13 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  const handleCancelBooking = async (visitId, roomName, visitCode) => {
+  const handleCancelBooking = async (bookingId, roomName, visitCode) => {
     if (!window.confirm(`Are you sure you want to cancel and release reservation '${visitCode}' for '${roomName}'?`)) {
       return;
     }
-    setCancelingId(visitId);
+    setCancelingId(bookingId);
     try {
-      await visitApi.deleteVisit(visitId);
+      await roomBookingApi.cancelBooking(bookingId);
       soundPlayer.playNotificationChime();
       toast.success(`Booking ${visitCode} for ${roomName} successfully released.`);
       fetchBookings();
@@ -278,14 +290,14 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
 
                       {/* Status */}
                       <td className="py-3.5 px-4">
-                        <Badge variant="success">CONFIRMED</Badge>
+                        <Badge variant={b.status === 'COMPLETED' ? 'info' : b.status === 'CANCELLED' ? 'danger' : 'success'}>{b.status}</Badge>
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <button
-                          onClick={() => handleCancelBooking(b.visitId, b.roomName, b.visitCode)}
-                          disabled={cancelingId === b.visitId}
+                          onClick={() => handleCancelBooking(b.bookingId, b.roomName, b.visitCode)}
+                          disabled={cancelingId === b.bookingId}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                           title="Release Room Booking"
                         >
