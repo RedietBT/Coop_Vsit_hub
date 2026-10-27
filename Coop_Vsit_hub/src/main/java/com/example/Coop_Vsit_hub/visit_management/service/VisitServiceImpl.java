@@ -98,8 +98,20 @@ public class VisitServiceImpl implements VisitService {
         );
 
         Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
+        Instant now = Instant.now();
         Page<VisitSummaryResponse> dtoPage = visitPage.map(v -> {
-            VisitSummaryResponse dto = VisitSummaryResponse.from(v);
+            VisitSummaryResponse dto = VisitSummaryResponse.from(v);            if (v.getScheduledEndTime() != null
+                    && !v.getScheduledEndTime().isAfter(now)
+                    && v.getStatus() != VisitStatus.CANCELLED
+                    && v.getStatus() != VisitStatus.REJECTED) {
+                dto.setStatus(VisitStatus.COMPLETED);
+            } else if ((v.getStatus() == VisitStatus.APPROVED || v.getStatus() == VisitStatus.SCHEDULED)
+                    && v.getScheduledStartTime() != null
+                    && !v.getScheduledStartTime().isAfter(now)
+                    && v.getScheduledEndTime() != null
+                    && v.getScheduledEndTime().isAfter(now)) {
+                dto.setStatus(VisitStatus.IN_PROGRESS);
+            }
             if (feedbackRepository != null) {
                 feedbackRepository.findByVisitId(v.getId()).ifPresent(fb -> {
                     if (fb.isSubmitted()) {
@@ -977,6 +989,11 @@ public class VisitServiceImpl implements VisitService {
                     .date(date)
                     .timeFormatted(timeFormatted)
                     .booked(true)
+                    .bookedByName(v.getRequester() != null ? v.getRequester().getFullName() : null)
+                    .bookedByEmail(v.getRequester() != null ? v.getRequester().getEmail() : null)
+                    .bookedByPhone(v.getRequester() != null ? v.getRequester().getPhoneNumber() : v.getVisitorPhone())
+                    .hostDepartment(v.getRequestingDepartment())
+                    .expectedAttendees(v.getVisitorCount())
                     .build();
         }).toList();
     }

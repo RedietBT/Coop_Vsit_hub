@@ -140,6 +140,13 @@ export const VisitCalendarPage = () => {
   const [hoveredDate, setHoveredDate] = useState(null);
   const [roomSlots, setRoomSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [showReserverContact, setShowReserverContact] = useState(() => {
+    try { return localStorage.getItem('visitHub.showReserverContact') !== 'false'; } catch { return true; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('visitHub.showReserverContact', String(showReserverContact)); } catch { /* ignore storage restrictions */ }
+  }, [showReserverContact]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cancellation State (for cancelling one's own reservation directly from the schedule)
@@ -938,7 +945,15 @@ export const VisitCalendarPage = () => {
 
                 {/* Interactive Hourly Schedule & In-Place Cancellation Section */}
                 <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/80 p-4 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-[#00adef]" />
                       <span className="text-xs font-bold text-slate-800">
@@ -987,7 +1002,7 @@ export const VisitCalendarPage = () => {
                                     <span className="text-slate-400">({slot.hostDepartment})</span>
                                   )}
                                 </span>
-                                {slot.bookedByPhone && (
+                                {showReserverContact && slot.bookedByPhone && (
                                   <a
                                     href={`tel:${slot.bookedByPhone}`}
                                     className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
@@ -997,7 +1012,16 @@ export const VisitCalendarPage = () => {
                                     <span>{slot.bookedByPhone}</span>
                                   </a>
                                 )}
-                                {slot.expectedAttendees && (
+                                {showReserverContact && slot.bookedByEmail && (
+                                  <a
+                                    href={`mailto:${slot.bookedByEmail}`}
+                                    className="flex items-center gap-1 text-sky-600 hover:text-sky-700 hover:underline font-medium"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Mail className="w-3 h-3" />
+                                    <span>{slot.bookedByEmail}</span>
+                                  </a>
+                                )}                                {slot.expectedAttendees && (
                                   <span className="flex items-center gap-1 text-slate-400">
                                     <Users className="w-3 h-3" />
                                     <span>{slot.expectedAttendees} attendees</span>
@@ -1094,7 +1118,15 @@ export const VisitCalendarPage = () => {
 
                 {/* Quick Meeting Slot Presets */}
                 <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-[#00adef]" />
                       Quick Slot Presets (AM / PM)
@@ -1177,7 +1209,15 @@ export const VisitCalendarPage = () => {
                       const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                       return (
                         <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                             <label className="text-xs font-bold text-slate-700">
                               Start Time
                             </label>
@@ -1264,7 +1304,15 @@ export const VisitCalendarPage = () => {
                       const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                       return (
                         <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                             <label className="text-xs font-bold text-slate-700">
                               End Time
                             </label>
@@ -1574,7 +1622,15 @@ export const VisitCalendarPage = () => {
                     const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                     return (
                       <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                           <label className="text-xs font-bold text-slate-700">Start Time</label>
                           <span className="px-2.5 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
                             {t.hour}:{t.minute} {t.period}
@@ -1644,7 +1700,15 @@ export const VisitCalendarPage = () => {
                     const minutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
                     return (
                       <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showReserverContact}
+                        onChange={(e) => setShowReserverContact(e.target.checked)}
+                        className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      Show reserver contact
+                    </label>
                           <label className="text-xs font-bold text-slate-700">End Time</label>
                           <span className="px-2.5 py-0.5 rounded-lg bg-sky-50 text-[#00adef] border border-sky-200 text-xs font-bold font-mono">
                             {t.hour}:{t.minute} {t.period}

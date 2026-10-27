@@ -22,4 +22,9 @@ public class RoomSlotResponse {
     private String date; // YYYY-MM-DD in UTC/local
     private String timeFormatted; // e.g. "09:00 AM - 11:30 AM"
     private boolean booked;
+    private String bookedByName;
+    private String bookedByEmail;
+    private String bookedByPhone;
+    private String hostDepartment;
+    private Integer expectedAttendees;
 }
