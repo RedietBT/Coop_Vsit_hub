@@ -311,6 +311,10 @@ export const VisitCalendarPage = () => {
   const handleUpdateBookingSubmit = async (e) => {
     e.preventDefault();
     if (!editingBooking) return;
+    if (isPastDateKey(editFormData.date)) {
+      toast.error('Past dates cannot be rescheduled. Please choose today or a future date.');
+      return;
+    }
     if (!editFormData.title.trim()) {
       toast.error('Please enter a meeting title.');
       return;
@@ -472,6 +476,8 @@ export const VisitCalendarPage = () => {
   };
 
   // Calendar Helpers
+  const todayKey = getLocalDateString(new Date());
+  const isPastDateKey = (dateKey) => Boolean(dateKey && dateKey < todayKey);
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -509,10 +515,15 @@ export const VisitCalendarPage = () => {
     : null;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
+  const isBookingDatePast = isPastDateKey(formData.date);
 
   // Form Submit: Instant direct booking without approvals!
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
+    if (isBookingDatePast) {
+      toast.error('Past dates are read-only. Please choose today or a future date to make a booking.');
+      return;
+    }
     if (!formData.title.trim()) {
       toast.error('Please enter a meeting or visit title.');
       return;
@@ -863,14 +874,13 @@ export const VisitCalendarPage = () => {
                         onClick={() => {
                           const clicked = new Date(year, month, dayNumber);
                           setSelectedDate(clicked);
-                          setFormData((prev) => ({
-                            ...prev,
-                            date: dateKey,
-                          }));
+                          if (!isPastDateKey(dateKey)) {
+                            setFormData((prev) => ({ ...prev, date: dateKey }));
+                          }
                         }}
                         onMouseEnter={() => setHoveredDate(dayNumber)}
                         onMouseLeave={() => setHoveredDate(null)}
-                        className={`h-14 p-1.5 rounded-2xl border transition-colors duration-150 cursor-pointer flex flex-col justify-between select-none relative ${
+                        className={`h-14 p-1.5 rounded-2xl border transition-colors duration-150 flex flex-col justify-between select-none relative ${isPastDateKey(dateKey) ? 'bg-slate-100/80 border-slate-200 text-slate-400 cursor-default' : 'cursor-pointer'} ${
                           isSelected
                             ? 'border-[#00adef] bg-blue-50/60 shadow-xs'
                             : 'border-slate-100 hover:border-blue-300 hover:bg-slate-50'
@@ -892,8 +902,8 @@ export const VisitCalendarPage = () => {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[9px] font-medium text-emerald-600 pointer-events-none">
-                            Available
+                          <span className={`text-[9px] font-medium pointer-events-none ${isPastDateKey(dateKey) ? 'text-slate-400' : 'text-emerald-600'}`}>
+                            {isPastDateKey(dateKey) ? 'Past date' : 'Available'}
                           </span>
                         )}
                       </div>
@@ -1116,8 +1126,13 @@ export const VisitCalendarPage = () => {
                       type="date"
                       required
                       value={formData.date}
+                      min={todayKey}
                       onChange={(e) => {
                         const val = e.target.value;
+                        if (isPastDateKey(val)) {
+                          toast.error('Past dates are read-only. Choose today or a future date.');
+                          return;
+                        }
                         setFormData((prev) => ({ ...prev, date: val }));
                         const parts = val.split('-').map(Number);
                         if (parts.length === 3) {
@@ -1411,7 +1426,7 @@ export const VisitCalendarPage = () => {
                     type="submit"
                     variant="orange"
                     size="lg"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isBookingDatePast}
                     className="w-full justify-center py-3 text-sm font-bold shadow-md hover:shadow-lg"
                   >
                     {isSubmitting ? 'Booking Room...' : `Confirm & Book ${selectedRoom.name}`}
@@ -1516,7 +1531,11 @@ export const VisitCalendarPage = () => {
                     type="date"
                     required
                     value={editFormData.date}
-                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    min={todayKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!isPastDateKey(val)) setEditFormData({ ...editFormData, date: val });
+                    }}
                     className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                   />
                 </div>
