@@ -418,9 +418,7 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Title / Subject:</strong> " + (meetingTitle != null ? meetingTitle : "Executive Meeting") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
-                        : "")
+                    + "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> " + (bookedByPhone != null && !bookedByPhone.isBlank() ? "<a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a>" : "Not provided") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
                     + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
                     + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
@@ -573,9 +571,7 @@ public class EmailServiceImpl implements EmailService {
                     + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
                     + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👤 Reserving Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
-                        : "")
+                    + "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> " + (bookedByPhone != null && !bookedByPhone.isBlank() ? "<a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a>" : "Not provided") + "</p>"
                     + "<p style='margin: 4px 0;'><strong>👥 Expected Attendees:</strong> " + attendees + " person(s)</p>"
                     + (purpose != null && !purpose.isBlank()
                         ? "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + purpose + "</p>"
