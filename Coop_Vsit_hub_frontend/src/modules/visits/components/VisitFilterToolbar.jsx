@@ -5,9 +5,6 @@ import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 
 const STATUS_PILLS = [
   { label: 'All Statuses', value: '' },
-  { label: 'Submitted', value: 'SUBMITTED' },
-  { label: 'Under Review', value: 'UNDER_REVIEW' },
-  { label: 'Approved', value: 'APPROVED' },
   { label: 'Scheduled', value: 'SCHEDULED' },
   { label: 'In Progress', value: 'IN_PROGRESS' },
   { label: 'Completed', value: 'COMPLETED' },

@@ -62,7 +62,26 @@ public class VisitSpecification {
 
             // 2. Status filter
             if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
+                Instant now = Instant.now();
+                if (status == VisitStatus.IN_PROGRESS) {
+                    Predicate storedInProgress = cb.equal(root.get("status"), VisitStatus.IN_PROGRESS);
+                    Predicate activeScheduledWindow = cb.and(
+                            root.get("status").in(VisitStatus.APPROVED, VisitStatus.SCHEDULED),
+                            cb.lessThanOrEqualTo(root.get("scheduledStartTime"), now),
+                            cb.greaterThan(root.get("scheduledEndTime"), now)
+                    );
+                    predicates.add(cb.or(storedInProgress, activeScheduledWindow));
+                } else if (status == VisitStatus.COMPLETED) {
+                    Predicate storedCompleted = cb.equal(root.get("status"), VisitStatus.COMPLETED);
+                    Predicate endedScheduledVisit = cb.and(
+                            root.get("status").in(VisitStatus.APPROVED, VisitStatus.SCHEDULED, VisitStatus.IN_PROGRESS),
+                            root.get("scheduledEndTime").isNotNull(),
+                            cb.lessThanOrEqualTo(root.get("scheduledEndTime"), now)
+                    );
+                    predicates.add(cb.or(storedCompleted, endedScheduledVisit));
+                } else {
+                    predicates.add(cb.equal(root.get("status"), status));
+                }
             }
 
             // 3. Priority filter
