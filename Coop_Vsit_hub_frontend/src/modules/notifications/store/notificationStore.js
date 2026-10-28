@@ -66,11 +66,12 @@ export const useNotificationStore = create((set, get) => ({
             // Play audio notification chime
             soundPlayer.playNotificationChime();
 
-            // Display Toast notification for the new item(s)
-            brandNewItems.forEach((item) => {
+            // Display Toast notification for at most the latest 2 items as requested
+            const itemsToToast = brandNewItems.slice(0, 2);
+            itemsToToast.forEach((item) => {
               toast.info(item.title || 'New Visit Notification', {
                 description: item.message,
-                duration: 6000,
+                duration: 5000,
                 action: item.referenceId
                   ? {
                       label: 'View Record',

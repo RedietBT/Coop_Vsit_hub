@@ -240,23 +240,171 @@ public class ReportServiceImpl implements ReportService {
         List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
         StringBuilder sb = new StringBuilder();
 
-        // CSV Header - Meeting Room and Meeting With
-        sb.append("Visit Code,Visitor Name,Phone,Email,Meeting Room,Meeting With,Check-In Time,Check-Out Time,Duration,Feedback,Status,Pipeline ($ USD)\n");
+        // 1. Write standard UTF-8 Byte Order Mark (BOM) so Excel opens UTF-8 directly without question marks or column merging
+        sb.append('\uFEFF');
+
+        // CSV Header with all comprehensive information
+        sb.append("Visit / Booking Code,")
+          .append("Meeting Name / Title,")
+          .append("Reason / Purpose / Agenda,")
+          .append("Visitor / Guest Name,")
+          .append("Visitor Phone,")
+          .append("Visitor Email,")
+          .append("Guest Organization,")
+          .append("Visitor Count / Attendees,")
+          .append("Meeting Room / Facility,")
+          .append("Managing Department,")
+          .append("Host / Reserving Staff,")
+          .append("Host Phone,")
+          .append("Host Email,")
+          .append("Requested Amenities & Refreshments,")
+          .append("Scheduled Start Time,")
+          .append("Scheduled End Time,")
+          .append("Actual Check-In Time,")
+          .append("Actual Check-Out Time,")
+          .append("Duration,")
+          .append("Status,")
+          .append("Cancellation Reason,")
+          .append("Cancelled By,")
+          .append("Visitor Feedback / Rating,")
+          .append("Pipeline Opportunity ($ USD),")
+          .append("Created Date\n");
 
         for (VisitorReportItemDto item : items) {
             sb.append(escapeCsv(item.getVisitCode())).append(",");
+            sb.append(escapeCsv(item.getMeetingTitle())).append(",");
+            sb.append(escapeCsv(item.getPurpose())).append(",");
             sb.append(escapeCsv(item.getName())).append(",");
             sb.append(escapeCsv(item.getPhone())).append(",");
             sb.append(escapeCsv(item.getEmail())).append(",");
-            sb.append(escapeCsv(item.getFloor() != null && !item.getFloor().isBlank() ? item.getFloor() : "—")).append(",");
-            sb.append(escapeCsv(item.getMeetingWith() != null ? item.getMeetingWith() : "")).append(",");
-            sb.append(escapeCsv(item.getCheckInTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckInTime()) : "—")).append(",");
-            sb.append(escapeCsv(item.getCheckOutTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckOutTime()) : "—")).append(",");
+            sb.append(escapeCsv(item.getGuestOrganization())).append(",");
+            sb.append(item.getVisitorCount() != null ? item.getVisitorCount() : 1).append(",");
+            sb.append(escapeCsv(item.getFloor())).append(",");
+            sb.append(escapeCsv(item.getDepartment())).append(",");
+            sb.append(escapeCsv(item.getMeetingWith())).append(",");
+            sb.append(escapeCsv(item.getHostPhone())).append(",");
+            sb.append(escapeCsv(item.getHostEmail())).append(",");
+            sb.append(escapeCsv(item.getRequestedItems())).append(",");
+            sb.append(escapeCsv(formatDateTime(item.getScheduledStartTime()))).append(",");
+            sb.append(escapeCsv(formatDateTime(item.getScheduledEndTime()))).append(",");
+            sb.append(escapeCsv(formatDateTime(item.getCheckInTime()))).append(",");
+            sb.append(escapeCsv(formatDateTime(item.getCheckOutTime()))).append(",");
             sb.append(escapeCsv(item.getDuration())).append(",");
-            sb.append(escapeCsv(item.getFeedback())).append(",");
             sb.append(escapeCsv(item.getStatus())).append(",");
-            sb.append(item.getOpportunityValue() != null ? item.getOpportunityValue().toString() : "0").append("\n");
+            sb.append(escapeCsv(item.getCancellationReason())).append(",");
+            sb.append(escapeCsv(item.getCancelledBy())).append(",");
+            sb.append(escapeCsv(item.getFeedback())).append(",");
+            sb.append(item.getOpportunityValue() != null ? item.getOpportunityValue().toString() : "0").append(",");
+            sb.append(escapeCsv(formatDateTime(item.getCreatedAt()))).append("\n");
         }
+
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportExcel(Instant startDate, Instant endDate, String department) {
+        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        sb.append("<?mso-application progid=\"Excel.Sheet\"?>\n");
+        sb.append("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
+        sb.append(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"\n");
+        sb.append(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"\n");
+        sb.append(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"\n");
+        sb.append(" xmlns:html=\"http://www.w3.org/TR/REC-html40\">\n");
+        sb.append(" <Styles>\n");
+        sb.append("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">\n");
+        sb.append("   <Alignment ss:Vertical=\"Center\"/>\n");
+        sb.append("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#1F2937\"/>\n");
+        sb.append("  </Style>\n");
+        sb.append("  <Style ss:ID=\"HeaderStyle\">\n");
+        sb.append("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/>\n");
+        sb.append("   <Borders>\n");
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0072BC\"/>\n");
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0072BC\"/>\n");
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0072BC\"/>\n");
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#0072BC\"/>\n");
+        sb.append("   </Borders>\n");
+        sb.append("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"11\" ss:Color=\"#FFFFFF\" ss:Bold=\"1\"/>\n");
+        sb.append("   <Interior ss:Color=\"#00ADEF\" ss:Pattern=\"Solid\"/>\n");
+        sb.append("  </Style>\n");
+        sb.append("  <Style ss:ID=\"DataStyle\">\n");
+        sb.append("   <Alignment ss:Vertical=\"Center\"/>\n");
+        sb.append("   <Borders>\n");
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("   </Borders>\n");
+        sb.append("   <Font ss:FontName=\"Calibri\" x:Family=\"Swiss\" ss:Size=\"10\" ss:Color=\"#1F2937\"/>\n");
+        sb.append("  </Style>\n");
+        sb.append("  <Style ss:ID=\"CodeStyle\">\n");
+        sb.append("   <Alignment ss:Vertical=\"Center\" ss:Horizontal=\"Center\"/>\n");
+        sb.append("   <Borders>\n");
+        sb.append("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#E5E7EB\"/>\n");
+        sb.append("   </Borders>\n");
+        sb.append("   <Font ss:FontName=\"Consolas\" x:Family=\"Modern\" ss:Size=\"10\" ss:Color=\"#00ADEF\" ss:Bold=\"1\"/>\n");
+        sb.append("  </Style>\n");
+        sb.append(" </Styles>\n");
+
+        sb.append(" <Worksheet ss:Name=\"Visitor &amp; Room Report\">\n");
+        sb.append("  <Table>\n");
+        int[] widths = {120, 180, 220, 160, 120, 160, 160, 90, 150, 150, 150, 120, 160, 180, 140, 140, 140, 140, 90, 100, 180, 120, 90, 100, 140};
+        for (int w : widths) {
+            sb.append("   <Column ss:Width=\"").append(w).append("\"/>\n");
+        }
+
+        String[] headers = {
+            "Visit / Booking Code", "Meeting Name / Title", "Reason / Purpose / Agenda", "Visitor / Guest Name",
+            "Visitor Phone", "Visitor Email", "Guest Organization", "Attendees", "Meeting Room / Facility",
+            "Managing Department", "Host / Reserving Staff", "Host Phone", "Host Email", "Requested Amenities",
+            "Scheduled Start Time", "Scheduled End Time", "Actual Check-In Time", "Actual Check-Out Time",
+            "Duration", "Status", "Cancellation Reason", "Cancelled By", "Feedback Rating", "Pipeline ($ USD)", "Created Date"
+        };
+        sb.append("   <Row ss:Height=\"28\">\n");
+        for (String h : headers) {
+            sb.append("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">").append(escapeXml(h)).append("</Data></Cell>\n");
+        }
+        sb.append("   </Row>\n");
+
+        for (VisitorReportItemDto item : items) {
+            sb.append("   <Row ss:Height=\"20\">\n");
+            addXmlCell(sb, "CodeStyle", item.getVisitCode());
+            addXmlCell(sb, "DataStyle", item.getMeetingTitle());
+            addXmlCell(sb, "DataStyle", item.getPurpose());
+            addXmlCell(sb, "DataStyle", item.getName());
+            addXmlCell(sb, "DataStyle", item.getPhone());
+            addXmlCell(sb, "DataStyle", item.getEmail());
+            addXmlCell(sb, "DataStyle", item.getGuestOrganization());
+            addXmlNumberCell(sb, "DataStyle", item.getVisitorCount() != null ? item.getVisitorCount() : 1);
+            addXmlCell(sb, "DataStyle", item.getFloor());
+            addXmlCell(sb, "DataStyle", item.getDepartment());
+            addXmlCell(sb, "DataStyle", item.getMeetingWith());
+            addXmlCell(sb, "DataStyle", item.getHostPhone());
+            addXmlCell(sb, "DataStyle", item.getHostEmail());
+            addXmlCell(sb, "DataStyle", item.getRequestedItems());
+            addXmlCell(sb, "DataStyle", formatDateTime(item.getScheduledStartTime()));
+            addXmlCell(sb, "DataStyle", formatDateTime(item.getScheduledEndTime()));
+            addXmlCell(sb, "DataStyle", formatDateTime(item.getCheckInTime()));
+            addXmlCell(sb, "DataStyle", formatDateTime(item.getCheckOutTime()));
+            addXmlCell(sb, "DataStyle", item.getDuration());
+            addXmlCell(sb, "DataStyle", item.getStatus());
+            addXmlCell(sb, "DataStyle", item.getCancellationReason());
+            addXmlCell(sb, "DataStyle", item.getCancelledBy());
+            addXmlCell(sb, "DataStyle", item.getFeedback());
+            addXmlNumberCell(sb, "DataStyle", item.getOpportunityValue() != null ? item.getOpportunityValue() : 0);
+            addXmlCell(sb, "DataStyle", formatDateTime(item.getCreatedAt()));
+            sb.append("   </Row>\n");
+        }
+
+        sb.append("  </Table>\n");
+        sb.append(" </Worksheet>\n");
+        sb.append("</Workbook>\n");
 
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
@@ -295,12 +443,12 @@ public class ReportServiceImpl implements ReportService {
             document.add(summaryTable);
 
             // Detailed Visitors Table
-            PdfPTable table = new PdfPTable(7);
+            PdfPTable table = new PdfPTable(8);
             table.setWidthPercentage(100);
-            table.setWidths(new float[]{1.5f, 2.5f, 2.5f, 2.0f, 2.2f, 1.2f, 1.8f});
+            table.setWidths(new float[]{1.5f, 2.5f, 2.5f, 2.0f, 2.0f, 1.8f, 1.2f, 1.6f});
 
             // Table Headers
-            String[] headers = {"Visit Code", "Visitor Name & Phone", "Meeting Room", "Meeting With", "Check-In Time", "Duration", "Feedback"};
+            String[] headers = {"Visit Code", "Visitor & Org", "Meeting Name / Purpose", "Room", "Host", "Check-In Time", "Duration", "Feedback"};
             for (String header : headers) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
                 cell.setBackgroundColor(new Color(0, 173, 239));
@@ -313,7 +461,10 @@ public class ReportServiceImpl implements ReportService {
             Font rowFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.DARK_GRAY);
             for (VisitorReportItemDto item : items) {
                 table.addCell(createCell(item.getVisitCode(), rowFont));
-                table.addCell(createCell(item.getName() + (item.getPhone() != null && !item.getPhone().equals("—") ? "\n" + item.getPhone() : ""), rowFont));
+                String visitorText = item.getName() + (item.getGuestOrganization() != null && !item.getGuestOrganization().isBlank() ? "\n(" + item.getGuestOrganization() + ")" : "") + (item.getPhone() != null && !item.getPhone().equals("—") ? "\n" + item.getPhone() : "");
+                table.addCell(createCell(visitorText, rowFont));
+                String meetingText = item.getMeetingTitle() + (item.getPurpose() != null && !item.getPurpose().isBlank() ? "\n" + item.getPurpose() : "") + (item.getRequestedItems() != null && !item.getRequestedItems().isBlank() ? "\nItems: " + item.getRequestedItems() : "");
+                table.addCell(createCell(meetingText, rowFont));
                 table.addCell(createCell(item.getFloor() != null && !item.getFloor().isBlank() ? item.getFloor() : "—", rowFont));
                 table.addCell(createCell(item.getMeetingWith() != null && !item.getMeetingWith().isBlank() ? item.getMeetingWith() : "—", rowFont));
                 table.addCell(createCell(item.getCheckInTime() != null ? DATE_TIME_FORMATTER.format(item.getCheckInTime()) : "—", rowFont));
@@ -335,8 +486,15 @@ public class ReportServiceImpl implements ReportService {
         String phone = visit.getVisitorPhone() != null ? visit.getVisitorPhone() : visit.getIndividualGuestPhone();
         String email = visit.getVisitorEmail() != null ? visit.getVisitorEmail() : visit.getIndividualGuestEmail();
 
-        // 1. Host / Meeting With: Check linked Room Booking from Active Directory
         String host = "";
+        String hostPhone = "";
+        String hostEmail = "";
+        String meetingTitle = visit.getTitle() != null && !visit.getTitle().isBlank() ? visit.getTitle().trim() : "Executive Session";
+        String purpose = visit.getVisitObjective() != null && !visit.getVisitObjective().isBlank() ? visit.getVisitObjective().trim() : "";
+        String requestedItems = "";
+        String cancellationReason = visit.getDecisionNotes();
+        String cancelledBy = null;
+
         Optional<com.example.coop_vsit_hub.room_booking_management.model.RoomBooking> linkedBooking =
                 roomBookingRepository.findByLinkedVisitId(visit.getId());
 
@@ -347,16 +505,48 @@ public class ReportServiceImpl implements ReportService {
             } else if (rb.getBookedByEmail() != null && !rb.getBookedByEmail().isBlank()) {
                 host = rb.getBookedByEmail().trim();
             }
-        } else if (visit.getSponsor() != null && visit.getSponsor().getFullName() != null && !visit.getSponsor().getFullName().isBlank()) {
-            host = visit.getSponsor().getFullName().trim();
+            if (rb.getBookedByPhone() != null && !rb.getBookedByPhone().isBlank()) {
+                hostPhone = rb.getBookedByPhone().trim();
+            }
+            if (rb.getBookedByEmail() != null && !rb.getBookedByEmail().isBlank()) {
+                hostEmail = rb.getBookedByEmail().trim();
+            }
+            if (rb.getMeetingTitle() != null && !rb.getMeetingTitle().isBlank()) {
+                meetingTitle = rb.getMeetingTitle().trim();
+            }
+            if (rb.getMeetingAgenda() != null && !rb.getMeetingAgenda().isBlank()) {
+                purpose = rb.getMeetingAgenda().trim();
+            }
+            if (rb.getRequestedItems() != null && !rb.getRequestedItems().isBlank()) {
+                requestedItems = rb.getRequestedItems().trim();
+            }
+            if (cancellationReason == null && rb.getCancellationReason() != null) {
+                cancellationReason = rb.getCancellationReason();
+            }
+            if (cancelledBy == null && rb.getCancelledByName() != null) {
+                cancelledBy = rb.getCancelledByName();
+            }
+        } else if (visit.getSponsor() != null) {
+            if (visit.getSponsor().getFullName() != null && !visit.getSponsor().getFullName().isBlank()) {
+                host = visit.getSponsor().getFullName().trim();
+            }
+            if (visit.getSponsor().getPhoneNumber() != null) {
+                hostPhone = visit.getSponsor().getPhoneNumber().trim();
+            }
+            if (visit.getSponsor().getEmail() != null) {
+                hostEmail = visit.getSponsor().getEmail().trim();
+            }
         }
 
-        // 2. Real Room Location where meeting took place
+        String guestOrg = "";
+        if (visit.getGuestOrganization() != null && visit.getGuestOrganization().getName() != null) {
+            guestOrg = visit.getGuestOrganization().getName().trim();
+        }
+
         String roomLocation = (visit.getLocationRoom() != null && !visit.getLocationRoom().isBlank())
                 ? visit.getLocationRoom().trim()
                 : "—";
 
-        // Duration calculation
         String duration = "—";
         if (visit.getActualCheckInTime() != null) {
             Instant end = visit.getActualCheckOutTime() != null ? visit.getActualCheckOutTime() : Instant.now();
@@ -368,7 +558,6 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        // Feedback calculation
         String feedback = "In Progress";
         Optional<VisitFeedback> fb = feedbackRepository.findByVisitId(visit.getId());
         if (fb.isPresent() && fb.get().isSubmitted()) {
@@ -379,30 +568,39 @@ public class ReportServiceImpl implements ReportService {
             if (f.getFacilityRating() != null) { avg += f.getFacilityRating(); count++; }
             if (f.getObjectiveRating() != null) { avg += f.getObjectiveRating(); count++; }
             if (count > 0) {
-                double avgRating = avg / count;
-                feedback = String.format(Locale.US, "%.1f ★", avgRating);
+                feedback = String.format(Locale.US, "%.1f ★", avg / count);
             } else {
                 feedback = "5.0 ★";
             }
-        } else {
-            feedback = "In Progress";
         }
 
         return VisitorReportItemDto.builder()
                 .id(visit.getId())
                 .visitCode(visit.getVisitCode())
-                .name(name)
+                .name(name != null ? name : "Visitor")
                 .phone(phone != null ? phone : "—")
                 .email(email != null ? email : "—")
+                .guestOrganization(guestOrg)
+                .meetingTitle(meetingTitle)
+                .purpose(purpose)
                 .department(visit.getRequestingDepartment())
                 .floor(roomLocation)
                 .meetingWith(host)
+                .hostPhone(hostPhone)
+                .hostEmail(hostEmail)
+                .requestedItems(requestedItems)
+                .scheduledStartTime(visit.getScheduledStartTime())
+                .scheduledEndTime(visit.getScheduledEndTime())
                 .checkInTime(visit.getActualCheckInTime())
                 .checkOutTime(visit.getActualCheckOutTime())
+                .visitorCount(visit.getVisitorCount())
                 .duration(duration)
                 .feedback(feedback)
-                .status(visit.getStatus().name())
+                .status(visit.getStatus() != null ? visit.getStatus().name() : "SUBMITTED")
+                .cancellationReason(cancellationReason)
+                .cancelledBy(cancelledBy)
                 .opportunityValue(visit.getOpportunityValue())
+                .createdAt(visit.getCreatedAt())
                 .build();
     }
 
@@ -422,9 +620,39 @@ public class ReportServiceImpl implements ReportService {
         };
     }
 
+    private String formatDateTime(Instant instant) {
+        if (instant == null) return "—";
+        try {
+            return DATE_TIME_FORMATTER.format(instant);
+        } catch (Exception e) {
+            return instant.toString();
+        }
+    }
+
     private String escapeCsv(String val) {
         if (val == null) return "";
         return "\"" + val.replace("\"", "\"\"") + "\"";
+    }
+
+    private String escapeXml(String val) {
+        if (val == null) return "";
+        return val.replace("&", "&amp;")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+                  .replace("\"", "&quot;")
+                  .replace("'", "&apos;");
+    }
+
+    private void addXmlCell(StringBuilder sb, String styleId, String val) {
+        String cleanVal = val != null ? val : "";
+        sb.append("    <Cell ss:StyleID=\"").append(styleId).append("\"><Data ss:Type=\"String\">")
+          .append(escapeXml(cleanVal)).append("</Data></Cell>\n");
+    }
+
+    private void addXmlNumberCell(StringBuilder sb, String styleId, Number num) {
+        String val = num != null ? num.toString() : "0";
+        sb.append("    <Cell ss:StyleID=\"").append(styleId).append("\"><Data ss:Type=\"Number\">")
+          .append(val).append("</Data></Cell>\n");
     }
 
     private void addSummaryCell(PdfPTable table, String label, String value, Color color) {

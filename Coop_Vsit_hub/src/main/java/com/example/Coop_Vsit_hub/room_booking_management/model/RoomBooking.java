@@ -68,6 +68,9 @@ public class RoomBooking {
     @Column(name = "meeting_agenda", columnDefinition = "TEXT")
     private String meetingAgenda;
 
+    @Column(name = "requested_items", columnDefinition = "TEXT")
+    private String requestedItems;
+
     @Column(name = "scheduled_start_time", nullable = false)
     private Instant scheduledStartTime;
 

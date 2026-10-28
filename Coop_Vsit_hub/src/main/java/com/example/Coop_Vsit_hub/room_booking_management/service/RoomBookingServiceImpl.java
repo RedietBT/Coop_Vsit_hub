@@ -146,6 +146,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .guestName(StringUtils.hasText(request.getGuestName()) ? request.getGuestName().trim() : null)
                 .expectedAttendees(request.getExpectedAttendees() != null && request.getExpectedAttendees() > 0 ? request.getExpectedAttendees() : 1)
                 .meetingAgenda(StringUtils.hasText(request.getMeetingAgenda()) ? request.getMeetingAgenda().trim() : null)
+                .requestedItems(StringUtils.hasText(request.getRequestedItems()) ? request.getRequestedItems().trim() : null)
                 .scheduledStartTime(startTime)
                 .scheduledEndTime(endTime)
                 .status(RoomBookingStatus.CONFIRMED)
@@ -277,7 +278,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                     saved.getMeetingAgenda(),
                                     saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
                                     saved.getHostDepartment(),
-                                    saved.getBookedByPhone()
+                                    saved.getBookedByPhone(),
+                                    saved.getRequestedItems()
                             );
                             alreadyEmailed.add(bookerEmail);
                         } catch (Exception e) {
@@ -311,7 +313,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                     saved.getScheduledStartTime(),
                                     saved.getScheduledEndTime(),
                                     saved.getMeetingAgenda(),
-                                    saved.getExpectedAttendees()
+                                    saved.getExpectedAttendees(),
+                                    saved.getRequestedItems()
                             );
                             alreadyEmailed.add(aEmail.toLowerCase());
                         } catch (Exception e) {
@@ -373,7 +376,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getScheduledStartTime(),
                                         saved.getScheduledEndTime(),
                                         saved.getMeetingAgenda(),
-                                        saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1
+                                        saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
+                                        saved.getRequestedItems()
                                 );
                             } catch (Exception e) {
                                 log.warn("Failed to send department room booking email to {} for {}: {}",
@@ -438,7 +442,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                         saved.getExpectedAttendees() != null ? saved.getExpectedAttendees() : 1,
                                         false,
                                         null,
-                                        null
+                                        null,
+                                        saved.getRequestedItems()
                                 );
                             } catch (Exception e) {
                                 log.warn("Failed to send room contact booking email to {} for {}: {}",
@@ -570,6 +575,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .hostDepartment(b.getHostDepartment())
                         .expectedAttendees(b.getExpectedAttendees())
                         .meetingAgenda(b.getMeetingAgenda())
+                        .requestedItems(b.getRequestedItems())
                         .guestOrganizationName(b.getGuestOrganizationName())
                         .guestName(b.getGuestName())
                         .status(b.getStatus())
@@ -697,7 +703,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                             booking.getScheduledStartTime(),
                             booking.getScheduledEndTime(),
                             cancelledByName,
-                            reason
+                            reason,
+                            booking.getRequestedItems()
                     );
                 } catch (Exception e) {
                     log.warn("Failed to send cancellation email to booker {} for {}: {}",
@@ -762,7 +769,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 booking.getExpectedAttendees(),
                                 true,
                                 cancelledByName,
-                                reason
+                                reason,
+                                booking.getRequestedItems()
                         );
                     } catch (Exception e) {
                         log.warn("Failed to send cancellation email to room contact {} for {}: {}",
@@ -838,7 +846,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 booking.getScheduledStartTime(),
                                 booking.getScheduledEndTime(),
                                 cancelledByName,
-                                reason
+                                reason,
+                                booking.getRequestedItems()
                         );
                     } catch (Exception e) {
                         log.warn("Failed to send department cancellation email to {} for {}: {}",
@@ -936,6 +945,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (request.getMeetingAgenda() != null) {
             booking.setMeetingAgenda(request.getMeetingAgenda().trim());
         }
+        if (request.getRequestedItems() != null) {
+            booking.setRequestedItems(request.getRequestedItems().trim());
+        }
         if (request.getGuestName() != null) {
             booking.setGuestName(request.getGuestName().trim());
         }
@@ -990,7 +1002,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                                 updated.getScheduledEndTime(),
                                 updated.getMeetingAgenda(),
                                 updated.getExpectedAttendees() != null ? updated.getExpectedAttendees() : 1,
-                                updatedByName
+                                updatedByName,
+                                updated.getRequestedItems()
                         );
                     } catch (Exception e) {
                         log.warn("Failed to send room update notification email to {} for {}: {}",
@@ -1116,6 +1129,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .guestName(b.getGuestName())
                 .expectedAttendees(b.getExpectedAttendees())
                 .meetingAgenda(b.getMeetingAgenda())
+                .requestedItems(b.getRequestedItems())
                 .scheduledStartTime(b.getScheduledStartTime())
                 .scheduledEndTime(b.getScheduledEndTime())
                 .status(b.getStatus())

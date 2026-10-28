@@ -19,4 +19,5 @@ public class UpdateRoomBookingRequest {
     private String meetingAgenda;
     private String guestOrganizationName;
     private String guestName;
+    private String requestedItems;
 }

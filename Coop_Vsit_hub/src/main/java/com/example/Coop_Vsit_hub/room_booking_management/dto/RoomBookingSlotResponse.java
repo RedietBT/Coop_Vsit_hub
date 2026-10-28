@@ -27,6 +27,7 @@ public class RoomBookingSlotResponse {
     private String hostDepartment;
     private Integer expectedAttendees;
     private String meetingAgenda;
+    private String requestedItems;
     private String guestOrganizationName;
     private String guestName;
     private RoomBookingStatus status;

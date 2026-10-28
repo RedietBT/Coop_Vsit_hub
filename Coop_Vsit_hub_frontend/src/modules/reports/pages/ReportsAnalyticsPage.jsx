@@ -45,6 +45,7 @@ export const ReportsAnalyticsPage = () => {
     setPage,
     fetchReportData,
     exportCsv,
+    exportExcel,
     exportPdf,
   } = useReportStore();
 
@@ -116,10 +117,21 @@ export const ReportsAnalyticsPage = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={exportExcel}
+            disabled={isExporting}
+            icon={FileSpreadsheet}
+            className="border-emerald-300 text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 hover:border-emerald-400 font-bold"
+          >
+            Export Excel
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={exportCsv}
             disabled={isExporting}
             icon={FileSpreadsheet}
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+            className="border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium"
           >
             Export CSV
           </Button>
@@ -130,7 +142,7 @@ export const ReportsAnalyticsPage = () => {
             onClick={exportPdf}
             disabled={isExporting}
             icon={FileText}
-            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300"
+            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300 font-medium"
           >
             Export PDF
           </Button>
@@ -357,13 +369,14 @@ export const ReportsAnalyticsPage = () => {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                   <th className="py-3 pl-6">Visitor ID</th>
-                  <th className="py-3 px-4">Visitor Name</th>
-                  <th className="py-3 px-4">Phone Number</th>
-                  <th className="py-3 px-4">Meeting Room</th>
-                  <th className="py-3 px-4">Meeting With</th>
+                  <th className="py-3 px-4">Visitor & Org</th>
+                  <th className="py-3 px-4">Phone / Contact</th>
+                  <th className="py-3 px-4">Meeting & Purpose</th>
+                  <th className="py-3 px-4">Room & Amenities</th>
+                  <th className="py-3 px-4">Host / Staff</th>
                   <th className="py-3 px-4">Check-In Time</th>
                   <th className="py-3 px-4">Duration</th>
-                  <th className="py-3 px-4">Feedback Rating</th>
+                  <th className="py-3 px-4">Rating</th>
                   <th className="py-3 pr-6 text-right">Status</th>
                 </tr>
               </thead>
@@ -371,7 +384,7 @@ export const ReportsAnalyticsPage = () => {
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-20 text-center">
+                    <td colSpan={10} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Spinner size="lg" color="navy" />
                         <p className="text-xs font-bold text-slate-500">Loading visitor reports...</p>
@@ -380,7 +393,7 @@ export const ReportsAnalyticsPage = () => {
                   </tr>
                 ) : reportItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-20 text-center text-slate-400">
+                    <td colSpan={10} className="py-20 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="text-xs font-bold text-slate-600">No visitor records found for selected filters</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting date range or department filter</p>
@@ -396,9 +409,14 @@ export const ReportsAnalyticsPage = () => {
                           {item.visitCode || `#${page * size + idx + 1}`}
                         </td>
 
-                        {/* Visitor Name */}
-                        <td className="py-3.5 px-4 font-bold text-[#000000]">
-                          {item.name}
+                        {/* Visitor Name & Org */}
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-[#000000]">{item.name}</div>
+                          {item.guestOrganization ? (
+                            <div className="text-[11px] text-slate-500 font-medium truncate max-w-[150px]">
+                              {item.guestOrganization}
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* Phone Number */}
@@ -410,7 +428,21 @@ export const ReportsAnalyticsPage = () => {
                           )}
                         </td>
 
-                        {/* Meeting Room */}
+                        {/* Meeting & Purpose / Reason */}
+                        <td className="py-3.5 px-4 max-w-[200px]">
+                          <div className="font-bold text-slate-900 truncate" title={item.meetingTitle || 'Executive Session'}>
+                            {item.meetingTitle || 'Executive Session'}
+                          </div>
+                          {item.purpose ? (
+                            <div className="text-[11px] text-slate-500 truncate" title={item.purpose}>
+                              {item.purpose}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-400 italic">No agenda specified</div>
+                          )}
+                        </td>
+
+                        {/* Meeting Room & Amenities */}
                         <td className="py-3.5 px-4">
                           {item.floor && item.floor !== '—' && item.floor !== 'Lobby / Floor Visit' ? (
                             <div className="flex items-center gap-1.5 font-bold text-slate-900">
@@ -420,12 +452,22 @@ export const ReportsAnalyticsPage = () => {
                           ) : (
                             <span className="text-slate-400 italic font-normal">—</span>
                           )}
+                          {item.requestedItems ? (
+                            <div className="mt-1 text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 inline-block font-medium truncate max-w-[140px]" title={item.requestedItems}>
+                              ☕ {item.requestedItems}
+                            </div>
+                          ) : null}
                         </td>
 
-                        {/* Meeting With */}
+                        {/* Meeting With / Host */}
                         <td className="py-3.5 px-4 text-xs font-semibold">
                           {item.meetingWith && item.meetingWith !== '—' && item.meetingWith.trim() !== '' ? (
-                            <span className="text-slate-900 font-bold">{item.meetingWith}</span>
+                            <div>
+                              <div className="text-slate-900 font-bold">{item.meetingWith}</div>
+                              {item.hostPhone ? (
+                                <div className="text-[10px] text-slate-400 font-mono">{item.hostPhone}</div>
+                              ) : null}
+                            </div>
                           ) : (
                             <span className="text-slate-400 italic font-normal">—</span>
                           )}

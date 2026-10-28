@@ -17,5 +17,7 @@ public interface ReportService {
 
     byte[] exportCsv(Instant startDate, Instant endDate, String department);
 
+    byte[] exportExcel(Instant startDate, Instant endDate, String department);
+
     byte[] exportPdf(Instant startDate, Instant endDate, String department);
 }

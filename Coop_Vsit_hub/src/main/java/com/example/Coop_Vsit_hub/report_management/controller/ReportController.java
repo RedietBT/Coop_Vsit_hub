@@ -71,6 +71,21 @@ public class ReportController {
                 .body(csvData);
     }
 
+    @GetMapping("/export-excel")
+    @Operation(summary = "Export Detailed Visitor Report as Excel", description = "Generates and streams downloadable formatted Excel spreadsheet (.xls).")
+    public ResponseEntity<byte[]> exportExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
+            @RequestParam(required = false) String department
+    ) {
+        byte[] excelData = reportService.exportExcel(startDate, endDate, department);
+        String filename = "Visitor_Report_" + System.currentTimeMillis() + ".xls";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel; charset=UTF-8"))
+                .body(excelData);
+    }
+
     @GetMapping("/export-pdf")
     @Operation(summary = "Export Detailed Visitor Report as PDF", description = "Generates and streams high-resolution executive PDF document.")
     public ResponseEntity<byte[]> exportPdf(
@@ -86,3 +101,4 @@ public class ReportController {
                 .body(pdfData);
     }
 }
+

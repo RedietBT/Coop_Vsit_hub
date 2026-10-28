@@ -332,6 +332,7 @@ public class StaffTrackingServiceImpl implements StaffTrackingService {
                 .guestName(b.getGuestName())
                 .expectedAttendees(b.getExpectedAttendees())
                 .meetingAgenda(b.getMeetingAgenda())
+                .requestedItems(b.getRequestedItems())
                 .scheduledStartTime(b.getScheduledStartTime())
                 .scheduledEndTime(b.getScheduledEndTime())
                 .status(b.getStatus())

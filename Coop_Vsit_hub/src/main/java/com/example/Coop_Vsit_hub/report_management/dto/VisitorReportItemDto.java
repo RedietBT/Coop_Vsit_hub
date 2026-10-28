@@ -19,13 +19,25 @@ public class VisitorReportItemDto {
     private String name;
     private String phone;
     private String email;
+    private String guestOrganization;
+    private String meetingTitle;
+    private String purpose;
     private String department;
     private String floor;
     private String meetingWith;
+    private String hostPhone;
+    private String hostEmail;
+    private String requestedItems;
+    private Instant scheduledStartTime;
+    private Instant scheduledEndTime;
     private Instant checkInTime;
     private Instant checkOutTime;
+    private Integer visitorCount;
     private String duration;
     private String feedback;
     private String status;
+    private String cancellationReason;
+    private String cancelledBy;
     private BigDecimal opportunityValue;
+    private Instant createdAt;
 }

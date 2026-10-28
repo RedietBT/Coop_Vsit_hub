@@ -38,11 +38,12 @@ export function App() {
       {/* Cookie Consent Banner — shown once per browser session */}
       <CookieConsentBanner />
 
-      {/* Toast Notification Container */}
+      {/* Toast Notification Container — capped at 2 popups at a time */}
       <Toaster
         position="top-right"
         richColors
         closeButton
+        visibleToasts={2}
         duration={4500}
         toastOptions={{
           className: 'font-sans rounded-2xl shadow-xl border text-sm',

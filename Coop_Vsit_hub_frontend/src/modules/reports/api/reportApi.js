@@ -25,6 +25,21 @@ export const reportApi = {
     link.remove();
   },
 
+  exportExcel: async (params = {}) => {
+    const response = await apiClient.get('/api/v1/reports/export-excel', {
+      params,
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.ms-excel;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `CoopBank_Visitor_Report_${Date.now()}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  },
+
+
   exportPdf: async (params = {}) => {
     const response = await apiClient.get('/api/v1/reports/export-pdf', {
       params,

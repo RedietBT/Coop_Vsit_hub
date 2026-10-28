@@ -29,6 +29,7 @@ public class RoomBookingResponse {
     private String guestName;
     private Integer expectedAttendees;
     private String meetingAgenda;
+    private String requestedItems;
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
     private RoomBookingStatus status;

@@ -50,13 +50,13 @@ public class EmailServiceImpl implements EmailService {
 
             String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>"
-                    + "<div style='background-color: #0088cc; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 5px 0 0 0;'>Executive Visit Hub</p>"
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff; overflow: hidden;'>"
+                    + "<div style='background-color: #0088cc; padding: 22px 18px; text-align: center; color: #ffffff;'>"
+                    + "<h2 style='color: #ffffff !important; margin: 0; font-size: 21px; font-weight: bold;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe !important; margin: 6px 0 0 0; font-size: 13px;'>Executive Visit Hub</p>"
                     + "</div>"
-                    + "<div style='padding: 20px; color: #333333;'>"
-                    + "<h3>Dear " + recipientName + ",</h3>"
+                    + "<div style='padding: 24px; color: #333333; line-height: 1.6;'>"
+                    + "<h3 style='margin-top: 0;'>Dear " + recipientName + ",</h3>"
                     + "<p>A password reset request was initiated for your CoopBank account.</p>"
                     + "<p>Please click the button below to set a new password. This link is valid for <strong>15 minutes</strong>:</p>"
                     + "<div style='text-align: center; margin: 30px 0;'>"
@@ -92,10 +92,10 @@ public class EmailServiceImpl implements EmailService {
 
             String loginUrl = frontendUrl + "/login";
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 22px; font-weight: bold;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 6px 0 0 0; font-size: 14px;'>Executive Visit Hub — Staff Onboarding</p>"
+            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; overflow: hidden;'>"
+                    + "<div style='background-color: #00adef; background: linear-gradient(135deg, #00adef, #0072bc); padding: 22px 18px; text-align: center; color: #ffffff;'>"
+                    + "<h2 style='color: #ffffff !important; margin: 0; font-size: 21px; font-weight: bold;'>Cooperative Bank of Oromia</h2>"
+                    + "<p style='color: #e0f2fe !important; margin: 6px 0 0 0; font-size: 13px;'>Executive Visit Hub — Staff Onboarding</p>"
                     + "</div>"
                     + "<div style='padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;'>"
                     + "<h3 style='color: #0f172a; margin-top: 0;'>Dear " + (recipientName != null ? recipientName : "Staff Member") + ",</h3>"
@@ -113,7 +113,7 @@ public class EmailServiceImpl implements EmailService {
                           + "</div>"
                         : "")
                     + "<div style='text-align: center; margin: 28px 0;'>"
-                    + "<a href='" + loginUrl + "' style='background: linear-gradient(135deg, #00adef, #0072bc); color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;'>Sign In to Visit Hub</a>"
+                    + "<a href='" + loginUrl + "' style='background-color: #00adef; background: linear-gradient(135deg, #00adef, #0072bc); color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;'>Sign In to Visit Hub</a>"
                     + "</div>"
                     + "<div style='background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px; margin: 18px 0;'>"
                     + "<p style='margin: 0; color: #92400e; font-size: 13px;'>🔒 <strong>Security Recommendation:</strong> For your security, we encourage you to update your password after signing in by navigating to your profile settings.</p>"
@@ -132,6 +132,91 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+        private static class EmailField {
+        final String label;
+        final String value;
+        EmailField(String label, String value) {
+            this.label = label;
+            this.value = value;
+        }
+    }
+
+    private String buildRoomBookingTableEmailHtml(
+            String bannerIcon,
+            String bannerTitle,
+            boolean isCancellation,
+            String introText,
+            java.util.List<EmailField> fields,
+            String calloutText,
+            String ctaUrl,
+            String ctaText
+    ) {
+        String bannerBg = isCancellation ? "#dc2626" : "#00adef";
+        String calloutBg = isCancellation ? "#fff1f2" : "#fffbeb";
+        String calloutBorder = isCancellation ? "#fecdd3" : "#fef3c7";
+        String calloutLeftBorder = isCancellation ? "#ef4444" : "#f59e0b";
+        String calloutTextColor = isCancellation ? "#991b1b" : "#b45309";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='background-color: #f3f4f6; padding: 30px 15px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>");
+        sb.append("<div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);'>");
+
+        // Header Banner
+        sb.append("<div style='background-color: ").append(bannerBg).append("; padding: 14px 20px;'>");
+        sb.append("<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>");
+        sb.append("<td style='width: 28px; vertical-align: middle;'><span style='font-size: 20px; line-height: 1;'>").append(bannerIcon).append("</span></td>");
+        sb.append("<td style='vertical-align: middle; padding-left: 10px;'><span style='color: #ffffff; font-size: 16px; font-weight: 700; line-height: 1.2;'>").append(bannerTitle).append("</span></td>");
+        sb.append("</tr></table>");
+        sb.append("</div>");
+
+        // Body Content
+        sb.append("<div style='padding: 24px 22px; color: #374151; font-size: 14px; line-height: 1.5;'>");
+        if (introText != null && !introText.isBlank()) {
+            sb.append("<p style='margin: 0 0 16px 0; font-size: 14px; color: #374151;'>").append(introText).append("</p>");
+        }
+
+        // 2-Column Table
+        sb.append("<table cellpadding='0' cellspacing='0' border='0' style='width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; font-size: 13.5px; margin-bottom: 20px;'><tbody>");
+        for (EmailField field : fields) {
+            if (field != null && field.value != null && !field.value.isBlank()) {
+                sb.append("<tr>");
+                sb.append("<td style='width: 32%; padding: 10px 14px; font-weight: 700; color: #1f2937; background-color: #f9fafb; border: 1px solid #e5e7eb; vertical-align: top;'>")
+                  .append(field.label).append(":</td>");
+                sb.append("<td style='padding: 10px 14px; color: #374151; background-color: #ffffff; border: 1px solid #e5e7eb; vertical-align: top;'>")
+                  .append(field.value).append("</td>");
+                sb.append("</tr>");
+            }
+        }
+        sb.append("</tbody></table>");
+
+        // Callout box
+        if (calloutText != null && !calloutText.isBlank()) {
+            sb.append("<div style='background-color: ").append(calloutBg)
+              .append("; border: 1px solid ").append(calloutBorder)
+              .append("; border-left: 4px solid ").append(calloutLeftBorder)
+              .append("; border-radius: 4px; padding: 12px 16px; margin-top: 18px; color: ")
+              .append(calloutTextColor).append("; font-size: 13px; line-height: 1.5;'>")
+              .append(calloutText)
+              .append("</div>");
+        }
+
+        sb.append("</div>"); // end body content
+        sb.append("</div>"); // end white card
+
+        // Sub-footer & CTA Button
+        sb.append("<div style='max-width: 600px; margin: 0 auto; text-align: center; margin-top: 24px; font-size: 12px; color: #6b7280; line-height: 1.6;'>");
+        sb.append("<p style='margin: 0 0 4px 0;'>Please do not reply to this email as it is system generated.</p>");
+        sb.append("<p style='margin: 0 0 16px 0;'>For more information, please visit Visit Hub</p>");
+        sb.append("<div style='margin-bottom: 24px;'>");
+        sb.append("<a href='").append(ctaUrl != null ? ctaUrl : frontendUrl).append("' style='background-color: #ea580c; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.05);'>")
+          .append(ctaText != null ? ctaText : "Go to Visit Hub").append("</a>");
+        sb.append("</div>");
+        sb.append("</div>"); // end sub-footer
+
+        sb.append("</div>"); // end wrapper
+        return sb.toString();
+    }
+
     @Override
     public void sendRoomBookingAdminNotification(
             String adminEmail,
@@ -146,44 +231,53 @@ public class EmailServiceImpl implements EmailService {
             Instant startTime,
             Instant endTime,
             String purpose,
-            int visitorCount
+            int visitorCount,
+            String requestedItems
     ) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail);
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
             helper.setTo(adminEmail);
             helper.setSubject("🏢 [Room Booking Alert] " + (roomName != null ? roomName : "Meeting Facility") + " Reserved (" + (visitCode != null ? visitCode : "Direct") + ")");
 
             String formattedStart = formatEmailDate(startTime);
             String formattedEnd = formatEmailDate(endTime);
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Facility Management & Room Reservation Alert</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Hello <strong>System Administrator</strong>,</p>"
-                    + "<p>A new meeting room booking has been registered in the Visit Hub system. Here are the reservation details:</p>"
-                    + "<div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #00adef; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #0284c7; font-weight: bold;'>" + (roomName != null && !roomName.isBlank() ? roomName : "Unspecified Room") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>👤 Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "General Division") + ")</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
-                        : "")
-                    + "<p style='margin: 4px 0;'><strong>🔖 Visit / Reference:</strong> " + (visitCode != null ? visitCode : "Direct Reservation") + " — " + (visitTitle != null ? visitTitle : "Executive Briefing") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👥 Guest / Delegation:</strong> " + (guestName != null ? guestName : "Visitor") + (organizationName != null ? " (" + organizationName + ")" : "") + " — " + visitorCount + " Guest(s)</p>"
-                    + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>📝 Purpose:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>You can review or manage active room allocations in the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Booking Management Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated System Notification</p>"
-                    + "</div>"
-                    + "</div>";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", visitCode != null ? visitCode : "Direct Reservation"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Facility Room"));
+            fields.add(new EmailField("Title / Subject", visitTitle != null ? visitTitle : "Room Reservation"));
+            fields.add(new EmailField("Booked By / Host", (bookedByName != null ? bookedByName : "Staff Member") + (bookedByDept != null && !bookedByDept.isBlank() ? " (" + bookedByDept + ")" : "")));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Reserver Phone", "<a href='tel:" + bookedByPhone + "' style='color: #00adef; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
+            String guestInfo = (guestName != null && !guestName.isBlank() ? guestName + (organizationName != null && !organizationName.isBlank() ? " (" + organizationName + ")" : "") + " — " : "") + visitorCount + " Attendee(s)";
+            fields.add(new EmailField("Attendees", guestInfo));
+            fields.add(new EmailField("Start Time", formattedStart));
+            fields.add(new EmailField("End Time", formattedEnd));
+            if (requestedItems != null && !requestedItems.isBlank()) {
+                fields.add(new EmailField("Requested Items", requestedItems));
+            }
+            if (purpose != null && !purpose.isBlank()) {
+                fields.add(new EmailField("Purpose / Agenda", purpose));
+            }
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    "🏢",
+                    "New Room Reservation Alert",
+                    false,
+                    "A room reservation has been registered in the Visit Hub system for your facility:",
+                    fields,
+                    "This room reservation has been registered. Please ensure the facility is prepared and any requested refreshments or equipment are arranged before the session starts.",
+                    frontendUrl + "/bookings",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
@@ -210,45 +304,54 @@ public class EmailServiceImpl implements EmailService {
             Instant startTime,
             Instant endTime,
             String purpose,
-            int visitorCount
+            int visitorCount,
+            String requestedItems
     ) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail);
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
             helper.setTo(secretaryEmail);
             helper.setSubject("📋 [Department Room Alert] " + (roomName != null ? roomName : "Meeting Room") + " Reserved — " + (departmentName != null ? departmentName : "Department"));
 
             String formattedStart = formatEmailDate(startTime);
             String formattedEnd = formatEmailDate(endTime);
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #0284c7, #0369a1); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Department Meeting Facility Reservation Notice</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Dear <strong>" + (secretaryName != null ? secretaryName : "Secretary") + "</strong> (" + (departmentName != null ? departmentName : "Department") + "),</p>"
-                    + "<p>This is to inform you that a meeting room belonging to your department has just been reserved in the Visit Hub system. Here are the booking details:</p>"
-                    + "<div style='background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #047857; font-weight: bold;'>" + (roomName != null ? roomName : "Department Room") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>🏛️ Department:</strong> " + (departmentName != null ? departmentName : "Department") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Division") + ")</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
-                        : "")
-                    + "<p style='margin: 4px 0;'><strong>🔖 Visit / Reference:</strong> " + (visitCode != null ? visitCode : "Direct Reservation") + " — " + (visitTitle != null ? visitTitle : "Executive Briefing") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👥 Guest / Delegation:</strong> " + (guestName != null ? guestName : "Visitor") + (organizationName != null ? " (" + organizationName + ")" : "") + " — " + visitorCount + " Guest(s)</p>"
-                    + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>📝 Purpose:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>You can oversee and prepare departmental room facilities in the <a href='" + frontendUrl + "/bookings' style='color: #0284c7; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Secretary Notification</p>"
-                    + "</div>"
-                    + "</div>";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", visitCode != null ? visitCode : "Direct Reservation"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Department Room"));
+            fields.add(new EmailField("Department", departmentName != null ? departmentName : "Department"));
+            fields.add(new EmailField("Title / Subject", visitTitle != null ? visitTitle : "Room Reservation"));
+            fields.add(new EmailField("Booked By / Host", (bookedByName != null ? bookedByName : "Staff Member") + (bookedByDept != null && !bookedByDept.isBlank() ? " (" + bookedByDept + ")" : "")));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Reserver Phone", "<a href='tel:" + bookedByPhone + "' style='color: #00adef; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
+            String guestInfo = (guestName != null && !guestName.isBlank() ? guestName + (organizationName != null && !organizationName.isBlank() ? " (" + organizationName + ")" : "") + " — " : "") + visitorCount + " Attendee(s)";
+            fields.add(new EmailField("Attendees", guestInfo));
+            fields.add(new EmailField("Start Time", formattedStart));
+            fields.add(new EmailField("End Time", formattedEnd));
+            if (requestedItems != null && !requestedItems.isBlank()) {
+                fields.add(new EmailField("Requested Items", requestedItems));
+            }
+            if (purpose != null && !purpose.isBlank()) {
+                fields.add(new EmailField("Purpose / Agenda", purpose));
+            }
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    "🏢",
+                    "Department Room Reservation Notice",
+                    false,
+                    "A room reservation belonging to your department has been scheduled:",
+                    fields,
+                    "This department room reservation has been registered. Please ensure necessary preparations and requested items are arranged.",
+                    frontendUrl + "/bookings",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
@@ -271,7 +374,8 @@ public class EmailServiceImpl implements EmailService {
             Instant startTime,
             Instant endTime,
             String cancelledBy,
-            String cancellationReason
+            String cancellationReason,
+            String requestedItems
     ) {
         if (recipientEmail == null || recipientEmail.isBlank()) {
             return;
@@ -291,34 +395,32 @@ public class EmailServiceImpl implements EmailService {
             String formattedStart = formatEmailDate(startTime);
             String formattedEnd = formatEmailDate(endTime);
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #fecaca; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #fee2e2; margin: 4px 0 0 0; font-size: 13px;'>Room Booking Cancellation Notice</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Dear <strong>" + (recipientName != null && !recipientName.isBlank() ? recipientName : "Staff Member") + "</strong>,</p>"
-                    + "<p>This is to inform you that the following room reservation has been <strong style='color: #dc2626;'>CANCELLED</strong>:</p>"
-                    + "<div style='background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #ef4444; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #b91c1c; font-weight: bold;'>" + (roomName != null ? roomName : "Meeting Room") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Room Reservation") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👤 Originally Booked By:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + "</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> <a href='tel:" + bookedByPhone + "' style='color: #b91c1c; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a></p>"
-                        : "")
-                    + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> <span style='font-weight: bold; color: #991b1b;'>" + (cancelledBy != null ? cancelledBy : "Administrator") + "</span></p>"
-                    + (cancellationReason != null && !cancellationReason.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>💬 Cancellation Reason:</strong> " + cancellationReason + "</p>"
-                        : "")
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>If you need to reschedule, please visit the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated System Notification</p>"
-                    + "</div>"
-                    + "</div>";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", bookingCode != null ? bookingCode : "N/A"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Meeting Room"));
+            fields.add(new EmailField("Title / Subject", meetingTitle != null ? meetingTitle : "Room Reservation"));
+            fields.add(new EmailField("Originally Booked By", bookedByName != null ? bookedByName : "Staff Member"));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Reserver Phone", "<a href='tel:" + bookedByPhone + "' style='color: #dc2626; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
+            fields.add(new EmailField("Scheduled Start", formattedStart));
+            fields.add(new EmailField("Scheduled End", formattedEnd));
+            if (requestedItems != null && !requestedItems.isBlank()) {
+                fields.add(new EmailField("Requested Items", requestedItems));
+            }
+            fields.add(new EmailField("Cancelled By", cancelledBy != null ? cancelledBy : "Administrator"));
+            fields.add(new EmailField("Reason / Comment", cancellationReason != null && !cancellationReason.isBlank() ? cancellationReason : "No reason provided."));
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    "❌",
+                    "Room Reservation Cancelled",
+                    true,
+                    "The following room reservation has been cancelled in the Visit Hub system:",
+                    fields,
+                    "This room reservation has been cancelled. The time slot has been released and is now available for other staff.",
+                    frontendUrl + "/bookings",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
@@ -327,38 +429,6 @@ public class EmailServiceImpl implements EmailService {
         } catch (Exception e) {
             log.error("Failed to send booking cancellation email to {}: {}", recipientEmail, e.getMessage(), e);
         }
-    }
-
-    @Override
-    public void sendRoomBookingContactNotification(
-            String contactEmail,
-            String roomName,
-            String bookedByName,
-            String bookedByDept,
-            String bookingCode,
-            String meetingTitle,
-            Instant startTime,
-            Instant endTime,
-            String purpose,
-            int attendees,
-            boolean isCancellation,
-            String cancelledBy
-    ) {
-        sendRoomBookingContactNotification(
-                contactEmail,
-                roomName,
-                bookedByName,
-                bookedByDept,
-                bookingCode,
-                meetingTitle,
-                startTime,
-                endTime,
-                purpose,
-                attendees,
-                isCancellation,
-                cancelledBy,
-                null
-        );
     }
 
     @Override
@@ -376,7 +446,8 @@ public class EmailServiceImpl implements EmailService {
             int attendees,
             boolean isCancellation,
             String cancelledBy,
-            String cancellationReason
+            String cancellationReason,
+            String requestedItems
     ) {
         if (contactEmail == null || contactEmail.isBlank()) {
             return;
@@ -398,43 +469,54 @@ public class EmailServiceImpl implements EmailService {
             String formattedStart = formatEmailDate(startTime);
             String formattedEnd = formatEmailDate(endTime);
 
-            String headerGradient = isCancellation ? "linear-gradient(135deg, #ef4444, #b91c1c)" : "linear-gradient(135deg, #0284c7, #0f766e)";
-            String boxBg = isCancellation ? "#fff1f2" : "#f0fdf4";
-            String boxBorder = isCancellation ? "#fecdd3" : "#bbf7d0";
-            String boxLeft = isCancellation ? "#ef4444" : "#10b981";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", bookingCode != null ? bookingCode : "N/A"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Meeting Room"));
+            fields.add(new EmailField("Title / Subject", meetingTitle != null ? meetingTitle : "Executive Meeting"));
+            fields.add(new EmailField("Booked By / Host", (bookedByName != null ? bookedByName : "Staff Member") + (bookedByDept != null && !bookedByDept.isBlank() ? " (" + bookedByDept + ")" : "")));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Reserver Phone", "<a href='tel:" + bookedByPhone + "' style='color: #00adef; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: " + headerGradient + "; padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Designated Room Contact Notification — " + (roomName != null ? roomName : "Facility") + "</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Hello <strong>Room Representative</strong>,</p>"
-                    + "<p>" + (isCancellation
-                        ? "A reservation for your room <strong>" + roomName + "</strong> has been <strong style='color:#dc2626;'>CANCELLED</strong>."
-                        : "A new reservation has been scheduled for your room <strong>" + roomName + "</strong>.") + "</p>"
-                    + "<div style='background-color: " + boxBg + "; border: 1px solid " + boxBorder + "; border-left: 4px solid " + boxLeft + "; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> " + (roomName != null ? roomName : "Meeting Room") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Code:</strong> " + (bookingCode != null ? bookingCode : "N/A") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>📋 Title / Subject:</strong> " + (meetingTitle != null ? meetingTitle : "Executive Meeting") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👤 Booked By / Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
-                    + "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> " + (bookedByPhone != null && !bookedByPhone.isBlank() ? "<a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a>" : "Not provided") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
-                    + "<p style='margin: 4px 0;'><strong>⏰ Start Time:</strong> " + formattedStart + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>⌛ End Time:</strong> " + formattedEnd + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + (purpose != null ? purpose : "Meeting") + "</p>"
-                    + (isCancellation
-                        ? "<p style='margin: 4px 0;'><strong>🚫 Cancelled By:</strong> " + (cancelledBy != null ? cancelledBy : "System User") + "</p>"
-                        : "")
-                    + (isCancellation && cancellationReason != null && !cancellationReason.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>💬 Cancellation Reason:</strong> " + cancellationReason + "</p>"
-                        : "")
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>As the designated room contact, you can manage or oversee this facility in the <a href='" + frontendUrl + "/bookings' style='color: #0284c7; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Facility Management</p>"
-                    + "</div>"
-                    + "</div>";
+            if (isCancellation) {
+                fields.add(new EmailField("Scheduled Start", formattedStart));
+                fields.add(new EmailField("Scheduled End", formattedEnd));
+                if (requestedItems != null && !requestedItems.isBlank()) {
+                    fields.add(new EmailField("Requested Items", requestedItems));
+                }
+                fields.add(new EmailField("Cancelled By", cancelledBy != null ? cancelledBy : "System User"));
+                fields.add(new EmailField("Reason / Comment", cancellationReason != null && !cancellationReason.isBlank() ? cancellationReason : "No reason provided."));
+            } else {
+                fields.add(new EmailField("Attendees", attendees + " person(s)"));
+                fields.add(new EmailField("Start Time", formattedStart));
+                fields.add(new EmailField("End Time", formattedEnd));
+                if (requestedItems != null && !requestedItems.isBlank()) {
+                    fields.add(new EmailField("Requested Items", requestedItems));
+                }
+                if (purpose != null && !purpose.isBlank()) {
+                    fields.add(new EmailField("Purpose / Agenda", purpose));
+                }
+            }
+
+            String bannerIcon = isCancellation ? "❌" : "👤";
+            String bannerTitle = isCancellation ? "Room Reservation Cancelled" : "New Room Reservation Assignment";
+            String introText = isCancellation
+                    ? "A reservation for your room <strong>" + roomName + "</strong> has been cancelled:"
+                    : "A room reservation has been assigned to you or updated in your department:";
+            String calloutText = isCancellation
+                    ? "This room reservation has been cancelled. The time slot has been released and is now available for other staff."
+                    : "This case has been assigned. The room representative should review the reservation details and ensure appropriate preparations are completed before the session.";
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    bannerIcon,
+                    bannerTitle,
+                    isCancellation,
+                    introText,
+                    fields,
+                    calloutText,
+                    frontendUrl + "/bookings",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
@@ -458,7 +540,8 @@ public class EmailServiceImpl implements EmailService {
             String purpose,
             int attendees,
             String hostDept,
-            String bookedByPhone
+            String bookedByPhone,
+            String requestedItems
     ) {
         if (recipientEmail == null || recipientEmail.isBlank()) {
             return;
@@ -478,37 +561,34 @@ public class EmailServiceImpl implements EmailService {
             String formattedStart = formatEmailDate(startTime);
             String formattedEnd = formatEmailDate(endTime);
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #00adef, #0072bc); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Meeting Space Reservation Confirmation</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Dear <strong>" + (recipientName != null && !recipientName.isBlank() ? recipientName : "Colleague") + "</strong>,</p>"
-                    + "<p>Your room reservation has been successfully <strong style='color: #0284c7;'>CONFIRMED</strong>. The meeting room has been locked for your scheduled session.</p>"
-                    + "<div style='background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> <span style='color: #047857; font-weight: bold;'>" + (roomName != null ? roomName : "Meeting Room") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>🏛️ Department:</strong> " + (hostDept != null ? hostDept : "Staff Hub") + "</p>"
-                    + (bookedByPhone != null && !bookedByPhone.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📞 Contact Phone:</strong> " + bookedByPhone + "</p>"
-                        : "")
-                    + "<p style='margin: 4px 0;'><strong>👥 Attendees:</strong> " + attendees + " person(s)</p>"
-                    + "<p style='margin: 4px 0;'><strong>⏰ Scheduled Start:</strong> " + formattedStart + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>⌛ Scheduled End:</strong> " + formattedEnd + "</p>"
-                    + (purpose != null && !purpose.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + purpose + "</p>"
-                        : "")
-                    + "</div>"
-                    + "<div style='text-align: center; margin: 24px 0;'>"
-                    + "<a href='" + frontendUrl + "/my-tracking' style='background: linear-gradient(135deg, #00adef, #0072bc); color: #ffffff; padding: 11px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; display: inline-block;'>View in My Meetings & Bookings</a>"
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>Need to make changes or cancel? You can manage your reservation directly in your <a href='" + frontendUrl + "/my-tracking' style='color: #00adef; text-decoration: none; font-weight: bold;'>Personal Tracker</a> or the <a href='" + frontendUrl + "/bookings' style='color: #00adef; text-decoration: none; font-weight: bold;'>Booking Management Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Facility Notification</p>"
-                    + "</div>"
-                    + "</div>";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", bookingCode != null ? bookingCode : "N/A"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Meeting Room"));
+            fields.add(new EmailField("Title / Subject", meetingTitle != null ? meetingTitle : "Meeting"));
+            fields.add(new EmailField("Department", hostDept != null ? hostDept : "Staff Hub"));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Contact Phone", "<a href='tel:" + bookedByPhone + "' style='color: #00adef; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
+            fields.add(new EmailField("Attendees", attendees + " person(s)"));
+            fields.add(new EmailField("Start Time", formattedStart));
+            fields.add(new EmailField("End Time", formattedEnd));
+            if (requestedItems != null && !requestedItems.isBlank()) {
+                fields.add(new EmailField("Requested Items", requestedItems));
+            }
+            if (purpose != null && !purpose.isBlank()) {
+                fields.add(new EmailField("Purpose / Agenda", purpose));
+            }
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    "🎉",
+                    "Room Reservation Confirmed",
+                    false,
+                    "Your room reservation has been successfully confirmed. The meeting room has been locked for your scheduled session:",
+                    fields,
+                    "Your reservation has been confirmed. If you need to make changes or cancel, please do so via the Visit Hub portal as early as possible.",
+                    frontendUrl + "/my-tracking",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
@@ -534,7 +614,8 @@ public class EmailServiceImpl implements EmailService {
             Instant newEndTime,
             String purpose,
             int attendees,
-            String updatedBy
+            String updatedBy,
+            String requestedItems
     ) {
         if (contactEmail == null || contactEmail.isBlank()) {
             return;
@@ -558,47 +639,35 @@ public class EmailServiceImpl implements EmailService {
             String formattedNewStart = formatEmailDate(newStartTime);
             String formattedNewEnd = formatEmailDate(newEndTime);
 
-            String htmlContent = "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>"
-                    + "<div style='background: linear-gradient(135deg, #0284c7, #2563eb); padding: 18px; text-align: center; border-radius: 8px 8px 0 0;'>"
-                    + "<h2 style='color: #ffffff; margin: 0; font-size: 20px;'>Cooperative Bank of Oromia</h2>"
-                    + "<p style='color: #e0f2fe; margin: 4px 0 0 0; font-size: 13px;'>Designated Room Contact Notification — " + (roomName != null ? roomName : "Facility") + "</p>"
-                    + "</div>"
-                    + "<div style='padding: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;'>"
-                    + "<p style='margin-top: 0;'>Hello <strong>Room Representative</strong>,</p>"
-                    + "<p>A reservation for your room <strong>" + (roomName != null ? roomName : "Meeting Room") + "</strong> has been <strong style='color:#0284c7;'>UPDATED / RESCHEDULED</strong> by <strong>" + (updatedBy != null ? updatedBy : "User") + "</strong>.</p>"
-                    + "<div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 6px; padding: 14px; margin: 18px 0;'>"
-                    + "<p style='margin: 4px 0;'><strong>📍 Meeting Room:</strong> " + (roomName != null ? roomName : "Meeting Room") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>🔖 Booking Reference:</strong> <span style='font-family: monospace; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; color: #0369a1;'>" + (bookingCode != null ? bookingCode : "N/A") + "</span></p>"
-                    + "<p style='margin: 4px 0;'><strong>📋 Meeting Title:</strong> " + (meetingTitle != null ? meetingTitle : "Meeting") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👤 Reserving Host:</strong> " + (bookedByName != null ? bookedByName : "Staff Member") + " (" + (bookedByDept != null ? bookedByDept : "Department") + ")</p>"
-                    + "<p style='margin: 4px 0;'><strong>📞 Reserver Phone:</strong> " + (bookedByPhone != null && !bookedByPhone.isBlank() ? "<a href='tel:" + bookedByPhone + "' style='color: #0284c7; text-decoration: none; font-weight: bold;'>" + bookedByPhone + "</a>" : "Not provided") + "</p>"
-                    + "<p style='margin: 4px 0;'><strong>👥 Expected Attendees:</strong> " + attendees + " person(s)</p>"
-                    + (purpose != null && !purpose.isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>📝 Purpose / Agenda:</strong> " + purpose + "</p>"
-                        : "")
-                    + "<p style='margin: 4px 0;'><strong>✏️ Rescheduled By:</strong> " + (updatedBy != null ? updatedBy : "System User") + "</p>"
-                    + "</div>"
-                    + "<!-- Schedule Comparison: Previous vs New -->"
-                    + "<div style='background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #ef4444; border-radius: 6px; padding: 12px 14px; margin: 12px 0;'>"
-                    + "<p style='margin: 0; font-weight: bold; color: #991b1b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;'>🗓️ Previous Schedule (Changed):</p>"
-                    + "<p style='margin: 6px 0 0 0; color: #991b1b; text-decoration: line-through; font-size: 13px;'>"
-                    + "<strong>Start:</strong> " + formattedOldStart + " &nbsp;|&nbsp; <strong>End:</strong> " + formattedOldEnd
-                    + "</p>"
-                    + "</div>"
-                    + "<div style='background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; border-radius: 6px; padding: 12px 14px; margin: 12px 0;'>"
-                    + "<p style='margin: 0; font-weight: bold; color: #166534; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;'>✨ New / Updated Schedule (Effective):</p>"
-                    + "<p style='margin: 6px 0 0 0; color: #14532d; font-size: 13px;'>"
-                    + "<strong>Start:</strong> <span style='font-weight: bold; color: #047857;'>" + formattedNewStart + "</span> &nbsp;|&nbsp; <strong>End:</strong> <span style='font-weight: bold; color: #047857;'>" + formattedNewEnd + "</span>"
-                    + "</p>"
-                    + "</div>"
-                    + "<div style='text-align: center; margin: 24px 0;'>"
-                    + "<a href='" + frontendUrl + "/bookings' style='background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; padding: 11px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; display: inline-block;'>View in Room Bookings Portal</a>"
-                    + "</div>"
-                    + "<p style='font-size: 12px; color: #64748b;'>As the designated person in charge of this facility, you can view the live room schedule in the <a href='" + frontendUrl + "/bookings' style='color: #0284c7; text-decoration: none; font-weight: bold;'>Visit Hub Portal</a>.</p>"
-                    + "<hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'/>"
-                    + "<p style='font-size: 11px; color: #94a3b8; text-align: center; margin: 0;'>Cooperative Bank of Oromia | Automated Facility Management</p>"
-                    + "</div>"
-                    + "</div>";
+            java.util.List<EmailField> fields = new java.util.ArrayList<>();
+            fields.add(new EmailField("Case / Booking ID", bookingCode != null ? bookingCode : "N/A"));
+            fields.add(new EmailField("Meeting Room", roomName != null ? roomName : "Meeting Room"));
+            fields.add(new EmailField("Title / Subject", meetingTitle != null ? meetingTitle : "Meeting"));
+            fields.add(new EmailField("Booked By / Host", (bookedByName != null ? bookedByName : "Staff Member") + (bookedByDept != null && !bookedByDept.isBlank() ? " (" + bookedByDept + ")" : "")));
+            if (bookedByPhone != null && !bookedByPhone.isBlank()) {
+                fields.add(new EmailField("Reserver Phone", "<a href='tel:" + bookedByPhone + "' style='color: #00adef; text-decoration: none; font-weight: 600;'>" + bookedByPhone + "</a>"));
+            }
+            fields.add(new EmailField("Attendees", attendees + " person(s)"));
+            fields.add(new EmailField("Previous Schedule", "<span style='text-decoration: line-through; color: #991b1b;'>" + formattedOldStart + " &nbsp;to&nbsp; " + formattedOldEnd + "</span>"));
+            fields.add(new EmailField("New Schedule", "<strong style='color: #047857;'>" + formattedNewStart + " &nbsp;to&nbsp; " + formattedNewEnd + "</strong>"));
+            if (requestedItems != null && !requestedItems.isBlank()) {
+                fields.add(new EmailField("Requested Items", requestedItems));
+            }
+            fields.add(new EmailField("Rescheduled By", updatedBy != null ? updatedBy : "System User"));
+            if (purpose != null && !purpose.isBlank()) {
+                fields.add(new EmailField("Purpose / Agenda", purpose));
+            }
+
+            String htmlContent = buildRoomBookingTableEmailHtml(
+                    "✏️",
+                    "Room Reservation Rescheduled",
+                    false,
+                    "A reservation for your room <strong>" + (roomName != null ? roomName : "Meeting Room") + "</strong> has been rescheduled by <strong>" + (updatedBy != null ? updatedBy : "User") + "</strong>:",
+                    fields,
+                    "This room reservation schedule has been modified. Please review the updated start and end times above and adjust preparations accordingly.",
+                    frontendUrl + "/bookings",
+                    "Go to Visit Hub"
+            );
 
             helper.setText(htmlContent, true);
             mailSender.send(message);

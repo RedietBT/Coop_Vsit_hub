@@ -94,6 +94,25 @@ export const useReportStore = create((set, get) => ({
     }
   },
 
+  exportExcel: async () => {
+    const { startDate, endDate, department } = get();
+    const params = {};
+    if (startDate) params.startDate = new Date(startDate).toISOString();
+    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
+    if (department && department !== 'All Departments') params.department = department;
+
+    set({ isExporting: true });
+    try {
+      await reportApi.exportExcel(params);
+      toast.success('Excel Spreadsheet downloaded successfully!');
+    } catch (err) {
+      toast.error('Failed to export Excel report.');
+    } finally {
+      set({ isExporting: false });
+    }
+  },
+
+
   exportPdf: async () => {
     const { startDate, endDate, department } = get();
     const params = {};

@@ -41,6 +41,15 @@ import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import { resolveImageUrl } from '@/core/utils/imageUtils';
 
+const COMMON_REQUESTED_ITEMS = [
+  '☕ Coffee & Tea',
+  '💧 Bottled Water',
+  '🥐 Refreshments',
+  '📽️ Projector & Screen',
+  '📹 Video Conference',
+  '📋 Whiteboard',
+];
+
 export const VisitCalendarPage = () => {
   const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
@@ -165,6 +174,7 @@ export const VisitCalendarPage = () => {
     endTime: '10:30',
     expectedAttendees: 2,
     meetingAgenda: '',
+    requestedItems: '',
   });
 
   // Booking Form State
@@ -177,6 +187,7 @@ export const VisitCalendarPage = () => {
     guestName: '',
     visitorCount: 2,
     visitObjective: '',
+    requestedItems: '',
   });
 
   // Fetch meeting rooms on mount (fetches all master data like Booking Management page)
@@ -312,6 +323,7 @@ export const VisitCalendarPage = () => {
       endTime: et,
       expectedAttendees: booking.expectedAttendees || 2,
       meetingAgenda: booking.meetingAgenda || '',
+      requestedItems: booking.requestedItems || '',
     });
     setEditingBooking(booking);
   };
@@ -383,7 +395,8 @@ export const VisitCalendarPage = () => {
         scheduledStartTime: newStartIso,
         scheduledEndTime: newEndIso,
         expectedAttendees: parseInt(editFormData.expectedAttendees, 10) || 1,
-        meetingAgenda: editFormData.meetingAgenda.trim() || 'Internal boardroom session',
+        meetingAgenda: editFormData.meetingAgenda?.trim() || null,
+        requestedItems: editFormData.requestedItems?.trim() || null,
       };
 
       await roomBookingApi.updateBooking(editingBooking.id, payload);
@@ -625,9 +638,10 @@ export const VisitCalendarPage = () => {
         scheduledStartTime: startIso,
         scheduledEndTime: endIso,
         expectedAttendees: parseInt(formData.visitorCount, 10) || 1,
-        meetingAgenda: formData.visitObjective.trim() || 'Internal boardroom session',
+        meetingAgenda: formData.visitObjective?.trim() || null,
         guestOrganizationName: formData.guestName?.trim() || null,
         guestName: formData.guestName?.trim() || null,
+        requestedItems: formData.requestedItems?.trim() || null,
       };
 
       const result = await roomBookingApi.createBooking(payload);
@@ -645,6 +659,7 @@ export const VisitCalendarPage = () => {
         title: '',
         visitObjective: '',
         guestName: '',
+        requestedItems: '',
       }));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to book meeting room.');
@@ -1056,6 +1071,11 @@ export const VisitCalendarPage = () => {
                                   <span className="flex items-center gap-1 text-slate-400">
                                     <Users className="w-3 h-3" />
                                     <span>{slot.expectedAttendees} attendees</span>
+                                  </span>
+                                )}
+                                {slot.requestedItems && (
+                                  <span className="flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-[10px] font-semibold">
+                                    <span>{slot.requestedItems}</span>
                                   </span>
                                 )}
                               </div>
@@ -1487,11 +1507,11 @@ export const VisitCalendarPage = () => {
                 {/* Meeting Agenda / Purpose */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Meeting Agenda / Purpose
+                    Meeting Agenda / Purpose (Optional)
                   </label>
                   <textarea
-                    rows={3}
-                    placeholder="Briefly describe the purpose of this meeting or visit..."
+                    rows={2}
+                    placeholder="Briefly describe the purpose of this meeting or visit (leave empty if none)..."
                     value={formData.visitObjective}
                     onChange={(e) =>
                       setFormData({
@@ -1499,6 +1519,48 @@ export const VisitCalendarPage = () => {
                         visitObjective: e.target.value,
                       })
                     }
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                {/* Requested Items & Amenities (Coffee, Water, Projector, etc.) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Requested Items & Refreshments (Optional)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {COMMON_REQUESTED_ITEMS.map((item) => {
+                      const isSelected = (formData.requestedItems || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            const list = formData.requestedItems
+                              ? formData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
+                              : [];
+                            const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
+                            setFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. ☕ Coffee & Tea, 💧 Bottled Water, HDMI cable..."
+                    value={formData.requestedItems}
+                    onChange={(e) => setFormData({ ...formData, requestedItems: e.target.value })}
                     className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
                   />
                 </div>
@@ -1795,14 +1857,56 @@ export const VisitCalendarPage = () => {
                 {/* Agenda / Notes */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Meeting Objective / Agenda
+                    Meeting Objective / Agenda (Optional)
                   </label>
                   <textarea
                     rows={2}
                     value={editFormData.meetingAgenda}
                     onChange={(e) => setEditFormData({ ...editFormData, meetingAgenda: e.target.value })}
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
-                    placeholder="Discussion topics, equipment required..."
+                    placeholder="Discussion topics, leave empty if none..."
+                  />
+                </div>
+
+                {/* Requested Items & Refreshments */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Requested Items & Refreshments (Optional)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {COMMON_REQUESTED_ITEMS.map((item) => {
+                      const isSelected = (editFormData.requestedItems || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            const list = editFormData.requestedItems
+                              ? editFormData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
+                              : [];
+                            const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
+                            setEditFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. ☕ Coffee & Tea, 💧 Bottled Water..."
+                    value={editFormData.requestedItems}
+                    onChange={(e) => setEditFormData({ ...editFormData, requestedItems: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"
                   />
                 </div>
 
