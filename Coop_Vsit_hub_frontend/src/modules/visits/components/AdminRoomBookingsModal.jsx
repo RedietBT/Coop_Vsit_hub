@@ -60,12 +60,13 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handleCancelBooking = async (bookingId, roomName, visitCode) => {
-    if (!window.confirm(`Are you sure you want to cancel and release reservation '${visitCode}' for '${roomName}'?`)) {
+    const reason = window.prompt(`Why should reservation '${visitCode}' for '${roomName}' be cancelled?`);
+    if (!reason || !reason.trim()) {
       return;
     }
     setCancelingId(bookingId);
     try {
-      await roomBookingApi.cancelBooking(bookingId);
+      await roomBookingApi.cancelBooking(bookingId, reason.trim());
       soundPlayer.playNotificationChime();
       toast.success(`Booking ${visitCode} for ${roomName} successfully released.`);
       fetchBookings();

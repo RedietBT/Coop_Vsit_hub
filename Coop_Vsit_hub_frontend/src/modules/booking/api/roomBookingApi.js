@@ -48,8 +48,10 @@ export const roomBookingApi = {
   /**
    * Cancel an existing room booking.
    */
-  cancelBooking: async (id) => {
-    const response = await apiClient.delete(`/api/v1/room-bookings/${id}`);
+  cancelBooking: async (id, reason) => {
+    const response = await apiClient.delete(`/api/v1/room-bookings/${id}`, {
+      data: reason ? { cancellationReason: reason } : undefined,
+    });
     return response.data;
   },
 

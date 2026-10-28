@@ -153,6 +153,7 @@ export const VisitCalendarPage = () => {
   // Cancellation State (for cancelling one's own reservation directly from the schedule)
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   // Edit / Reschedule Reservation State
   const [editingBooking, setEditingBooking] = useState(null);
@@ -403,9 +404,13 @@ export const VisitCalendarPage = () => {
   // Confirm and execute cancellation
   const handleCancelBookingConfirm = async () => {
     if (!cancellingBooking) return;
+    if (!cancellationReason.trim()) {
+      toast.error('Please provide a cancellation reason.');
+      return;
+    }
     setIsCancelling(true);
     try {
-      await roomBookingApi.cancelBooking(cancellingBooking.id);
+      await roomBookingApi.cancelBooking(cancellingBooking.id, cancellationReason.trim());
       soundPlayer.playNotificationChime();
       toast.success(`Booking ${cancellingBooking.bookingCode} cancelled and released.`);
       setCancellingBooking(null);
@@ -1052,7 +1057,8 @@ export const VisitCalendarPage = () => {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setCancellingBooking(slot);
+                                      setCancellationReason('');
+                                       setCancellingBooking(slot);
                                     }}
                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                                     title="Cancel reservation directly from this schedule"
@@ -1789,7 +1795,7 @@ export const VisitCalendarPage = () => {
       {cancellingBooking && (
         <Modal
           isOpen={!!cancellingBooking}
-          onClose={() => !isCancelling && setCancellingBooking(null)}
+          onClose={() => { if (!isCancelling) { setCancellationReason(''); setCancellingBooking(null); } }}
           title="Cancel Room Reservation"
         >
           <div className="p-6 space-y-4 text-left">
@@ -1825,7 +1831,10 @@ export const VisitCalendarPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Cancellation reason <span className="text-rose-500">*</span></label>
+              <textarea rows={3} value={cancellationReason} onChange={(e) => setCancellationReason(e.target.value)} placeholder="Explain why this reservation is being cancelled" className="w-full rounded-xl border border-slate-300 p-3 text-xs text-slate-900 focus:outline-none focus:border-[#00adef] resize-y" />
+            </div>            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
               <Button
                 variant="ghost"
                 onClick={() => setCancellingBooking(null)}
@@ -1836,7 +1845,7 @@ export const VisitCalendarPage = () => {
               <Button
                 variant="danger"
                 onClick={handleCancelBookingConfirm}
-                disabled={isCancelling}
+                disabled={isCancelling || !cancellationReason.trim()}
                 icon={AlertTriangle}
               >
                 {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}

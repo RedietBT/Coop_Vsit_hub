@@ -80,6 +80,7 @@ export const BookingManagementPage = () => {
   const [myBookingsStatusFilter, setMyBookingsStatusFilter] = useState('');
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
   const [isCancellingBooking, setIsCancellingBooking] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   // All Bookings State (Admin/Secretary)
   const [allBookings, setAllBookings] = useState([]);
@@ -213,9 +214,13 @@ export const BookingManagementPage = () => {
   }, [activeTab, fetchMyBookings, fetchAllBookings, isAdmin, isSecretary]);
 
   const handleCancelBooking = async (bookingId) => {
+    if (!cancellationReason.trim()) {
+      toast.error('Please provide a cancellation reason.');
+      return;
+    }
     setIsCancellingBooking(true);
     try {
-      await roomBookingApi.cancelBooking(bookingId);
+      await roomBookingApi.cancelBooking(bookingId, cancellationReason.trim());
       toast.success('Reservation cancelled successfully.');
       setCancellingBookingId(null);
       fetchMyBookings(myBookingsPage);
@@ -361,7 +366,7 @@ export const BookingManagementPage = () => {
               variant="ghost"
               size="sm"
               icon={XCircle}
-              onClick={() => setCancellingBookingId(booking.id)}
+              onClick={() => { setCancellationReason(''); setCancellingBookingId(booking.id); }}
               className="text-red-600 hover:bg-red-50 border border-red-100"
             >
               Cancel
@@ -394,7 +399,7 @@ export const BookingManagementPage = () => {
                   <td className="px-4 py-3 min-w-[190px] text-slate-600"><p className="font-semibold">{booking.bookedByName || '—'}</p>{booking.hostDepartment && <p className="text-[10px] text-slate-400 mt-1">{booking.hostDepartment}</p>}{booking.bookedByEmail && <a href={`mailto:${booking.bookedByEmail}`} className="block text-[10px] text-slate-500 mt-1 hover:text-[#00adef] hover:underline truncate">{booking.bookedByEmail}</a>}{booking.bookedByPhone && <a href={`tel:${booking.bookedByPhone}`} className="block text-[10px] text-emerald-700 mt-0.5 hover:underline">{booking.bookedByPhone}</a>}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-600">{booking.expectedAttendees || '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${statusBadge.cls}`}>{statusBadge.label}</span></td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">{canCancelBooking ? <Button variant="ghost" size="sm" icon={XCircle} onClick={() => setCancellingBookingId(booking.id)} className="text-red-600 hover:bg-red-50 border border-red-100">Cancel</Button> : <span className="text-[10px] text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{canCancelBooking ? <Button variant="ghost" size="sm" icon={XCircle} onClick={() => { setCancellationReason(''); setCancellingBookingId(booking.id); }} className="text-red-600 hover:bg-red-50 border border-red-100">Cancel</Button> : <span className="text-[10px] text-slate-400">—</span>}</td>
                 </tr>
               );
             })}
@@ -927,7 +932,7 @@ export const BookingManagementPage = () => {
       {cancellingBookingId && (
         <Modal
           isOpen={!!cancellingBookingId}
-          onClose={() => !isCancellingBooking && setCancellingBookingId(null)}
+          onClose={() => { if (!isCancellingBooking) { setCancellationReason(''); setCancellingBookingId(null); } }}
           title="Cancel Reservation"
         >
           <div className="p-6 space-y-4 text-left">
@@ -940,14 +945,18 @@ export const BookingManagementPage = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="ghost" onClick={() => setCancellingBookingId(null)} disabled={isCancellingBooking}>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Cancellation reason <span className="text-rose-500">*</span></label>
+              <textarea rows={3} value={cancellationReason} onChange={(e) => setCancellationReason(e.target.value)} placeholder="Explain why this reservation is being cancelled" className="w-full rounded-xl border border-slate-300 p-3 text-xs text-slate-900 focus:outline-none focus:border-[#00adef] resize-y" />
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
+              <Button variant="ghost" onClick={() => { setCancellationReason(''); setCancellingBookingId(null); }} disabled={isCancellingBooking}>
                 Keep Reservation
               </Button>
               <Button
                 variant="danger"
                 onClick={() => handleCancelBooking(cancellingBookingId)}
-                disabled={isCancellingBooking}
+                disabled={isCancellingBooking || !cancellationReason.trim()}
                 icon={XCircle}
               >
                 {isCancellingBooking ? 'Cancelling...' : 'Cancel Reservation'}
