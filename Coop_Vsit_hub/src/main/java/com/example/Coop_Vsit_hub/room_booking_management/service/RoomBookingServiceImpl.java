@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,6 +40,8 @@ import com.example.coop_vsit_hub.user_and_auth.enums.AuditStatus;
 @RequiredArgsConstructor
 @Slf4j
 public class RoomBookingServiceImpl implements RoomBookingService {
+
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Africa/Addis_Ababa");
 
     private final RoomBookingRepository roomBookingRepository;
     private final com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository meetingRoomRepository;
@@ -104,10 +107,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(roomName, startTime, endTime);
         if (!overlapping.isEmpty()) {
             RoomBooking conflict = overlapping.get(0);
-            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledStartTime());
-            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledEndTime());
+            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE).format(conflict.getScheduledStartTime());
+            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE).format(conflict.getScheduledEndTime());
             throw new IllegalStateException(String.format(
-                    "Meeting room '%s' is already booked from %s to %s UTC for '%s' (Ref: %s). Please select a different time window or room.",
+                    "Meeting room '%s' is already booked from %s to %s for '%s' (Ref: %s). Please select a different time window or room.",
                     roomName, conflictStart, conflictEnd, conflict.getMeetingTitle(), conflict.getBookingCode()
             ));
         }
@@ -563,6 +566,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .bookedByUserId(b.getBookedByUserId())
                         .bookedByName(b.getBookedByName())
                         .bookedByEmail(b.getBookedByEmail())
+                        .bookedByPhone(b.getBookedByPhone())
                         .hostDepartment(b.getHostDepartment())
                         .expectedAttendees(b.getExpectedAttendees())
                         .meetingAgenda(b.getMeetingAgenda())
@@ -909,8 +913,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         boolean hasConflict = overlapping.stream().anyMatch(b -> !b.getId().equals(booking.getId()));
         if (hasConflict) {
             RoomBooking conflict = overlapping.stream().filter(b -> !b.getId().equals(booking.getId())).findFirst().get();
-            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledStartTime());
-            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(ZoneOffset.UTC).format(conflict.getScheduledEndTime());
+            String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE).format(conflict.getScheduledStartTime());
+            String conflictEnd = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE).format(conflict.getScheduledEndTime());
             throw new IllegalStateException(String.format(
                     "Meeting room '%s' is already booked from %s to %s for '%s' (Ref: %s). Please select an open time slot.",
                     booking.getRoomName(), conflictStart, conflictEnd, conflict.getMeetingTitle(), conflict.getBookingCode()

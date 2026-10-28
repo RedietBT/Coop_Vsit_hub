@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -551,6 +551,25 @@ export const VisitCalendarPage = () => {
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
   const isBookingDatePast = isPastDateKey(formData.date);
 
+  // Real-time conflict detection for the direct booking form
+  const createSlotConflict = useMemo(() => {
+    if (!formData.startTime || !formData.endTime || !formData.date || !roomSlots.length) return null;
+    const [sh, sm] = (formData.startTime || '').split(':').map(Number);
+    const [eh, em] = (formData.endTime || '').split(':').map(Number);
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em) || (sh * 60 + sm) >= (eh * 60 + em)) {
+      return null;
+    }
+    const startMs = new Date(`${formData.date}T${formData.startTime}:00+03:00`).getTime();
+    const endMs = new Date(`${formData.date}T${formData.endTime}:00+03:00`).getTime();
+    return roomSlots.find((s) => {
+      if (s.status && s.status !== 'CONFIRMED') return false;
+      if (!s.scheduledStartTime || !s.scheduledEndTime) return false;
+      const sStart = new Date(s.scheduledStartTime).getTime();
+      const sEnd = new Date(s.scheduledEndTime).getTime();
+      return startMs < sEnd && endMs > sStart;
+    }) || null;
+  }, [formData.date, formData.startTime, formData.endTime, roomSlots]);
+
   // Form Submit: Instant direct booking without approvals!
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
@@ -579,6 +598,12 @@ export const VisitCalendarPage = () => {
     }
     if ((sh * 60 + sm) >= (eh * 60 + em)) {
       toast.error('End time must be after start time.');
+      return;
+    }
+    if (createSlotConflict) {
+      toast.error(
+        `Cannot book: Slot overlaps with "${createSlotConflict.meetingTitle || 'Another Meeting'}" (${createSlotConflict.timeFormatted || 'Reserved'}). Please choose an open time window.`
+      );
       return;
     }
 
@@ -977,7 +1002,7 @@ export const VisitCalendarPage = () => {
                     )}
                   </div>
 
-                  <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                  <div className="max-h-56 overflow-y-auto space-y-2 pr-2 custom-scroll-thick">
                     {activeDateSlots.length > 0 ? (
                       activeDateSlots.map((slot) => {
                         const canModify = checkCanModifyBooking(slot);
@@ -1398,6 +1423,19 @@ export const VisitCalendarPage = () => {
                   })()}
                 </div>
 
+                  {/* Overlap Conflict Notice for New Booking */}
+                  {createSlotConflict && (
+                    <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-2xl text-xs font-medium animate-fadeIn">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-amber-800">Time Window Conflict Detected</p>
+                        <p className="text-amber-700 leading-relaxed mt-0.5">
+                          This room is already reserved for <strong>{createSlotConflict.meetingTitle || 'Another Meeting'}</strong> ({createSlotConflict.timeFormatted || 'Reserved'}). Please select an open time window.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                 {/* Department & Expected Attendees */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -1482,7 +1520,7 @@ export const VisitCalendarPage = () => {
                     type="submit"
                     variant="orange"
                     size="lg"
-                    disabled={isSubmitting || isBookingDatePast || isPastTimeToday(formData.date, formData.startTime)}
+                    disabled={isSubmitting || isBookingDatePast || isPastTimeToday(formData.date, formData.startTime) || !!createSlotConflict}
                     className="w-full justify-center py-3 text-sm font-bold shadow-md hover:shadow-lg"
                   >
                     {isSubmitting ? 'Booking Room...' : `Confirm & Book ${selectedRoom.name}`}

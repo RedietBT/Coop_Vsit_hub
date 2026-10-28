@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Menu,
   Search,
   Bell,
   Volume2,
@@ -14,7 +15,7 @@ import useNotificationStore from '@/modules/notifications/store/notificationStor
 import ChangePasswordModal from '@/modules/auth/components/ChangePasswordModal';
 import soundPlayer from '@/core/utils/soundPlayer';
 
-export const Topbar = () => {
+export const Topbar = ({ isSidebarCollapsed, onToggleSidebar }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { unreadCount, toggleDrawer, fetchUnreadCount } = useNotificationStore();
@@ -56,19 +57,33 @@ export const Topbar = () => {
   return (
     <>
       <header className="sticky top-0 z-20 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 flex items-center justify-between transition-all select-none">
-        {/* Left: Global Quick Search */}
-        <form onSubmit={handleSearchSubmit} className="relative w-72 lg:w-96">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-4 h-4" />
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search visits, organizations, VIP guests..."
-            className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-100/80 border border-slate-200/80 placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef] focus:bg-white focus:ring-2 focus:ring-[#00adef]/20 transition-all"
-          />
-        </form>
+        {/* Left: Menu Toggle + Global Quick Search */}
+        <div className="flex items-center gap-3">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-2 rounded-xl text-slate-500 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer border border-slate-200/70 hover:border-sky-200"
+              title={isSidebarCollapsed ? 'Expand Navigation Menu' : 'Collapse Navigation Menu'}
+              aria-label={isSidebarCollapsed ? 'Expand Navigation Menu' : 'Collapse Navigation Menu'}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
+
+          <form onSubmit={handleSearchSubmit} className="relative w-64 sm:w-72 lg:w-96">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <Search className="w-4 h-4" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search visits, organizations, VIP guests..."
+              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-100/80 border border-slate-200/80 placeholder:text-slate-400 text-slate-900 focus:outline-none focus:border-[#00adef] focus:bg-white focus:ring-2 focus:ring-[#00adef]/20 transition-all"
+            />
+          </form>
+        </div>
 
         {/* Right: Actions (Sound Toggle, Notification Bell, User Menu) */}
         <div className="flex items-center gap-3">

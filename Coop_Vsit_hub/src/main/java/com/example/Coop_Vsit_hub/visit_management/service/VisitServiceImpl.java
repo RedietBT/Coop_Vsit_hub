@@ -35,6 +35,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -43,6 +44,7 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class VisitServiceImpl implements VisitService {
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Africa/Addis_Ababa");
 
     private final VisitRepository visitRepository;
     private final OrganizationRepository organizationRepository;
@@ -963,10 +965,11 @@ public class VisitServiceImpl implements VisitService {
         List<Visit> conflicts = visitRepository.findOverlappingRoomVisits(room, start, end, excludeId);
         if (!conflicts.isEmpty()) {
             Visit conflicting = conflicts.get(0);
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE);
             throw new IllegalArgumentException(String.format(
                     "Room Conflict: '%s' is already booked for visit '%s' (%s) between %s and %s.",
                     room, conflicting.getVisitCode(), conflicting.getTitle(),
-                    conflicting.getScheduledStartTime(), conflicting.getScheduledEndTime()
+                    fmt.format(conflicting.getScheduledStartTime()), fmt.format(conflicting.getScheduledEndTime())
             ));
         }
     }

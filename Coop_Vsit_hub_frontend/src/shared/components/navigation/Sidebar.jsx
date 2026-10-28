@@ -88,9 +88,39 @@ const NAV_ITEMS = [
   },
 ];
 
-export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
+export const Sidebar = ({
+  isCollapsed: propCollapsed,
+  setIsCollapsed: propSetCollapsed,
+  onToggle,
+}) => {
   const navigate = useNavigate();
   const { user, logout, hasAnyRole } = useAuthStore();
+
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('coop_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isCollapsed = propCollapsed !== undefined ? propCollapsed : internalCollapsed;
+
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle();
+    } else if (propSetCollapsed) {
+      propSetCollapsed(!isCollapsed);
+    } else {
+      const next = !internalCollapsed;
+      setInternalCollapsed(next);
+      try {
+        localStorage.setItem('coop_sidebar_collapsed', String(next));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -119,9 +149,11 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           </div>
 
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            type="button"
+            onClick={handleToggle}
             className="p-1.5 rounded-xl text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
