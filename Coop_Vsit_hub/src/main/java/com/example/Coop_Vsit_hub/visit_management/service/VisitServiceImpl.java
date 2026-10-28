@@ -19,6 +19,8 @@ import com.example.coop_vsit_hub.visit_management.repository.VisitSpecification;
 import com.example.coop_vsit_hub.feedback_management.service.FeedbackService;
 import com.example.coop_vsit_hub.feedback_management.service.FeedbackServiceImpl;
 import com.example.coop_vsit_hub.individual_guest_management.repository.IndividualGuestRepository;
+import com.example.coop_vsit_hub.master_data.entity.MeetingRoom;
+import com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository;
 import com.example.coop_vsit_hub.config.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,7 @@ public class VisitServiceImpl implements VisitService {
     private final VisitRepository visitRepository;
     private final OrganizationRepository organizationRepository;
     private final IndividualGuestRepository individualGuestRepository;
+    private final MeetingRoomRepository meetingRoomRepository;
     private final UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
     private final HtmlSanitizer htmlSanitizer;
@@ -624,6 +627,38 @@ public class VisitServiceImpl implements VisitService {
         return VisitDetailResponse.from(saved);
     }
 
+    @Override
+    @Transactional
+    public VisitDetailResponse cancelScheduledVisit(UUID id, VisitStatusTransitionRequest request, String supervisorUsername) {
+        Visit visit = visitRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Visit not found with ID: " + id));
+        User supervisor = userRepository.findByUsername(supervisorUsername).orElse(null);
+        boolean isAdmin = supervisor != null && supervisor.getRoles() != null
+                && supervisor.getRoles().stream().anyMatch(r -> r.getName().name().contains("ADMIN"));
+        boolean isRoomContact = false;
+        if (visit.getLocationRoom() != null && !visit.getLocationRoom().isBlank() && supervisor != null) {
+            isRoomContact = meetingRoomRepository.findByNameIgnoreCase(visit.getLocationRoom()).map(room ->
+                    (room.getAssignedUserId() != null && room.getAssignedUserId().equals(supervisor.getId()))
+                            || (StringUtils.hasText(room.getContactEmail()) && StringUtils.hasText(supervisor.getEmail())
+                                && room.getContactEmail().equalsIgnoreCase(supervisor.getEmail()))
+                            || (StringUtils.hasText(room.getAssignedUserName()) && (
+                                room.getAssignedUserName().equalsIgnoreCase(supervisor.getUsername())
+                                || room.getAssignedUserName().equalsIgnoreCase(supervisor.getFullName())))
+            ).orElse(false);
+        }
+        if (!isAdmin && !isRoomContact) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only the assigned room supervisor or a Super Administrator can cancel this scheduled visit.");
+        }
+        if (visit.getStatus() != VisitStatus.SCHEDULED && visit.getStatus() != VisitStatus.APPROVED) {
+            throw new IllegalArgumentException("Only scheduled or approved visits can be cancelled from this page.");
+        }
+        if (!StringUtils.hasText(request.getDecisionNotes())) {
+            throw new IllegalArgumentException("A cancellation reason is required.");
+        }
+        request.setStatus(VisitStatus.CANCELLED);
+        return transitionVisitStatus(id, request, supervisorUsername);
+    }
     @Override
     @Transactional
     public VisitDetailResponse transitionVisitStatus(UUID id, VisitStatusTransitionRequest request, String approverUsername) {

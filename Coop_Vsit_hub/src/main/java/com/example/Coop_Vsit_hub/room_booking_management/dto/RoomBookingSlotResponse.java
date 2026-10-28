@@ -23,6 +23,7 @@ public class RoomBookingSlotResponse {
     private UUID bookedByUserId;
     private String bookedByName;
     private String bookedByEmail;
+    private String bookedByPhone;
     private String hostDepartment;
     private Integer expectedAttendees;
     private String meetingAgenda;

@@ -124,6 +124,17 @@ public class VisitController {
         return ResponseEntity.ok(visitService.updateVisit(id, request, requesterUsername));
     }
 
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Cancel Scheduled Visit", description = "Allows only the assigned room supervisor or Super Administrator to cancel an approved or scheduled visit with a reason.")
+    public ResponseEntity<VisitDetailResponse> cancelScheduledVisit(
+            @PathVariable UUID id,
+            @Valid @RequestBody VisitStatusTransitionRequest request,
+            Principal principal
+    ) {
+        String supervisorUsername = principal != null ? principal.getName() : "SUPERVISOR";
+        return ResponseEntity.ok(visitService.cancelScheduledVisit(id, request, supervisorUsername));
+    }
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyAuthority('ROLE_DIRECTOR', 'ROLE_ADMIN', 'ROLE_SECURITY_DESK', 'ROLE_FRONT_DESK', 'ROLE_RELATIONSHIP_MANAGER')")
     @Operation(summary = "Transition Visit Status", description = "Approve, reject, schedule, or cancel visit with decision notes and cancellation reason.")

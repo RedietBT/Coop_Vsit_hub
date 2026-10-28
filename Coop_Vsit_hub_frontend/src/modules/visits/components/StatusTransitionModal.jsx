@@ -118,7 +118,9 @@ export const StatusTransitionModal = () => {
             placeholder={
               targetStatus === 'APPROVED'
                 ? 'e.g. Approved for Executive Boardroom presentation. Room setup and catering dispatched.'
-                : 'e.g. Rejected due to scheduling conflict with board meeting. Please resubmit for next Tuesday.'
+                : targetStatus === 'CANCELLED'
+                  ? 'e.g. Room unavailable due to maintenance. Please coordinate a new schedule.'
+                  : 'e.g. Rejected due to scheduling conflict with board meeting. Please resubmit for next Tuesday.'
             }
             className="w-full text-xs rounded-xl border border-slate-300 p-3 text-slate-900 focus:outline-none focus:border-[#00adef]"
             {...register('approverComments')}
@@ -142,11 +144,11 @@ export const StatusTransitionModal = () => {
 
           <Button
             type="submit"
-            variant={targetStatus === 'APPROVED' ? 'orange' : targetStatus === 'REJECTED' ? 'danger' : 'cyan'}
+            variant={targetStatus === 'APPROVED' ? 'orange' : targetStatus === 'REJECTED' || targetStatus === 'CANCELLED' ? 'danger' : 'cyan'}
             className="w-1/2"
             isLoading={isSubmitting}
           >
-            Confirm Decision
+            {targetStatus === 'CANCELLED' ? 'Confirm Cancellation' : 'Confirm Decision'}
           </Button>
         </div>
       </form>

@@ -72,6 +72,8 @@ public interface VisitService {
      */
     VisitDetailResponse transitionVisitStatus(UUID id, VisitStatusTransitionRequest request, String approverUsername);
 
+    VisitDetailResponse cancelScheduledVisit(UUID id, VisitStatusTransitionRequest request, String supervisorUsername);
+
     /**
      * Front desk visitor check-in with automatic sequential badge generation (COOPVYYYYMM0000).
      */

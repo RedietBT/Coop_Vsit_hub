@@ -70,9 +70,20 @@ export const visitApi = {
     return response.data;
   },
 
+  cancelScheduledVisit: async (id, reason) => {
+    const response = await apiClient.put(`/api/v1/visits/${id}/cancel`, {
+      status: 'CANCELLED',
+      decisionNotes: reason,
+    });
+    return response.data;
+  },
+
   transitionStatus: async (id, payload) => {
     // payload: { targetStatus: 'APPROVED' | 'REJECTED' | 'UNDER_REVIEW' | 'CANCELLED', approverComments: string }
-    const response = await apiClient.put(`/api/v1/visits/${id}/status`, payload);
+    const response = await apiClient.put(`/api/v1/visits/${id}/status`, {
+      status: payload.targetStatus || payload.status,
+      decisionNotes: payload.approverComments || payload.decisionNotes,
+    });
     return response.data;
   },
 

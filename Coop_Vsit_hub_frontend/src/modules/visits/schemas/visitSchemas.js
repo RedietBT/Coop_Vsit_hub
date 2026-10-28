@@ -12,7 +12,7 @@ export const statusTransitionSchema = z.object({
     'IN_PROGRESS',
     'COMPLETED',
   ]),
-  decisionNotes: z.string().trim().min(3, 'Feedback decision notes are required'),
+  approverComments: z.string().trim().min(3, 'Feedback decision notes are required'),
   assignedRoom: z.string().optional(),
 });
 

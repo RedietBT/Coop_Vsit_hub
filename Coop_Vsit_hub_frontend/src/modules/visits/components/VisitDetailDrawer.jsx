@@ -149,6 +149,12 @@ export const VisitDetailDrawer = () => {
                   </button>
                 </div>
 
+                {detail.status === 'CANCELLED' && detail.decisionNotes && (
+                  <div className="mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                    <p className="font-bold uppercase tracking-wide text-[10px] text-rose-600">Cancellation reason</p>
+                    <p className="mt-1 leading-relaxed">{detail.decisionNotes}</p>
+                  </div>
+                )}
                 {/* State Progression Stepper */}
                 {detail.status !== 'REJECTED' && detail.status !== 'CANCELLED' && (
                   <div className="mt-5 pt-4 border-t border-slate-100">

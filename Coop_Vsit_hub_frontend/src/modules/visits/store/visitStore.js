@@ -156,10 +156,12 @@ export const useVisitStore = create((set, get) => ({
 
   transitionStatus: async (visitId, targetStatus, approverComments) => {
     try {
-      const updated = await visitApi.transitionStatus(visitId, {
-        targetStatus,
-        approverComments,
-      });
+      const updated = targetStatus === 'CANCELLED'
+        ? await visitApi.cancelScheduledVisit(visitId, approverComments)
+        : await visitApi.transitionStatus(visitId, {
+            targetStatus,
+            approverComments,
+          });
       soundPlayer.playNotificationChime();
       get().closeStatusModal();
       if (get().selectedVisit?.id === visitId) {

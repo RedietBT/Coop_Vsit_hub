@@ -35,6 +35,7 @@ public class VisitSummaryResponse {
     private String locationRoom;
     private int visitorCount;
     private String visitorBadgeNumber;
+    private String decisionNotes;
     private GuestCategory guestCategory;
     private String guestDisplayName;
     private String visitorPhone;
@@ -83,6 +84,7 @@ public class VisitSummaryResponse {
                 .locationRoom(visit.getLocationRoom())
                 .visitorCount(visit.getVisitorCount())
                 .visitorBadgeNumber(visit.getVisitorBadgeNumber())
+                .decisionNotes(visit.getDecisionNotes())
                 .guestCategory(visit.getGuestCategory())
                 .guestDisplayName(visit.getGuestDisplayName())
                 .visitorPhone(phone)

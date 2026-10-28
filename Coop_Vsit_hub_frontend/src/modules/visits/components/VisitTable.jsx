@@ -47,6 +47,7 @@ export const VisitTable = () => {
   const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
   const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_ADMIN']);
   const isAdmin = hasRole('ROLE_ADMIN');
+  const isRoomSupervisor = hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETARY']);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -254,6 +255,20 @@ export const VisitTable = () => {
                             </button>
                           )}
 
+                          {/* Room Supervisor / Admin: Cancel Scheduled Visit */}
+                          {isRoomSupervisor && visit.status === 'SCHEDULED' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null);
+                                openStatusModal(visit, 'CANCELLED');
+                              }}
+                              className="w-full px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4 text-rose-600" />
+                              <span>Cancel Scheduled Visit</span>
+                            </button>
+                          )}
                           {/* 5. Security Desk: Check-In */}
                           {isSecurity && visit.status === 'APPROVED' && (
                             <button
