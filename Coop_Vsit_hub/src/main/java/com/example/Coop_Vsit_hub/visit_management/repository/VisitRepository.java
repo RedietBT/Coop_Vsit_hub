@@ -106,11 +106,15 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
     @Query("SELECT v FROM Visit v WHERE v.scheduledStartTime >= :now AND v.status IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.APPROVED, com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SCHEDULED) ORDER BY v.scheduledStartTime ASC")
     List<Visit> findUpcomingScheduledVisits(@Param("now") Instant now);
 
-    @Query("SELECT v FROM Visit v WHERE LOWER(v.locationRoom) = LOWER(:room) " +
+    @Query("SELECT v FROM Visit v WHERE " +
+           "(:room IS NULL OR TRIM(:room) = '' OR " +
+           " LOWER(TRIM(v.locationRoom)) = LOWER(TRIM(:room)) OR " +
+           " LOWER(v.locationRoom) LIKE LOWER(CONCAT('%', TRIM(:room), '%')) OR " +
+           " LOWER(TRIM(:room)) LIKE LOWER(CONCAT('%', TRIM(v.locationRoom), '%'))) " +
            "AND v.status NOT IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.CANCELLED, " +
            "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.REJECTED, " +
            "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.DRAFT) " +
-           "AND v.scheduledStartTime >= :fromDate AND v.scheduledStartTime <= :toDate " +
+           "AND (v.scheduledStartTime <= :toDate AND v.scheduledEndTime >= :fromDate) " +
            "ORDER BY v.scheduledStartTime ASC")
     List<Visit> findActiveRoomVisitsInWindow(
             @Param("room") String room,
@@ -118,12 +122,15 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
             @Param("toDate") Instant toDate
     );
 
-    @Query("SELECT v FROM Visit v WHERE v.locationRoom IS NOT NULL AND v.locationRoom != '' " +
+    @Query("SELECT v FROM Visit v WHERE v.locationRoom IS NOT NULL AND TRIM(v.locationRoom) != '' " +
            "AND v.status NOT IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.CANCELLED, " +
            "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.REJECTED, " +
            "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.DRAFT) " +
-           "AND (:room IS NULL OR LOWER(v.locationRoom) = LOWER(:room)) " +
-           "AND (:fromDate IS NULL OR v.scheduledStartTime >= :fromDate) " +
+           "AND (:room IS NULL OR TRIM(:room) = '' OR " +
+           "     LOWER(TRIM(v.locationRoom)) = LOWER(TRIM(:room)) OR " +
+           "     LOWER(v.locationRoom) LIKE LOWER(CONCAT('%', TRIM(:room), '%')) OR " +
+           "     LOWER(TRIM(:room)) LIKE LOWER(CONCAT('%', TRIM(v.locationRoom), '%'))) " +
+           "AND (:fromDate IS NULL OR v.scheduledEndTime >= :fromDate) " +
            "AND (:toDate IS NULL OR v.scheduledStartTime <= :toDate) " +
            "ORDER BY v.scheduledStartTime DESC")
     List<Visit> findAllRoomBookingsForAdmin(

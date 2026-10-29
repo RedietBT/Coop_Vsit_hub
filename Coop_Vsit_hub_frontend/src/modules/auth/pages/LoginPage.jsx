@@ -19,7 +19,7 @@ export const LoginPage = () => {
 
   const { login, isLoading, error, lockoutUntil, clearError } = useAuthStore();
 
-  const [mode, setMode] = useState('LANDING'); // 'LANDING' | 'STAFF' | 'ADMIN'
+  const [mode, setMode] = useState('STAFF'); // 'STAFF' | 'ADMIN'
   const [enteredPassword, setEnteredPassword] = useState('');
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
 
@@ -111,14 +111,14 @@ export const LoginPage = () => {
         <button
           type="button"
           onClick={() => {
-            setMode('LANDING');
+            setMode('STAFF');
             clearError();
             reset();
           }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#00adef] hover:shadow-md text-slate-700 text-xs font-bold transition-all cursor-pointer"
         >
           <Building2 className="w-4 h-4 text-[#00adef]" />
-          <span>Staff & Reception Portal</span>
+          <span>Switch to Staff Portal</span>
         </button>
       );
     }
@@ -141,21 +141,15 @@ export const LoginPage = () => {
 
   // Titles and Subtitles per mode
   const getHeaderInfo = () => {
-    if (mode === 'LANDING') {
+    if (mode === 'ADMIN') {
       return {
-        title: "Welcome to CoopBank Visit Hub",
-        subtitle: "Enterprise room booking, executive visit scheduling, and reception portal.",
-      };
-    }
-    if (mode === 'STAFF') {
-      return {
-        title: "Access Receptionist & Staff Portal",
-        subtitle: "Sign in with your CoopBank credentials to book rooms and manage visits.",
+        title: "System Administrator Login",
+        subtitle: "Elevated security portal for system administration, user roles, and audit logs.",
       };
     }
     return {
-      title: "System Administrator Login",
-      subtitle: "Elevated security portal for system administration, user roles, and audit logs.",
+      title: "Staff & Reception Login",
+      subtitle: "Sign in with your CoopBank credentials to book rooms and manage visits.",
     };
   };
 
@@ -167,168 +161,140 @@ export const LoginPage = () => {
       subtitle={subtitle}
       topRightAction={renderTopRightAction()}
     >
-      {/* 1. LANDING PORTAL VIEW */}
-      {mode === 'LANDING' && (
-        <div className="space-y-6 text-left">
-          {/* Main Action Card */}
-          <div
+      <div>
+        {/* Mode Selector Tabs */}
+        <div className="flex rounded-2xl bg-slate-100 p-1 mb-5 border border-slate-200/80">
+          <button
+            type="button"
             onClick={() => {
               setMode('STAFF');
               clearError();
+              reset();
             }}
-            className="p-6 rounded-3xl bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-white border-2 border-sky-500/30 hover:border-[#00adef] transition-all group shadow-xs hover:shadow-md cursor-pointer text-left"
+            className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mode === 'STAFF'
+                ? 'bg-white text-[#00adef] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
           >
-            <div className="w-12 h-12 rounded-2xl bg-[#00adef] text-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <h3 className="font-heading font-black text-lg text-slate-900 mb-1 group-hover:text-[#00adef] transition-colors">
-              Access Receptionist & Staff Portal
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed mb-5">
-              Book a meeting room, reserve an executive visit, or check in guest delegations for CoopBank facilities.
-            </p>
-            <div className="flex items-center justify-between pt-2 border-t border-sky-100">
-              <span className="text-xs font-bold text-[#00adef] group-hover:underline">
-                Sign In to Access Booking & Visits
-              </span>
-              <div className="w-8 h-8 rounded-full bg-[#00adef] text-white flex items-center justify-center group-hover:translate-x-1 transition-transform shadow-xs">
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick SSO Security Note */}
-          {/* <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-left flex items-start gap-3">
-            <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-slate-800">Active Directory Single Sign-On</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                CoopBank employees and front-desk staff can sign in directly using their bank account credentials.
-              </p>
-            </div>
-          </div> */}
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Staff & Reception</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('ADMIN');
+              clearError();
+              reset();
+            }}
+            className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mode === 'ADMIN'
+                ? 'bg-white text-[#e38524] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Admin Portal</span>
+          </button>
         </div>
-      )}
 
-      {/* 2. STAFF LOGIN OR ADMIN LOGIN FORM */}
-      {(mode === 'STAFF' || mode === 'ADMIN') && (
-        <div>
-          {/* Back Button */}
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('LANDING');
-                clearError();
-                reset();
-              }}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-            >
-              <span>← Back to Portal Home</span>
-            </button>
-            <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-              {mode === 'STAFF' ? 'Staff SSO' : 'Admin Auth'}
-            </span>
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Active Lockout Timer Banner */}
+          {isLockedOut && (
+            <LockoutCountdown
+              lockoutUntil={lockoutUntil}
+              onCountdownEnd={() => clearError()}
+            />
+          )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Active Lockout Timer Banner */}
-            {isLockedOut && (
-              <LockoutCountdown
-                lockoutUntil={lockoutUntil}
-                onCountdownEnd={() => clearError()}
-              />
-            )}
+          {/* Server Error Alert */}
+          {!isLockedOut && error && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 text-left animate-fadeIn">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
 
-            {/* Server Error Alert */}
-            {!isLockedOut && error && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 text-left animate-fadeIn">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{error}</span>
+          {/* Informational SSO / Local Banner */}
+          {mode === 'STAFF' ? (
+            <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-left flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-blue-900">
+                  Active Directory Single Sign-On
+                </p>
+                <p className="text-[10px] text-blue-700 leading-relaxed">
+                  Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>).
+                </p>
               </div>
-            )}
-
-            {/* Informational SSO / Local Banner */}
-            {mode === 'STAFF' ? (
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-left flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-[#00adef] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[11px] font-semibold text-blue-900">
-                    Active Directory Single Sign-On
-                  </p>
-                  <p className="text-[10px] text-blue-700 leading-relaxed">
-                    Use your bank username (e.g. <span className="font-mono font-bold">dalemu</span> or <span className="font-mono font-bold">staff_test</span>).
-                  </p>
-                </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-left flex items-start gap-2.5">
+              <KeyRound className="w-4 h-4 text-[#e38524] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-amber-900">
+                  Local Administrator Authentication
+                </p>
+                <p className="text-[10px] text-amber-700 leading-relaxed">
+                  Enter administrative credentials (e.g. <span className="font-mono font-bold">admin</span>).
+                </p>
               </div>
-            ) : (
-              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-left flex items-start gap-2.5">
-                <KeyRound className="w-4 h-4 text-[#e38524] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[11px] font-semibold text-amber-900">
-                    Local Administrator Authentication
-                  </p>
-                  <p className="text-[10px] text-amber-700 leading-relaxed">
-                    Enter administrative credentials (e.g. <span className="font-mono font-bold">admin</span>).
-                  </p>
-                </div>
-              </div>
-            )}
+            </div>
+          )}
 
-            {/* Username / Email Field */}
+          {/* Username / Email Field */}
+          <Input
+            label={mode === 'STAFF' ? "Staff AD Username or Email" : "Admin Username or Email"}
+            name="identifier"
+            placeholder={mode === 'STAFF' ? "e.g. dalemu or staff_test" : "e.g. admin"}
+            icon={User}
+            sanitize="identifier"
+            disabled={isLoading || isLockedOut}
+            error={errors.identifier?.message}
+            required
+            {...register('identifier')}
+          />
+
+          {/* Password Field */}
+          <div className="space-y-1.5">
             <Input
-              label={mode === 'STAFF' ? "Staff AD Username or Email" : "Admin Username or Email"}
-              name="identifier"
-              placeholder={mode === 'STAFF' ? "e.g. dalemu or staff_test" : "e.g. admin"}
-              icon={User}
-              sanitize="identifier"
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="••••••••••••"
+              icon={Lock}
+              sanitize={false}
               disabled={isLoading || isLockedOut}
-              error={errors.identifier?.message}
+              error={errors.password?.message}
               required
-              {...register('identifier')}
+              {...register('password')}
             />
 
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <Input
-                label="Password"
-                name="password"
-                type="password"
-                placeholder="••••••••••••"
-                icon={Lock}
-                sanitize={false}
-                disabled={isLoading || isLockedOut}
-                error={errors.password?.message}
-                required
-                {...register('password')}
-              />
-
-              <div className="flex justify-end">
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-bold text-[#00adef] hover:text-[#e38524] hover:underline transition-all cursor-pointer"
-                >
-                  Forgot Password?
-                </Link>
-              </div>
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-bold text-[#00adef] hover:text-[#e38524] hover:underline transition-all cursor-pointer"
+              >
+                Forgot Password?
+              </Link>
             </div>
+          </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              variant={mode === 'STAFF' ? 'primary' : 'orange'}
-              size="lg"
-              className="w-full mt-2"
-              isLoading={isLoading}
-              disabled={isLockedOut}
-              icon={ArrowRight}
-              iconPosition="right"
-            >
-              {mode === 'STAFF' ? 'Sign In & Open Booking Calendar' : 'Sign In as System Admin'}
-            </Button>
-          </form>
-        </div>
-      )}
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            variant={mode === 'STAFF' ? 'primary' : 'orange'}
+            size="lg"
+            className="w-full mt-2"
+            isLoading={isLoading}
+            disabled={isLockedOut}
+            icon={ArrowRight}
+            iconPosition="right"
+          >
+            {mode === 'STAFF' ? 'Sign In & Open Booking Calendar' : 'Sign In as System Admin'}
+          </Button>
+        </form>
+      </div>
 
       {/* Mandatory First-Time Password Change Modal */}
       <FirstTimeChangePasswordModal

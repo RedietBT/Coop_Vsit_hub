@@ -57,6 +57,10 @@ public class VisitServiceImpl implements VisitService {
 
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
+    private com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingRepository roomBookingRepository;
+
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
     private FeedbackService feedbackService;
 
     @org.springframework.context.annotation.Lazy
@@ -94,8 +98,26 @@ public class VisitServiceImpl implements VisitService {
                 status, priority, department, locationRoom, page, size);
 
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortProperty = (sortBy != null && !sortBy.isBlank()) ? sortBy : "scheduledStartTime";
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortProperty).and(Sort.by(Sort.Direction.DESC, "createdAt")));
+        String sortProperty = "scheduledStartTime";
+        if ("createdAt".equalsIgnoreCase(sortBy) || "created".equalsIgnoreCase(sortBy) || "createdDate".equalsIgnoreCase(sortBy)) {
+            sortProperty = "createdAt";
+        } else if ("scheduledEndTime".equalsIgnoreCase(sortBy) || "endTime".equalsIgnoreCase(sortBy)) {
+            sortProperty = "scheduledEndTime";
+        } else if ("title".equalsIgnoreCase(sortBy)) {
+            sortProperty = "title";
+        } else if ("status".equalsIgnoreCase(sortBy)) {
+            sortProperty = "status";
+        } else if ("priority".equalsIgnoreCase(sortBy) || "priorityLevel".equalsIgnoreCase(sortBy)) {
+            sortProperty = "priorityLevel";
+        } else if ("date".equalsIgnoreCase(sortBy) || "scheduledDate".equalsIgnoreCase(sortBy) || "schedule".equalsIgnoreCase(sortBy)) {
+            sortProperty = "scheduledStartTime";
+        } else if (sortBy != null && !sortBy.isBlank()) {
+            sortProperty = sortBy.trim();
+        }
+
+        org.springframework.data.domain.Sort.Order primaryOrder = new org.springframework.data.domain.Sort.Order(direction, sortProperty, org.springframework.data.domain.Sort.NullHandling.NULLS_LAST);
+        org.springframework.data.domain.Sort.Order fallbackOrder = new org.springframework.data.domain.Sort.Order(org.springframework.data.domain.Sort.Direction.DESC, "createdAt", org.springframework.data.domain.Sort.NullHandling.NULLS_LAST);
+        Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(primaryOrder, fallbackOrder));
 
         Specification<Visit> spec = VisitSpecification.filterVisits(
                 search, status, priority, visitType, guestCategory, department, locationRoom,
@@ -105,7 +127,8 @@ public class VisitServiceImpl implements VisitService {
         Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
         Instant now = Instant.now();
         Page<VisitSummaryResponse> dtoPage = visitPage.map(v -> {
-            VisitSummaryResponse dto = VisitSummaryResponse.from(v);            if (v.getScheduledEndTime() != null
+            VisitSummaryResponse dto = VisitSummaryResponse.from(v);
+            enrichVisitSummaryWithBooking(v, dto);            if (v.getScheduledEndTime() != null
                     && !v.getScheduledEndTime().isAfter(now)
                     && v.getStatus() != VisitStatus.CANCELLED
                     && v.getStatus() != VisitStatus.REJECTED) {
@@ -156,7 +179,9 @@ public class VisitServiceImpl implements VisitService {
                     .map(com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse::from)
                     .orElse(null);
         }
-        return VisitDetailResponse.from(visit, fbDto);
+        VisitDetailResponse detailResponse = VisitDetailResponse.from(visit, fbDto);
+        enrichVisitDetailWithBooking(visit, detailResponse);
+        return detailResponse;
     }
 
     @Override
@@ -172,7 +197,9 @@ public class VisitServiceImpl implements VisitService {
                 fbDto = feedbackService.getFeedbackByVisitId(visit.getId());
             } catch (Exception ignored) {}
         }
-        return VisitDetailResponse.from(visit, fbDto);
+        VisitDetailResponse detailResponse = VisitDetailResponse.from(visit, fbDto);
+        enrichVisitDetailWithBooking(visit, detailResponse);
+        return detailResponse;
     }
 
     @Override
@@ -1112,5 +1139,57 @@ public class VisitServiceImpl implements VisitService {
         );
 
         return VisitDetailResponse.from(saved);
+    }
+
+    private void enrichVisitSummaryWithBooking(Visit visit, VisitSummaryResponse dto) {
+        if (roomBookingRepository == null) return;
+        com.example.coop_vsit_hub.room_booking_management.model.RoomBooking rb = null;
+        if (visit.getLinkedBookingId() != null) {
+            rb = roomBookingRepository.findById(visit.getLinkedBookingId()).orElse(null);
+        }
+        if (rb == null) {
+            rb = roomBookingRepository.findByLinkedVisitId(visit.getId()).orElse(null);
+        }
+        if (rb != null) {
+            if (StringUtils.hasText(rb.getBookingCode())) dto.setBookingCode(rb.getBookingCode().trim());
+            if (StringUtils.hasText(rb.getBookedByName()) && !"Coop Staff Member".equalsIgnoreCase(rb.getBookedByName().trim())) {
+                dto.setReserverName(rb.getBookedByName().trim());
+            }
+            if (StringUtils.hasText(rb.getBookedByUsername())) dto.setReserverUsername(rb.getBookedByUsername().trim());
+            if (StringUtils.hasText(rb.getBookedByEmail())) dto.setReserverEmail(rb.getBookedByEmail().trim());
+            if (StringUtils.hasText(rb.getBookedByPhone())) dto.setReserverPhone(rb.getBookedByPhone().trim());
+            if (StringUtils.hasText(rb.getHostDepartment())) dto.setReserverDepartment(rb.getHostDepartment().trim());
+            if (StringUtils.hasText(rb.getRequestedItems())) dto.setRequestedItems(rb.getRequestedItems().trim());
+            if (StringUtils.hasText(rb.getMeetingAgenda())) dto.setMeetingAgenda(rb.getMeetingAgenda().trim());
+            if (rb.getExpectedAttendees() != null && rb.getExpectedAttendees() > 0) dto.setExpectedAttendees(rb.getExpectedAttendees());
+            if (rb.getEngagementType() != null) dto.setEngagementType(rb.getEngagementType().name());
+            dto.setLinkedBookingId(rb.getId());
+        }
+    }
+
+    private void enrichVisitDetailWithBooking(Visit visit, VisitDetailResponse dto) {
+        if (roomBookingRepository == null) return;
+        com.example.coop_vsit_hub.room_booking_management.model.RoomBooking rb = null;
+        if (visit.getLinkedBookingId() != null) {
+            rb = roomBookingRepository.findById(visit.getLinkedBookingId()).orElse(null);
+        }
+        if (rb == null) {
+            rb = roomBookingRepository.findByLinkedVisitId(visit.getId()).orElse(null);
+        }
+        if (rb != null) {
+            if (StringUtils.hasText(rb.getBookingCode())) dto.setBookingCode(rb.getBookingCode().trim());
+            if (StringUtils.hasText(rb.getBookedByName()) && !"Coop Staff Member".equalsIgnoreCase(rb.getBookedByName().trim())) {
+                dto.setReserverName(rb.getBookedByName().trim());
+            }
+            if (StringUtils.hasText(rb.getBookedByUsername())) dto.setReserverUsername(rb.getBookedByUsername().trim());
+            if (StringUtils.hasText(rb.getBookedByEmail())) dto.setReserverEmail(rb.getBookedByEmail().trim());
+            if (StringUtils.hasText(rb.getBookedByPhone())) dto.setReserverPhone(rb.getBookedByPhone().trim());
+            if (StringUtils.hasText(rb.getHostDepartment())) dto.setReserverDepartment(rb.getHostDepartment().trim());
+            if (StringUtils.hasText(rb.getRequestedItems())) dto.setRequestedItems(rb.getRequestedItems().trim());
+            if (StringUtils.hasText(rb.getMeetingAgenda())) dto.setMeetingAgenda(rb.getMeetingAgenda().trim());
+            if (rb.getExpectedAttendees() != null && rb.getExpectedAttendees() > 0) dto.setExpectedAttendees(rb.getExpectedAttendees());
+            if (rb.getEngagementType() != null) dto.setEngagementType(rb.getEngagementType().name());
+            dto.setLinkedBookingId(rb.getId());
+        }
     }
 }

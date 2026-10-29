@@ -81,6 +81,19 @@ public class VisitDetailResponse {
     private UserDetailResponse sponsor;
     private UserDetailResponse approver;
 
+    // Reserver Details & Linked Room Booking Parameters
+    private String reserverName;
+    private String reserverUsername;
+    private String reserverEmail;
+    private String reserverPhone;
+    private String reserverDepartment;
+    private String requestedItems;
+    private String bookingCode;
+    private UUID linkedBookingId;
+    private String engagementType;
+    private String meetingAgenda;
+    private Integer expectedAttendees;
+
     // Timeline
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
@@ -107,6 +120,21 @@ public class VisitDetailResponse {
     }
 
     public static VisitDetailResponse from(Visit visit, com.example.coop_vsit_hub.feedback_management.dto.FeedbackDetailResponse feedback) {
+        String resName = null;
+        String resUser = null;
+        String resEmail = null;
+        String resPhone = null;
+        String resDept = visit.getRequestingDepartment();
+        if (visit.getRequester() != null) {
+            resName = visit.getRequester().getFullName();
+            resUser = visit.getRequester().getUsername();
+            resEmail = visit.getRequester().getEmail();
+            resPhone = visit.getRequester().getPhoneNumber();
+            if (resDept == null || resDept.isBlank()) {
+                resDept = visit.getRequester().getDepartment();
+            }
+        }
+
         return VisitDetailResponse.builder()
                 .id(visit.getId())
                 .visitCode(visit.getVisitCode())
@@ -168,6 +196,15 @@ public class VisitDetailResponse {
                 .directorReviewer(visit.getDirectorReviewer() != null ? UserDetailResponse.from(visit.getDirectorReviewer()) : null)
                 .attachmentUrl(visit.getAttachmentUrl())
                 .attachmentName(visit.getAttachmentName())
+                .reserverName(resName)
+                .reserverUsername(resUser)
+                .reserverEmail(resEmail)
+                .reserverPhone(resPhone)
+                .reserverDepartment(resDept)
+                .linkedBookingId(visit.getLinkedBookingId())
+                .expectedAttendees(visit.getVisitorCount())
+                .meetingAgenda(visit.getVisitObjective())
+                .engagementType(visit.getVisitType() != null ? visit.getVisitType().name() : "INTERNAL")
                 .feedback(feedback)
                 .createdAt(visit.getCreatedAt())
                 .updatedAt(visit.getUpdatedAt())

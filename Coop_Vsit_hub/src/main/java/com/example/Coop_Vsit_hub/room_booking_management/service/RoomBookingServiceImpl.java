@@ -103,7 +103,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         // Overlap validation: Ensure room is not already booked during this time window
-        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(roomName, startTime, endTime);
+        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(roomName, RoomBookingStatus.CONFIRMED, startTime, endTime);
         if (!overlapping.isEmpty()) {
             RoomBooking conflict = overlapping.get(0);
             String conflictStart = DateTimeFormatter.ofPattern("hh:mm a (MMM dd)").withZone(DEFAULT_ZONE).format(conflict.getScheduledStartTime());
@@ -582,7 +582,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Transactional(readOnly = true)
     public List<RoomBookingSlotResponse> getRoomSlots(String roomName, Instant fromDate, Instant toDate) {
         String cleanRoom = (roomName != null && !roomName.isBlank()) ? roomName.trim() : "";
-        List<RoomBooking> bookings = roomBookingRepository.findActiveRoomSlots(cleanRoom, fromDate, toDate);
+        List<RoomBooking> bookings = roomBookingRepository.findActiveRoomSlots(cleanRoom, RoomBookingStatus.CANCELLED, fromDate, toDate);
         Set<UUID> linkedVisitIds = bookings.stream()
                 .map(RoomBooking::getLinkedVisitId)
                 .filter(Objects::nonNull)
@@ -620,7 +620,11 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
             for (var v : unlinkedVisits) {
                 User host = v.getRequester() != null ? v.getRequester() : v.getSponsor();
-                String hostName = host != null && StringUtils.hasText(host.getFullName()) ? host.getFullName().trim() : "Coop Staff Member";
+                String hostName = host != null && StringUtils.hasText(host.getFullName())
+                        ? host.getFullName().trim()
+                        : (host != null && StringUtils.hasText(host.getUsername())
+                                ? host.getUsername().trim()
+                                : (host != null && StringUtils.hasText(host.getEmail()) ? host.getEmail().trim() : "Coop Staff Member"));
                 String hostEmail = host != null ? host.getEmail() : null;
                 String hostPhone = host != null ? host.getPhoneNumber() : null;
                 String hostDept = host != null && StringUtils.hasText(host.getDepartment()) ? host.getDepartment() : v.getRequestingDepartment();
@@ -655,7 +659,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @Transactional(readOnly = true)
     public List<RoomBookingResponse> getActiveBookingsForDate(Instant fromDate, Instant toDate) {
-        return roomBookingRepository.findAllActiveForDateRange(fromDate, toDate).stream()
+        return roomBookingRepository.findAllActiveForDateRange(RoomBookingStatus.CANCELLED, fromDate, toDate).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -987,7 +991,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         // Conflict check: Ensure slot is not already reserved by another booking
-        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(booking.getRoomName(), newStart, newEnd);
+        List<RoomBooking> overlapping = roomBookingRepository.findOverlappingBookings(booking.getRoomName(), RoomBookingStatus.CONFIRMED, newStart, newEnd);
         boolean hasConflict = overlapping.stream().anyMatch(b -> !b.getId().equals(booking.getId()));
         if (hasConflict) {
             RoomBooking conflict = overlapping.stream().filter(b -> !b.getId().equals(booking.getId())).findFirst().get();
@@ -1218,8 +1222,17 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 if (v.getRequester() != null && StringUtils.hasText(v.getRequester().getFullName())) {
                     return v.getRequester().getFullName().trim();
                 }
+                if (v.getRequester() != null && StringUtils.hasText(v.getRequester().getUsername())) {
+                    return v.getRequester().getUsername().trim();
+                }
+                if (v.getRequester() != null && StringUtils.hasText(v.getRequester().getEmail())) {
+                    return v.getRequester().getEmail().trim();
+                }
                 if (v.getSponsor() != null && StringUtils.hasText(v.getSponsor().getFullName())) {
                     return v.getSponsor().getFullName().trim();
+                }
+                if (v.getSponsor() != null && StringUtils.hasText(v.getSponsor().getUsername())) {
+                    return v.getSponsor().getUsername().trim();
                 }
             }
         }
@@ -1238,6 +1251,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             if (u != null && StringUtils.hasText(u.getFullName())) {
                 return u.getFullName().trim();
             }
+        }
+
+        if (StringUtils.hasText(b.getBookedByUsername()) && !"staff".equalsIgnoreCase(b.getBookedByUsername().trim())) {
+            return b.getBookedByUsername().trim();
+        }
+        if (StringUtils.hasText(b.getBookedByEmail())) {
+            return b.getBookedByEmail().trim();
         }
 
         return StringUtils.hasText(existing) ? existing.trim() : "Coop Staff Member";

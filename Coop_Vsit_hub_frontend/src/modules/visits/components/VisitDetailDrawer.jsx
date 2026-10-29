@@ -24,6 +24,7 @@ import {
   MessageSquareQuote,
   Pin,
   PinOff,
+  Coffee,
 } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -121,10 +122,15 @@ export const VisitDetailDrawer = () => {
               <div className="p-6 border-b border-slate-100 bg-linear-to-r from-sky-50/60 via-white to-orange-50/40">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span className="font-mono text-sm font-black text-[#00adef]">
                         {detail.visitCode || 'VIS-2026'}
                       </span>
+                      {detail.bookingCode && (
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
+                          Ref: {detail.bookingCode}
+                        </span>
+                      )}
                       <Badge variant={detail.status} pulse={detail.status === 'IN_PROGRESS'}>
                         {detail.status}
                       </Badge>
@@ -191,7 +197,111 @@ export const VisitDetailDrawer = () => {
 
               {/* Body Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* 1. Delegation & Guest Details */}
+                {/* 1. Reserving Staff Member (Booked By) */}
+                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-amber-600" />
+                      <span>Reserving Staff Member (Booked By)</span>
+                    </div>
+                    {detail.bookingCode && (
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-amber-300 text-amber-900">
+                        Room Ref: {detail.bookingCode}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase">Staff Reserver Name</p>
+                      <p className="font-bold text-[#000000] text-sm mt-0.5">
+                        {detail.reserverName || detail.requester?.fullName || 'Coop Staff Member'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase">Department</p>
+                      <p className="font-bold text-slate-800 mt-0.5">
+                        {detail.reserverDepartment || detail.requestingDepartment || detail.requester?.department || 'Executive Office'}
+                      </p>
+                    </div>
+
+                    {(detail.reserverEmail || detail.requester?.email) && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Staff Email</p>
+                        <a
+                          href={`mailto:${detail.reserverEmail || detail.requester?.email}`}
+                          className="font-medium text-sky-600 hover:underline flex items-center gap-1 mt-0.5"
+                        >
+                          <Mail className="w-3 h-3 text-sky-500" />
+                          <span>{detail.reserverEmail || detail.requester?.email}</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {(detail.reserverPhone || detail.requester?.phoneNumber) && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Direct Phone</p>
+                        <a
+                          href={`tel:${detail.reserverPhone || detail.requester?.phoneNumber}`}
+                          className="font-medium text-emerald-600 hover:underline flex items-center gap-1 mt-0.5"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-500" />
+                          <span>{detail.reserverPhone || detail.requester?.phoneNumber}</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {detail.reserverUsername && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Username / Staff ID</p>
+                        <p className="font-mono text-slate-700 mt-0.5">{detail.reserverUsername}</p>
+                      </div>
+                    )}
+
+                    {detail.engagementType && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Engagement Scope</p>
+                        <p className="font-semibold text-slate-800 mt-0.5">
+                          {detail.engagementType === 'EXTERNAL' ? 'External Stakeholders / Partners' : 'Internal Staff Meeting'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Special Requests, Amenities & Supervisor Refreshments */}
+                {(detail.requestedItems || (detail.meetingAgenda && detail.meetingAgenda !== detail.visitObjective)) && (
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                      <Sparkles className="w-4 h-4 text-[#e38524]" />
+                      <span>Meeting Amenities & Hospitality Arrangements</span>
+                    </div>
+
+                    {detail.requestedItems && (
+                      <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
+                          <Coffee className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          <span>Submitted Arrangements & Amenities:</span>
+                        </div>
+                        <p className="text-amber-950 font-medium whitespace-pre-wrap leading-relaxed mt-1">
+                          {detail.requestedItems}
+                        </p>
+                      </div>
+                    )}
+
+                    {detail.meetingAgenda && detail.meetingAgenda !== detail.visitObjective && (
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Booking Agenda</p>
+                        <p className="text-slate-700 mt-0.5 text-xs whitespace-pre-wrap leading-relaxed">
+                          {detail.meetingAgenda}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Delegation & Guest Details */}
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                     <div className="flex items-center gap-1.5">

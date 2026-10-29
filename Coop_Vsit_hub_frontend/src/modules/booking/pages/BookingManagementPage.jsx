@@ -32,6 +32,7 @@ import {
   ChevronLeft,
   ChevronRight,
   XCircle,
+  Coffee,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -1178,6 +1179,16 @@ export const BookingManagementPage = () => {
                           <span className="truncate">{room.contactEmail}</span>
                         </div>
                       )}
+
+                      <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-amber-200/70">
+                        <span className="text-amber-900 font-semibold flex items-center gap-1">
+                          <Coffee className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Refreshments:</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                          Set by Room Supervisor
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1483,6 +1494,17 @@ export const BookingManagementPage = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
               />
+            </div>
+
+            {/* Room Hospitality Notice */}
+            <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+              <Coffee className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-[11px]">Room Hospitality Policy</p>
+                <p className="text-[10px] text-amber-800 leading-relaxed">
+                  Coffee, tea, and refreshments are set and arranged directly by the Room Supervisor for this space rather than being defaulted on the booking page.
+                </p>
+              </div>
             </div>
 
             {/* Actions */}

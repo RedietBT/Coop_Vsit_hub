@@ -25,32 +25,42 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
 
     Optional<RoomBooking> findTopByOrderByCreatedAtDesc();
 
-    @Query("SELECT b FROM RoomBooking b WHERE LOWER(b.roomName) = LOWER(:roomName) " +
-           "AND b.status = 'CONFIRMED' " +
+    @Query("SELECT b FROM RoomBooking b WHERE " +
+           "(:roomName IS NULL OR TRIM(:roomName) = '' OR " +
+           " LOWER(TRIM(b.roomName)) = LOWER(TRIM(:roomName)) OR " +
+           " LOWER(b.roomName) LIKE LOWER(CONCAT('%', TRIM(:roomName), '%')) OR " +
+           " LOWER(TRIM(:roomName)) LIKE LOWER(CONCAT('%', TRIM(b.roomName), '%'))) " +
+           "AND (b.status IS NULL OR b.status = :confirmedStatus) " +
            "AND b.scheduledStartTime < :endTime " +
            "AND b.scheduledEndTime > :startTime")
     List<RoomBooking> findOverlappingBookings(
             @Param("roomName") String roomName,
+            @Param("confirmedStatus") RoomBookingStatus confirmedStatus,
             @Param("startTime") Instant startTime,
             @Param("endTime") Instant endTime
     );
 
-    @Query("SELECT b FROM RoomBooking b WHERE LOWER(b.roomName) = LOWER(:roomName) " +
-           "AND b.status != com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus.CANCELLED " +
-           "AND b.scheduledStartTime >= :fromDate " +
-           "AND b.scheduledStartTime <= :toDate " +
+    @Query("SELECT b FROM RoomBooking b WHERE " +
+           "(:roomName IS NULL OR TRIM(:roomName) = '' OR " +
+           " LOWER(TRIM(b.roomName)) = LOWER(TRIM(:roomName)) OR " +
+           " LOWER(b.roomName) LIKE LOWER(CONCAT('%', TRIM(:roomName), '%')) OR " +
+           " LOWER(TRIM(:roomName)) LIKE LOWER(CONCAT('%', TRIM(b.roomName), '%'))) " +
+           "AND (b.status IS NULL OR b.status != :cancelledStatus) " +
+           "AND (b.scheduledStartTime <= :toDate AND b.scheduledEndTime >= :fromDate) " +
            "ORDER BY b.scheduledStartTime ASC")
     List<RoomBooking> findActiveRoomSlots(
             @Param("roomName") String roomName,
+            @Param("cancelledStatus") RoomBookingStatus cancelledStatus,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
     );
 
-    @Query("SELECT b FROM RoomBooking b WHERE b.status = 'CONFIRMED' " +
-           "AND b.scheduledStartTime >= :fromDate " +
-           "AND b.scheduledStartTime <= :toDate " +
+    @Query("SELECT b FROM RoomBooking b WHERE " +
+           "(b.status IS NULL OR b.status != :cancelledStatus) " +
+           "AND (b.scheduledStartTime <= :toDate AND b.scheduledEndTime >= :fromDate) " +
            "ORDER BY b.scheduledStartTime ASC")
     List<RoomBooking> findAllActiveForDateRange(
+            @Param("cancelledStatus") RoomBookingStatus cancelledStatus,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
     );

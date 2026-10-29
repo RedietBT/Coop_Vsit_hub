@@ -12,6 +12,8 @@ export const useVisitStore = create((set, get) => ({
   isLoading: false,
   error: null,
   fetchRequestId: 0,
+  sortBy: 'scheduledStartTime',
+  sortDirection: 'desc',
 
   filters: {
     search: '',
@@ -31,6 +33,15 @@ export const useVisitStore = create((set, get) => ({
   organizations: [],
   individualGuests: [],
 
+  setSorting: (newSortBy, newSortDirection) => {
+    set({
+      sortBy: newSortBy,
+      sortDirection: newSortDirection,
+      currentPage: 0,
+    });
+    get().fetchVisits();
+  },
+
   setFilters: (newFilters) => {
     set((state) => ({
       filters: { ...state.filters, ...newFilters },
@@ -48,6 +59,8 @@ export const useVisitStore = create((set, get) => ({
         department: '',
         guestCategory: '',
       },
+      sortBy: 'scheduledStartTime',
+      sortDirection: 'desc',
       currentPage: 0,
     });
     get().fetchVisits();
@@ -96,12 +109,12 @@ export const useVisitStore = create((set, get) => ({
     const requestId = get().fetchRequestId + 1;
     set({ isLoading: true, error: null, fetchRequestId: requestId });
     try {
-      const { filters, currentPage, pageSize } = get();
+      const { filters, currentPage, pageSize, sortBy, sortDirection } = get();
       const params = {
         page: currentPage,
         size: pageSize,
-        sortBy: 'scheduledStartTime',
-        sortDirection: 'desc',
+        sortBy: sortBy || 'scheduledStartTime',
+        sortDirection: sortDirection || 'desc',
         ...(filters.search && { search: filters.search.trim() }),
         ...(filters.status && { status: filters.status }),
         ...(filters.priority && { priority: filters.priority }),

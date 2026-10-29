@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw, ArrowUpDown } from 'lucide-react';
 import useVisitStore from '../store/visitStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
 
@@ -13,7 +13,7 @@ const STATUS_PILLS = [
 ];
 
 export const VisitFilterToolbar = () => {
-  const { filters, setFilters, resetFilters, totalElements } = useVisitStore();
+  const { filters, setFilters, resetFilters, totalElements, sortBy, sortDirection, setSorting } = useVisitStore();
   const { departments, fetchAllMasterData } = useMasterDataStore();
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
@@ -62,6 +62,25 @@ export const VisitFilterToolbar = () => {
 
         {/* Filter Dropdowns & Create CTA */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {/* Date Sorting Dropdown */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 py-1.5 px-3 rounded-2xl shadow-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
+            <select
+              value={`${sortBy || 'scheduledStartTime'}-${sortDirection || 'desc'}`}
+              onChange={(e) => {
+                const [newSortBy, newSortDir] = e.target.value.split('-');
+                setSorting(newSortBy, newSortDir);
+              }}
+              className="text-xs font-semibold bg-transparent text-slate-700 focus:outline-none cursor-pointer py-1"
+              title="Sort visits list by date"
+            >
+              <option value="scheduledStartTime-desc">Date: Latest First</option>
+              <option value="scheduledStartTime-asc">Date: Earliest First</option>
+              <option value="createdAt-desc">Created: Most Recent</option>
+              <option value="createdAt-asc">Created: Oldest First</option>
+            </select>
+          </div>
+
           {/* Department Filter */}
           <select
             value={filters.department || ''}

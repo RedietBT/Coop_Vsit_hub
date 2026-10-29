@@ -60,6 +60,38 @@ export const StatusTransitionModal = () => {
       maxWidth="max-w-md"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-left">
+        {/* Reserver & Visit Summary Banner */}
+        {visit && (
+          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-semibold">Reserver (Booked By):</span>
+              <span className="font-bold text-slate-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px]">
+                {visit.reserverName || visit.requesterName || 'Coop Staff Member'}
+              </span>
+            </div>
+            {visit.guestDisplayName && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Guest / Partner:</span>
+                <span className="font-semibold text-slate-800">
+                  {visit.guestDisplayName}
+                </span>
+              </div>
+            )}
+            {visit.locationRoom && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Meeting Room:</span>
+                <span className="font-semibold text-slate-700">{visit.locationRoom}</span>
+              </div>
+            )}
+            {visit.requestedItems && (
+              <div className="pt-1 border-t border-slate-200/80 text-[11px] text-amber-900 flex items-start gap-1">
+                <span className="font-bold shrink-0">Amenities:</span>
+                <span className="font-medium line-clamp-2">{visit.requestedItems}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Status Selection Buttons */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 mb-2">

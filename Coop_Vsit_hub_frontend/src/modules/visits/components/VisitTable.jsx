@@ -30,6 +30,9 @@ export const VisitTable = () => {
     totalPages,
     currentPage,
     isLoading,
+    sortBy,
+    sortDirection,
+    setSorting,
     setPage,
     fetchVisits,
     openDetailDrawer,
@@ -38,6 +41,14 @@ export const VisitTable = () => {
     checkOut,
     deleteVisit,
   } = useVisitStore();
+
+  const handleToggleScheduleSort = () => {
+    if (sortBy === 'scheduledStartTime') {
+      setSorting('scheduledStartTime', sortDirection === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSorting('scheduledStartTime', 'desc');
+    }
+  };
 
   const { hasRole, hasAnyRole } = useAuthStore();
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -84,10 +95,31 @@ export const VisitTable = () => {
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-400 font-bold uppercase text-[10px]">
               <th className="py-3.5 pl-6">Visit Identifier</th>
-              <th className="py-3.5 px-4">Title & Guest Category</th>
+              <th className="py-3.5 px-4">Title, Reserver & Guest</th>
               <th className="py-3.5 px-4">Lifecycle Status</th>
               <th className="py-3.5 px-4">Priority</th>
-              <th className="py-3.5 px-4">Meeting Room & Schedule</th>
+              <th
+                className="py-3.5 px-4 cursor-pointer hover:text-[#00adef] transition-colors select-none"
+                onClick={handleToggleScheduleSort}
+                title="Click to toggle sorting by date (latest / earliest first)"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span>Meeting Room & Schedule</span>
+                  {sortBy === 'scheduledStartTime' ? (
+                    sortDirection === 'desc' ? (
+                      <span className="inline-flex items-center gap-0.5 text-[#00adef] bg-sky-50 px-1.5 py-0.5 rounded text-[9px] font-bold lowercase tracking-normal">
+                        latest ↓
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 text-[#00adef] bg-sky-50 px-1.5 py-0.5 rounded text-[9px] font-bold lowercase tracking-normal">
+                        earliest ↑
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-slate-300 hover:text-slate-500 text-[10px]">↕</span>
+                  )}
+                </div>
+              </th>
               <th className="py-3.5 pr-6 text-right">Actions</th>
             </tr>
           </thead>
@@ -130,20 +162,54 @@ export const VisitTable = () => {
                     </div>
                   </td>
 
-                  {/* Title & Guest Display */}
+                  {/* Title, Reserver & Guest Display */}
                   <td className="py-4 px-4 font-bold text-[#000000]">
-                    <p className="truncate max-w-[240px] group-hover:text-[#00adef] transition-colors">
-                      {visit.title}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-[11px] font-normal text-slate-500">
-                      {visit.guestCategory === 'ORGANIZATION' ? (
-                        <Building2 className="w-3.5 h-3.5 text-[#00adef] shrink-0" />
-                      ) : (
-                        <User className="w-3.5 h-3.5 text-[#e38524] shrink-0" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="truncate max-w-[240px] group-hover:text-[#00adef] transition-colors">
+                        {visit.title}
+                      </p>
+                      {visit.bookingCode && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal">
+                          Ref: {visit.bookingCode}
+                        </span>
                       )}
-                      <span className="truncate max-w-[200px] font-medium text-slate-700">
-                        {visit.guestDisplayName || 'Guest Partner'}
-                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1 mt-1.5 text-[11px] font-normal">
+                      {/* Reserver / Booker */}
+                      <div className="flex items-center gap-1.5 text-slate-700 flex-wrap">
+                        <span className="text-slate-400 font-semibold flex items-center gap-1 text-[10px]">
+                          <User className="w-3 h-3 text-amber-500" />
+                          <span>Reserver:</span>
+                        </span>
+                        <span className="font-bold text-slate-900 bg-amber-50/80 border border-amber-200/70 px-1.5 py-0.5 rounded text-[11px]">
+                          {visit.reserverName || visit.requesterName || 'Coop Staff Member'}
+                        </span>
+                        {(visit.reserverDepartment || visit.requestingDepartment) && (
+                          <span className="text-slate-500 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-medium">
+                            {visit.reserverDepartment || visit.requestingDepartment}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Guest / Entity if available */}
+                      {(visit.guestDisplayName || visit.guestOrganizationName) ? (
+                        <div className="flex items-center gap-1.5 text-slate-600 flex-wrap">
+                          <span className="text-slate-400 font-semibold flex items-center gap-1 text-[10px]">
+                            {visit.guestCategory === 'ORGANIZATION' ? (
+                              <Building2 className="w-3 h-3 text-[#00adef]" />
+                            ) : (
+                              <Users className="w-3 h-3 text-[#e38524]" />
+                            )}
+                            <span>Guest:</span>
+                          </span>
+                          <span className="font-semibold text-slate-800 bg-sky-50/70 border border-sky-200/70 px-1.5 py-0.5 rounded text-[11px]">
+                            {visit.guestDisplayName || visit.guestOrganizationName}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">Internal Staff Attendance</span>
+                      )}
                     </div>
                   </td>
 
