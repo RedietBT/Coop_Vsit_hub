@@ -132,6 +132,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 ? currentUser.getPhoneNumber()
                 : (StringUtils.hasText(request.getBookedByPhone()) ? request.getBookedByPhone().trim() : null);
 
+        com.example.coop_vsit_hub.visit_management.enums.VisitType engagementType = com.example.coop_vsit_hub.visit_management.enums.VisitType.INTERNAL;
+        if (StringUtils.hasText(request.getEngagementType())) {
+            try {
+                engagementType = com.example.coop_vsit_hub.visit_management.enums.VisitType.valueOf(request.getEngagementType().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                engagementType = com.example.coop_vsit_hub.visit_management.enums.VisitType.INTERNAL;
+            }
+        }
+
         RoomBooking booking = RoomBooking.builder()
                 .bookingCode(bookingCode)
                 .roomName(roomName)
@@ -149,6 +158,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .requestedItems(StringUtils.hasText(request.getRequestedItems()) ? request.getRequestedItems().trim() : null)
                 .scheduledStartTime(startTime)
                 .scheduledEndTime(endTime)
+                .engagementType(engagementType)
                 .status(RoomBookingStatus.CONFIRMED)
                 .build();
 
@@ -184,11 +194,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         ? saved.getGuestName().trim()
                         : (StringUtils.hasText(saved.getGuestOrganizationName()) ? saved.getGuestOrganizationName().trim() : saved.getBookedByName());
 
+                com.example.coop_vsit_hub.visit_management.enums.VisitType visitEngagementType = saved.getEngagementType() != null
+                        ? saved.getEngagementType()
+                        : com.example.coop_vsit_hub.visit_management.enums.VisitType.INTERNAL;
+
                 com.example.coop_vsit_hub.visit_management.model.Visit visit = com.example.coop_vsit_hub.visit_management.model.Visit.builder()
                         .visitCode(generateVisitCode())
                         .title(saved.getMeetingTitle())
                         .requestingDepartment(saved.getHostDepartment())
-                        .visitType(com.example.coop_vsit_hub.visit_management.enums.VisitType.EXTERNAL)
+                        .visitType(visitEngagementType)
                         .visitObjective(StringUtils.hasText(saved.getMeetingAgenda()) ? saved.getMeetingAgenda().trim() : ("Boardroom meeting in " + saved.getRoomName()))
                         .priorityLevel(com.example.coop_vsit_hub.visit_management.enums.VisitPriority.MEDIUM)
                         .status(com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SCHEDULED)
@@ -578,6 +592,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .requestedItems(b.getRequestedItems())
                         .guestOrganizationName(b.getGuestOrganizationName())
                         .guestName(b.getGuestName())
+                        .engagementType(b.getEngagementType() != null ? b.getEngagementType().name() : "INTERNAL")
                         .status(b.getStatus())
                         .build())
                 .toList();
@@ -954,6 +969,19 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (request.getGuestOrganizationName() != null) {
             booking.setGuestOrganizationName(request.getGuestOrganizationName().trim());
         }
+        if (StringUtils.hasText(request.getEngagementType())) {
+            try {
+                com.example.coop_vsit_hub.visit_management.enums.VisitType et =
+                        com.example.coop_vsit_hub.visit_management.enums.VisitType.valueOf(request.getEngagementType().trim().toUpperCase());
+                booking.setEngagementType(et);
+                if (booking.getLinkedVisitId() != null) {
+                    visitRepository.findById(booking.getLinkedVisitId()).ifPresent(v -> {
+                        v.setVisitType(et);
+                        visitRepository.save(v);
+                    });
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
 
         RoomBooking updated = roomBookingRepository.save(booking);
 
@@ -1140,6 +1168,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .roomAssignedUserId(roomAssignedUserId)
                 .roomAssignedUserName(roomAssignedUserName)
                 .roomContactEmail(roomContactEmail)
+                .engagementType(b.getEngagementType() != null ? b.getEngagementType().name() : "INTERNAL")
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())
                 .build();

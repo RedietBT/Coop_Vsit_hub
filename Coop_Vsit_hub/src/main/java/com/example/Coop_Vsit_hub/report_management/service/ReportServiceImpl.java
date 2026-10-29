@@ -193,6 +193,17 @@ public class ReportServiceImpl implements ReportService {
             avgDeal = totalOpportunity.divide(BigDecimal.valueOf(dealsCount), 2, java.math.RoundingMode.HALF_UP);
         }
 
+        long internalCount = visits.stream()
+                .filter(v -> v.getVisitType() == com.example.coop_vsit_hub.visit_management.enums.VisitType.INTERNAL)
+                .count();
+        long externalCount = visits.stream()
+                .filter(v -> v.getVisitType() == com.example.coop_vsit_hub.visit_management.enums.VisitType.EXTERNAL
+                        || v.getVisitType() == com.example.coop_vsit_hub.visit_management.enums.VisitType.VIP_DELEGATION)
+                .count();
+        long totalEngagements = internalCount + externalCount;
+        double internalPct = totalEngagements > 0 ? (double) internalCount * 100.0 / totalEngagements : 0.0;
+        double externalPct = totalEngagements > 0 ? (double) externalCount * 100.0 / totalEngagements : 0.0;
+
         double convRate = grandTotalVisits > 0 ? (completedCount / (double) grandTotalVisits) * 100.0 : 0.0;
 
         return ReportSummaryDto.builder()
@@ -204,6 +215,10 @@ public class ReportServiceImpl implements ReportService {
                 .totalOpportunityUSD(totalOpportunity)
                 .activeVisitorsCount(activeCount)
                 .completedVisitorsCount(completedCount)
+                .internalEngagementsCount(internalCount)
+                .externalEngagementsCount(externalCount)
+                .internalPercentage(Math.round(internalPct * 10.0) / 10.0)
+                .externalPercentage(Math.round(externalPct * 10.0) / 10.0)
                 .roomDistribution(roomDist)
                 .roomDwellStats(roomDwellStats)
                 .departmentDistribution(deptDist)
@@ -247,6 +262,7 @@ public class ReportServiceImpl implements ReportService {
         sb.append("Visit / Booking Code,")
           .append("Meeting Name / Title,")
           .append("Reason / Purpose / Agenda,")
+          .append("Engagement Type,")
           .append("Visitor / Guest Name,")
           .append("Visitor Phone,")
           .append("Visitor Email,")
@@ -271,9 +287,11 @@ public class ReportServiceImpl implements ReportService {
           .append("Created Date\n");
 
         for (VisitorReportItemDto item : items) {
+            String engTypeDisplay = "INTERNAL".equalsIgnoreCase(item.getEngagementType()) ? "Internal (Staff Only)" : "External (Stakeholders)";
             sb.append(escapeCsv(item.getVisitCode())).append(",");
             sb.append(escapeCsv(item.getMeetingTitle())).append(",");
             sb.append(escapeCsv(item.getPurpose())).append(",");
+            sb.append(escapeCsv(engTypeDisplay)).append(",");
             sb.append(escapeCsv(item.getName())).append(",");
             sb.append(escapeCsv(item.getPhone())).append(",");
             sb.append(escapeCsv(item.getEmail())).append(",");
@@ -354,13 +372,13 @@ public class ReportServiceImpl implements ReportService {
 
         sb.append(" <Worksheet ss:Name=\"Visitor &amp; Room Report\">\n");
         sb.append("  <Table>\n");
-        int[] widths = {120, 180, 220, 160, 120, 160, 160, 90, 150, 150, 150, 120, 160, 180, 140, 140, 140, 140, 90, 100, 180, 120, 90, 100, 140};
+        int[] widths = {120, 180, 220, 150, 160, 120, 160, 160, 90, 150, 150, 150, 120, 160, 180, 140, 140, 140, 140, 90, 100, 180, 120, 90, 100, 140};
         for (int w : widths) {
             sb.append("   <Column ss:Width=\"").append(w).append("\"/>\n");
         }
 
         String[] headers = {
-            "Visit / Booking Code", "Meeting Name / Title", "Reason / Purpose / Agenda", "Visitor / Guest Name",
+            "Visit / Booking Code", "Meeting Name / Title", "Reason / Purpose / Agenda", "Engagement Type", "Visitor / Guest Name",
             "Visitor Phone", "Visitor Email", "Guest Organization", "Attendees", "Meeting Room / Facility",
             "Managing Department", "Host / Reserving Staff", "Host Phone", "Host Email", "Requested Amenities",
             "Scheduled Start Time", "Scheduled End Time", "Actual Check-In Time", "Actual Check-Out Time",
@@ -373,10 +391,12 @@ public class ReportServiceImpl implements ReportService {
         sb.append("   </Row>\n");
 
         for (VisitorReportItemDto item : items) {
+            String engTypeDisplay = "INTERNAL".equalsIgnoreCase(item.getEngagementType()) ? "Internal (Staff Only)" : "External (Stakeholders)";
             sb.append("   <Row ss:Height=\"20\">\n");
             addXmlCell(sb, "CodeStyle", item.getVisitCode());
             addXmlCell(sb, "DataStyle", item.getMeetingTitle());
             addXmlCell(sb, "DataStyle", item.getPurpose());
+            addXmlCell(sb, "DataStyle", engTypeDisplay);
             addXmlCell(sb, "DataStyle", item.getName());
             addXmlCell(sb, "DataStyle", item.getPhone());
             addXmlCell(sb, "DataStyle", item.getEmail());
@@ -599,6 +619,7 @@ public class ReportServiceImpl implements ReportService {
                 .status(visit.getStatus() != null ? visit.getStatus().name() : "SUBMITTED")
                 .cancellationReason(cancellationReason)
                 .cancelledBy(cancelledBy)
+                .engagementType(visit.getVisitType() != null ? visit.getVisitType().name() : (linkedBooking.isPresent() && linkedBooking.get().getEngagementType() != null ? linkedBooking.get().getEngagementType().name() : "INTERNAL"))
                 .opportunityValue(visit.getOpportunityValue())
                 .createdAt(visit.getCreatedAt())
                 .build();

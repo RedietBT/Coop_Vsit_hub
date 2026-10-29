@@ -22,6 +22,12 @@ public class ReportSummaryDto {
     private long activeVisitorsCount;
     private long completedVisitorsCount;
 
+    // Engagement Type Breakdown (Internal Staff vs External Stakeholders)
+    private long internalEngagementsCount;
+    private long externalEngagementsCount;
+    private double internalPercentage;
+    private double externalPercentage;
+
     // Dynamic Tab 2: Room Activity & Dwell Durations
     private List<DepartmentActivityDto> roomDistribution;
     private List<DepartmentDwellDto> roomDwellStats;

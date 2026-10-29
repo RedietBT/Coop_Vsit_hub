@@ -30,5 +30,6 @@ public class RoomBookingSlotResponse {
     private String requestedItems;
     private String guestOrganizationName;
     private String guestName;
+    private String engagementType;
     private RoomBookingStatus status;
 }

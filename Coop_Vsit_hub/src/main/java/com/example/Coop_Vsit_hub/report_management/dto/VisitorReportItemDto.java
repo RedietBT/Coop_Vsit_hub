@@ -38,6 +38,7 @@ public class VisitorReportItemDto {
     private String status;
     private String cancellationReason;
     private String cancelledBy;
+    private String engagementType;
     private BigDecimal opportunityValue;
     private Instant createdAt;
 }

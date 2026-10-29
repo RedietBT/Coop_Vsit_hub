@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Users,
   Phone,
+  Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import roomBookingApi from '@/modules/booking/api/roomBookingApi';
@@ -43,6 +44,7 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
         guestDisplayName: booking.guestName || booking.guestOrganizationName,
         visitorCount: booking.expectedAttendees,
         bookedByDepartment: booking.hostDepartment,
+        engagementType: booking.engagementType || 'INTERNAL',
         status: booking.status || 'CONFIRMED',
       })));
     } catch (err) {
@@ -275,6 +277,19 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
 
                       {/* Title & Purpose */}
                       <td className="py-3.5 px-4 max-w-xs">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {b.engagementType === 'EXTERNAL' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                              <Globe className="w-2.5 h-2.5" />
+                              <span>External</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
+                              <Users className="w-2.5 h-2.5" />
+                              <span>Internal</span>
+                            </span>
+                          )}
+                        </div>
                         <p className="font-semibold text-slate-800 line-clamp-1">{b.title}</p>
                         {b.guestDisplayName && (
                           <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">

@@ -18,6 +18,7 @@ import {
   Calendar,
   Layers,
   DoorOpen,
+  Globe,
 } from 'lucide-react';
 import useReportStore from '../store/reportStore';
 import useMasterDataStore from '@/modules/master_data/store/masterDataStore';
@@ -54,6 +55,7 @@ export const ReportsAnalyticsPage = () => {
   const [localStart, setLocalStart] = useState(startDate);
   const [localEnd, setLocalEnd] = useState(endDate);
   const [localDept, setLocalDept] = useState(department || 'All Departments');
+  const [localEngagement, setLocalEngagement] = useState('ALL');
 
   useEffect(() => {
     fetchDepartments(true);
@@ -74,6 +76,7 @@ export const ReportsAnalyticsPage = () => {
     setLocalStart('');
     setLocalEnd('');
     setLocalDept('All Departments');
+    setLocalEngagement('ALL');
     setFilters({
       startDate: '',
       endDate: '',
@@ -81,6 +84,14 @@ export const ReportsAnalyticsPage = () => {
     });
     fetchReportData();
   };
+
+  const filteredReportItems = React.useMemo(() => {
+    if (localEngagement === 'ALL') return reportItems;
+    return reportItems.filter((item) => {
+      const type = (item.engagementType || 'INTERNAL').toUpperCase();
+      return type === localEngagement;
+    });
+  }, [reportItems, localEngagement]);
 
   const formatTimestamp = (isoString) => {
     if (!isoString) return '—';
@@ -166,7 +177,7 @@ export const ReportsAnalyticsPage = () => {
           <span>Report Filters & Date Range</span>
         </div>
 
-        <form onSubmit={handleApplyFilter} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <form onSubmit={handleApplyFilter} className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
           <div>
             <label className="text-[11px] font-bold text-slate-600 block mb-1">
               Start Date
@@ -211,6 +222,21 @@ export const ReportsAnalyticsPage = () => {
             </select>
           </div>
 
+          <div>
+            <label className="text-[11px] font-bold text-slate-600 block mb-1">
+              Engagement Type
+            </label>
+            <select
+              value={localEngagement}
+              onChange={(e) => setLocalEngagement(e.target.value)}
+              className="w-full px-3 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#00adef] text-slate-800"
+            >
+              <option value="ALL">All Engagements</option>
+              <option value="INTERNAL">🏢 Internal (Staff Only)</option>
+              <option value="EXTERNAL">🌐 External (Stakeholders)</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-2">
             <Button
               type="submit"
@@ -233,8 +259,8 @@ export const ReportsAnalyticsPage = () => {
         </form>
       </div>
 
-      {/* 2. KPI Summary Highlights (Matching Image 2) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. KPI Summary Highlights */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Visitors */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-sky-50 text-[#00adef] flex items-center justify-center shrink-0">
@@ -250,6 +276,63 @@ export const ReportsAnalyticsPage = () => {
             <p className="text-[10px] text-slate-400 mt-0.5">
               Filtered time window
             </p>
+          </div>
+        </div>
+
+        {/* Engagement Breakdown: Internal vs External */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Layers className="w-4 h-4" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Engagement Mix
+              </span>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+              Ratio
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1 text-[11px]">
+                <Users className="w-3 h-3 text-[#00adef]" />
+                Internal Staff:
+              </span>
+              <span className="font-bold text-slate-900 text-xs">
+                {summary?.internalEngagementsCount ?? 0}{' '}
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({summary?.internalPercentage ?? 0}%)
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1 text-[11px]">
+                <Globe className="w-3 h-3 text-emerald-600" />
+                External Stakeholders:
+              </span>
+              <span className="font-bold text-slate-900 text-xs">
+                {summary?.externalEngagementsCount ?? 0}{' '}
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({summary?.externalPercentage ?? 0}%)
+                </span>
+              </span>
+            </div>
+            {/* Visual ratio bar */}
+            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden flex mt-1">
+              <div
+                className="bg-[#00adef] h-full transition-all"
+                style={{ width: `${summary?.internalPercentage || 50}%` }}
+                title={`Internal: ${summary?.internalPercentage || 0}%`}
+              />
+              <div
+                className="bg-emerald-500 h-full transition-all"
+                style={{ width: `${summary?.externalPercentage || 50}%` }}
+                title={`External: ${summary?.externalPercentage || 0}%`}
+              />
+            </div>
           </div>
         </div>
 
@@ -360,7 +443,7 @@ export const ReportsAnalyticsPage = () => {
               Visitor Check-In Log & Activity Report
             </h2>
             <span className="text-xs font-bold text-slate-500">
-              Showing {reportItems.length} of {totalElements} Records (Latest First)
+              Showing {filteredReportItems.length} of {totalElements} Records (Latest First)
             </span>
           </div>
 
@@ -370,6 +453,7 @@ export const ReportsAnalyticsPage = () => {
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                   <th className="py-3 pl-6">Visitor ID</th>
                   <th className="py-3 px-4">Visitor & Org</th>
+                  <th className="py-3 px-4">Engagement</th>
                   <th className="py-3 px-4">Phone / Contact</th>
                   <th className="py-3 px-4">Meeting & Purpose</th>
                   <th className="py-3 px-4">Room & Amenities</th>
@@ -384,23 +468,23 @@ export const ReportsAnalyticsPage = () => {
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={10} className="py-20 text-center">
+                    <td colSpan={11} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Spinner size="lg" color="navy" />
                         <p className="text-xs font-bold text-slate-500">Loading visitor reports...</p>
                       </div>
                     </td>
                   </tr>
-                ) : reportItems.length === 0 ? (
+                ) : filteredReportItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-20 text-center text-slate-400">
+                    <td colSpan={11} className="py-20 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="text-xs font-bold text-slate-600">No visitor records found for selected filters</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting date range or department filter</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting date range, department, or engagement filter</p>
                     </td>
                   </tr>
                 ) : (
-                  reportItems.map((item, idx) => {
+                  filteredReportItems.map((item, idx) => {
                     const isSubmitted = item.feedback && item.feedback !== 'In Progress' && item.feedback.includes('★');
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -417,6 +501,21 @@ export const ReportsAnalyticsPage = () => {
                               {item.guestOrganization}
                             </div>
                           ) : null}
+                        </td>
+
+                        {/* Engagement Type */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {item.engagementType === 'EXTERNAL' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                              <Globe className="w-3 h-3 text-emerald-600" />
+                              <span>External Stakeholders</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                              <Users className="w-3 h-3 text-[#00adef]" />
+                              <span>Internal (Staff Only)</span>
+                            </span>
+                          )}
                         </td>
 
                         {/* Phone Number */}

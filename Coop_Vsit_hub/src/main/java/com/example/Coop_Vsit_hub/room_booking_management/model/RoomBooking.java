@@ -1,6 +1,7 @@
 package com.example.coop_vsit_hub.room_booking_management.model;
 
 import com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus;
+import com.example.coop_vsit_hub.visit_management.enums.VisitType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -76,6 +77,11 @@ public class RoomBooking {
 
     @Column(name = "scheduled_end_time", nullable = false)
     private Instant scheduledEndTime;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "engagement_type", length = 30)
+    private VisitType engagementType = VisitType.INTERNAL;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

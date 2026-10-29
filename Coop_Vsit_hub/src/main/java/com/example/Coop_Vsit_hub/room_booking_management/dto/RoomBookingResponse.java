@@ -41,6 +41,7 @@ public class RoomBookingResponse {
     private UUID roomAssignedUserId;
     private String roomAssignedUserName;
     private String roomContactEmail;
+    private String engagementType;
     private Instant createdAt;
     private Instant updatedAt;
 }

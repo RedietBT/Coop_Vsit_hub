@@ -20,4 +20,5 @@ public class UpdateRoomBookingRequest {
     private String guestOrganizationName;
     private String guestName;
     private String requestedItems;
+    private String engagementType;
 }

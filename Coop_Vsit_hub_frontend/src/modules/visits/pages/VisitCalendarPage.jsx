@@ -27,6 +27,7 @@ import {
   Edit2,
   Phone,
   Mail,
+  Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -175,6 +176,7 @@ export const VisitCalendarPage = () => {
     expectedAttendees: 2,
     meetingAgenda: '',
     requestedItems: '',
+    engagementType: 'INTERNAL',
   });
 
   // Booking Form State
@@ -188,6 +190,7 @@ export const VisitCalendarPage = () => {
     visitorCount: 2,
     visitObjective: '',
     requestedItems: '',
+    engagementType: 'INTERNAL',
   });
 
   // Fetch meeting rooms on mount (fetches all master data like Booking Management page)
@@ -324,6 +327,7 @@ export const VisitCalendarPage = () => {
       expectedAttendees: booking.expectedAttendees || 2,
       meetingAgenda: booking.meetingAgenda || '',
       requestedItems: booking.requestedItems || '',
+      engagementType: booking.engagementType || 'INTERNAL',
     });
     setEditingBooking(booking);
   };
@@ -397,6 +401,7 @@ export const VisitCalendarPage = () => {
         expectedAttendees: parseInt(editFormData.expectedAttendees, 10) || 1,
         meetingAgenda: editFormData.meetingAgenda?.trim() || null,
         requestedItems: editFormData.requestedItems?.trim() || null,
+        engagementType: editFormData.engagementType || 'INTERNAL',
       };
 
       await roomBookingApi.updateBooking(editingBooking.id, payload);
@@ -642,6 +647,7 @@ export const VisitCalendarPage = () => {
         guestOrganizationName: formData.guestName?.trim() || null,
         guestName: formData.guestName?.trim() || null,
         requestedItems: formData.requestedItems?.trim() || null,
+        engagementType: formData.engagementType || 'INTERNAL',
       };
 
       const result = await roomBookingApi.createBooking(payload);
@@ -660,6 +666,7 @@ export const VisitCalendarPage = () => {
         visitObjective: '',
         guestName: '',
         requestedItems: '',
+        engagementType: 'INTERNAL',
       }));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to book meeting room.');
@@ -1031,6 +1038,17 @@ export const VisitCalendarPage = () => {
                                 <span className="px-2 py-0.5 rounded-md bg-sky-50 text-[#00adef] border border-sky-200 text-[11px] font-bold font-mono">
                                   {slot.timeFormatted || 'Reserved'}
                                 </span>
+                                {slot.engagementType === 'EXTERNAL' ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                                    <Globe className="w-2.5 h-2.5" />
+                                    <span>External Stakeholders</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1">
+                                    <Users className="w-2.5 h-2.5" />
+                                    <span>Internal Staff</span>
+                                  </span>
+                                )}
                                 <span className="text-xs font-bold text-slate-800">
                                   {slot.meetingTitle || 'Scheduled Meeting'}
                                 </span>
@@ -1151,6 +1169,88 @@ export const VisitCalendarPage = () => {
 
               {/* Booking Form */}
               <form onSubmit={handleSubmitBooking} className="space-y-4">
+                {/* Engagement Type Radio Selector */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Engagement Type <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option 1: Internal (Staff Only) */}
+                    <label
+                      className={`relative flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        formData.engagementType === 'INTERNAL'
+                          ? 'border-[#00adef] bg-sky-50/70 shadow-xs ring-1 ring-[#00adef]'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="engagementType"
+                        value="INTERNAL"
+                        checked={formData.engagementType === 'INTERNAL'}
+                        onChange={() => setFormData((prev) => ({ ...prev, engagementType: 'INTERNAL' }))}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        formData.engagementType === 'INTERNAL'
+                          ? 'border-[#00adef] bg-[#00adef]'
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {formData.engagementType === 'INTERNAL' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                          <Users className="w-3.5 h-3.5 text-[#00adef]" />
+                          <span>Internal</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">Staff Only</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          Internal staff, colleagues & Coop teams
+                        </p>
+                      </div>
+                    </label>
+
+                    {/* Option 2: External (Stakeholders) */}
+                    <label
+                      className={`relative flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        formData.engagementType === 'EXTERNAL'
+                          ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="engagementType"
+                        value="EXTERNAL"
+                        checked={formData.engagementType === 'EXTERNAL'}
+                        onChange={() => setFormData((prev) => ({ ...prev, engagementType: 'EXTERNAL' }))}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        formData.engagementType === 'EXTERNAL'
+                          ? 'border-emerald-600 bg-emerald-600'
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {formData.engagementType === 'EXTERNAL' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                          <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>External</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Stakeholders</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          External guests, partners & clients
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Meeting Title */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -1662,6 +1762,88 @@ export const VisitCalendarPage = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Engagement Type Radio Selector */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Engagement Type *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option 1: Internal */}
+                    <label
+                      className={`relative flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        editFormData.engagementType === 'INTERNAL'
+                          ? 'border-[#00adef] bg-sky-50/70 shadow-xs ring-1 ring-[#00adef]'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="editEngagementType"
+                        value="INTERNAL"
+                        checked={editFormData.engagementType === 'INTERNAL'}
+                        onChange={() => setEditFormData((prev) => ({ ...prev, engagementType: 'INTERNAL' }))}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        editFormData.engagementType === 'INTERNAL'
+                          ? 'border-[#00adef] bg-[#00adef]'
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {editFormData.engagementType === 'INTERNAL' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                          <Users className="w-3.5 h-3.5 text-[#00adef]" />
+                          <span>Internal</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">Staff Only</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          Staff & internal team meetings
+                        </p>
+                      </div>
+                    </label>
+
+                    {/* Option 2: External */}
+                    <label
+                      className={`relative flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                        editFormData.engagementType === 'EXTERNAL'
+                          ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="editEngagementType"
+                        value="EXTERNAL"
+                        checked={editFormData.engagementType === 'EXTERNAL'}
+                        onChange={() => setEditFormData((prev) => ({ ...prev, engagementType: 'EXTERNAL' }))}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        editFormData.engagementType === 'EXTERNAL'
+                          ? 'border-emerald-600 bg-emerald-600'
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {editFormData.engagementType === 'EXTERNAL' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                          <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>External</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Stakeholders</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          External guests & stakeholders
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
 
                 {/* Meeting Title */}
                 <div>
