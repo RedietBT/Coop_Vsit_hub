@@ -35,8 +35,8 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
             @Param("endTime") Instant endTime
     );
 
-    @Query("SELECT b FROM RoomBooking b WHERE b.roomName = :roomName " +
-           "AND b.status = 'CONFIRMED' " +
+    @Query("SELECT b FROM RoomBooking b WHERE LOWER(b.roomName) = LOWER(:roomName) " +
+           "AND b.status != com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus.CANCELLED " +
            "AND b.scheduledStartTime >= :fromDate " +
            "AND b.scheduledStartTime <= :toDate " +
            "ORDER BY b.scheduledStartTime ASC")

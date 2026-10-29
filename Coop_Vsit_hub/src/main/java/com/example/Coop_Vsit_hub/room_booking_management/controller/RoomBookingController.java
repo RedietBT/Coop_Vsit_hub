@@ -95,8 +95,8 @@ public class RoomBookingController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate
     ) {
-        Instant start = fromDate != null ? fromDate : Instant.now().minusSeconds(86400 * 30);
-        Instant end = toDate != null ? toDate : Instant.now().plusSeconds(86400 * 90);
+        Instant start = fromDate != null ? fromDate : Instant.now().minusSeconds(86400L * 365 * 3);
+        Instant end = toDate != null ? toDate : Instant.now().plusSeconds(86400L * 365 * 2);
         return ResponseEntity.ok(roomBookingService.getRoomSlots(roomName, start, end));
     }
 

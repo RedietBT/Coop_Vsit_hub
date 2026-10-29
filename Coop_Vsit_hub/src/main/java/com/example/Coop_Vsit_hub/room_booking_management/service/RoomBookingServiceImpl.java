@@ -28,9 +28,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import com.example.coop_vsit_hub.user_and_auth.service.AuditLoggerService;
 import com.example.coop_vsit_hub.user_and_auth.enums.AuditEventType;
@@ -118,6 +117,14 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         String bookingCode = generateBookingCode();
 
         // Populate staff data directly from Active Directory / Authenticated User with request fallbacks
+        if (currentUser == null) {
+            if (StringUtils.hasText(request.getBookedByEmail())) {
+                currentUser = userRepository.findByEmailIgnoreCase(request.getBookedByEmail().trim()).orElse(null);
+            }
+            if (currentUser == null && StringUtils.hasText(request.getBookedByUsername())) {
+                currentUser = userRepository.findByUsername(request.getBookedByUsername().trim()).orElse(null);
+            }
+        }
         UUID bookedById = currentUser != null ? currentUser.getId() : null;
         String bookedByName = currentUser != null && StringUtils.hasText(currentUser.getFullName())
                 ? currentUser.getFullName()
@@ -574,7 +581,14 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @Transactional(readOnly = true)
     public List<RoomBookingSlotResponse> getRoomSlots(String roomName, Instant fromDate, Instant toDate) {
-        return roomBookingRepository.findActiveRoomSlots(roomName, fromDate, toDate).stream()
+        String cleanRoom = (roomName != null && !roomName.isBlank()) ? roomName.trim() : "";
+        List<RoomBooking> bookings = roomBookingRepository.findActiveRoomSlots(cleanRoom, fromDate, toDate);
+        Set<UUID> linkedVisitIds = bookings.stream()
+                .map(RoomBooking::getLinkedVisitId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<RoomBookingSlotResponse> result = new ArrayList<>(bookings.stream()
                 .map(b -> RoomBookingSlotResponse.builder()
                         .id(b.getId())
                         .bookingCode(b.getBookingCode())
@@ -583,10 +597,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .scheduledStartTime(b.getScheduledStartTime())
                         .scheduledEndTime(b.getScheduledEndTime())
                         .bookedByUserId(b.getBookedByUserId())
-                        .bookedByName(b.getBookedByName())
-                        .bookedByEmail(b.getBookedByEmail())
-                        .bookedByPhone(b.getBookedByPhone())
-                        .hostDepartment(b.getHostDepartment())
+                        .bookedByName(resolveBookedByName(b))
+                        .bookedByEmail(resolveBookedByEmail(b))
+                        .bookedByPhone(resolveBookedByPhone(b))
+                        .hostDepartment(resolveHostDepartment(b))
                         .expectedAttendees(b.getExpectedAttendees())
                         .meetingAgenda(b.getMeetingAgenda())
                         .requestedItems(b.getRequestedItems())
@@ -595,7 +609,47 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         .engagementType(b.getEngagementType() != null ? b.getEngagementType().name() : "INTERNAL")
                         .status(b.getStatus())
                         .build())
-                .toList();
+                .toList());
+
+        // Also incorporate any visits scheduled for this room that do not have a linked RoomBooking
+        if (visitRepository != null) {
+            List<com.example.coop_vsit_hub.visit_management.model.Visit> unlinkedVisits = visitRepository
+                    .findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate).stream()
+                    .filter(v -> !linkedVisitIds.contains(v.getId()) && v.getLinkedBookingId() == null)
+                    .toList();
+
+            for (var v : unlinkedVisits) {
+                User host = v.getRequester() != null ? v.getRequester() : v.getSponsor();
+                String hostName = host != null && StringUtils.hasText(host.getFullName()) ? host.getFullName().trim() : "Coop Staff Member";
+                String hostEmail = host != null ? host.getEmail() : null;
+                String hostPhone = host != null ? host.getPhoneNumber() : null;
+                String hostDept = host != null && StringUtils.hasText(host.getDepartment()) ? host.getDepartment() : v.getRequestingDepartment();
+                String guestDisplay = v.getGuestDisplayName();
+
+                result.add(RoomBookingSlotResponse.builder()
+                        .id(v.getId())
+                        .bookingCode(v.getVisitCode())
+                        .roomName(v.getLocationRoom())
+                        .meetingTitle(v.getTitle())
+                        .scheduledStartTime(v.getScheduledStartTime())
+                        .scheduledEndTime(v.getScheduledEndTime())
+                        .bookedByUserId(host != null ? host.getId() : null)
+                        .bookedByName(hostName)
+                        .bookedByEmail(hostEmail)
+                        .bookedByPhone(hostPhone)
+                        .hostDepartment(hostDept)
+                        .expectedAttendees(v.getVisitorCount())
+                        .meetingAgenda(v.getVisitObjective())
+                        .guestName(guestDisplay)
+                        .guestOrganizationName(v.getGuestCategory() == com.example.coop_vsit_hub.visit_management.enums.GuestCategory.ORGANIZATION ? guestDisplay : null)
+                        .engagementType(v.getVisitType() != null ? v.getVisitType().name() : "EXTERNAL")
+                        .status(v.getStatus() == com.example.coop_vsit_hub.visit_management.enums.VisitStatus.COMPLETED ? RoomBookingStatus.COMPLETED : RoomBookingStatus.CONFIRMED)
+                        .build());
+            }
+        }
+
+        result.sort(Comparator.comparing(RoomBookingSlotResponse::getScheduledStartTime, Comparator.nullsLast(Comparator.naturalOrder())));
+        return result;
     }
 
     @Override
@@ -1136,6 +1190,106 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return code;
     }
 
+    private String resolveBookedByName(RoomBooking b) {
+        String existing = b.getBookedByName();
+        boolean isGenericOrGuest = !StringUtils.hasText(existing)
+                || "Coop Staff Member".equalsIgnoreCase(existing.trim())
+                || "Staff Member".equalsIgnoreCase(existing.trim())
+                || "Bank Staff".equalsIgnoreCase(existing.trim())
+                || "staff".equalsIgnoreCase(existing.trim())
+                || (StringUtils.hasText(b.getGuestName()) && existing.trim().equalsIgnoreCase(b.getGuestName().trim()));
+
+        if (!isGenericOrGuest) {
+            return existing.trim();
+        }
+
+        // 1. Try bookedByUserId
+        if (b.getBookedByUserId() != null) {
+            User u = userRepository.findById(b.getBookedByUserId()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getFullName())) {
+                return u.getFullName().trim();
+            }
+        }
+
+        // 2. Try linkedVisitId requester or sponsor
+        if (b.getLinkedVisitId() != null && visitRepository != null) {
+            var v = visitRepository.findById(b.getLinkedVisitId()).orElse(null);
+            if (v != null) {
+                if (v.getRequester() != null && StringUtils.hasText(v.getRequester().getFullName())) {
+                    return v.getRequester().getFullName().trim();
+                }
+                if (v.getSponsor() != null && StringUtils.hasText(v.getSponsor().getFullName())) {
+                    return v.getSponsor().getFullName().trim();
+                }
+            }
+        }
+
+        // 3. Try bookedByEmail
+        if (StringUtils.hasText(b.getBookedByEmail())) {
+            User u = userRepository.findByEmailIgnoreCase(b.getBookedByEmail().trim()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getFullName())) {
+                return u.getFullName().trim();
+            }
+        }
+
+        // 4. Try bookedByUsername
+        if (StringUtils.hasText(b.getBookedByUsername())) {
+            User u = userRepository.findByUsername(b.getBookedByUsername().trim()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getFullName())) {
+                return u.getFullName().trim();
+            }
+        }
+
+        return StringUtils.hasText(existing) ? existing.trim() : "Coop Staff Member";
+    }
+
+    private String resolveBookedByEmail(RoomBooking b) {
+        if (StringUtils.hasText(b.getBookedByEmail())) return b.getBookedByEmail().trim();
+        if (b.getBookedByUserId() != null) {
+            User u = userRepository.findById(b.getBookedByUserId()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getEmail())) return u.getEmail().trim();
+        }
+        if (b.getLinkedVisitId() != null && visitRepository != null) {
+            var v = visitRepository.findById(b.getLinkedVisitId()).orElse(null);
+            if (v != null && v.getRequester() != null && StringUtils.hasText(v.getRequester().getEmail())) {
+                return v.getRequester().getEmail().trim();
+            }
+        }
+        return null;
+    }
+
+    private String resolveBookedByPhone(RoomBooking b) {
+        if (StringUtils.hasText(b.getBookedByPhone())) return b.getBookedByPhone().trim();
+        if (b.getBookedByUserId() != null) {
+            User u = userRepository.findById(b.getBookedByUserId()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getPhoneNumber())) return u.getPhoneNumber().trim();
+        }
+        if (b.getLinkedVisitId() != null && visitRepository != null) {
+            var v = visitRepository.findById(b.getLinkedVisitId()).orElse(null);
+            if (v != null && v.getRequester() != null && StringUtils.hasText(v.getRequester().getPhoneNumber())) {
+                return v.getRequester().getPhoneNumber().trim();
+            }
+        }
+        return null;
+    }
+
+    private String resolveHostDepartment(RoomBooking b) {
+        if (StringUtils.hasText(b.getHostDepartment()) && !"General Facility".equalsIgnoreCase(b.getHostDepartment())) {
+            return b.getHostDepartment().trim();
+        }
+        if (b.getBookedByUserId() != null) {
+            User u = userRepository.findById(b.getBookedByUserId()).orElse(null);
+            if (u != null && StringUtils.hasText(u.getDepartment())) return u.getDepartment().trim();
+        }
+        if (b.getLinkedVisitId() != null && visitRepository != null) {
+            var v = visitRepository.findById(b.getLinkedVisitId()).orElse(null);
+            if (v != null && StringUtils.hasText(v.getRequestingDepartment())) {
+                return v.getRequestingDepartment().trim();
+            }
+        }
+        return b.getHostDepartment();
+    }
+
     private RoomBookingResponse mapToResponse(RoomBooking b) {
         var roomOpt = meetingRoomRepository.findByNameIgnoreCase(b.getRoomName());
         UUID roomAssignedUserId = roomOpt.map(MeetingRoom::getAssignedUserId).orElse(null);
@@ -1147,12 +1301,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .bookingCode(b.getBookingCode())
                 .roomName(b.getRoomName())
                 .meetingTitle(b.getMeetingTitle())
-                .hostDepartment(b.getHostDepartment())
+                .hostDepartment(resolveHostDepartment(b))
                 .bookedByUserId(b.getBookedByUserId())
-                .bookedByName(b.getBookedByName())
+                .bookedByName(resolveBookedByName(b))
                 .bookedByUsername(b.getBookedByUsername())
-                .bookedByEmail(b.getBookedByEmail())
-                .bookedByPhone(b.getBookedByPhone())
+                .bookedByEmail(resolveBookedByEmail(b))
+                .bookedByPhone(resolveBookedByPhone(b))
                 .guestOrganizationName(b.getGuestOrganizationName())
                 .guestName(b.getGuestName())
                 .expectedAttendees(b.getExpectedAttendees())

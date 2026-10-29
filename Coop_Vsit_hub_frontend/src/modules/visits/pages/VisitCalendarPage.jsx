@@ -147,7 +147,7 @@ export const VisitCalendarPage = () => {
 
   // Calendar & Booking State (for detailed view)
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(() => getLocalDateString(new Date()));
   const [hoveredDate, setHoveredDate] = useState(null);
   const [roomSlots, setRoomSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -502,9 +502,11 @@ export const VisitCalendarPage = () => {
 
   const handleSelectRoom = (room) => {
     setSelectedRoom(room);
+    const today = getLocalDateString(new Date());
+    setSelectedDateKey(today);
     setFormData((prev) => ({
       ...prev,
-      date: getLocalDateString(new Date()),
+      date: today,
       visitorCount: Math.min(room.capacity || 10, 4),
     }));
     loadRoomSlots(room.name);
@@ -562,9 +564,7 @@ export const VisitCalendarPage = () => {
 
   const activeHoverDateStr = hoveredDate
     ? formatDateKey(hoveredDate)
-    : selectedDate
-    ? getLocalDateString(selectedDate)
-    : null;
+    : selectedDateKey;
 
   const activeDateSlots = activeHoverDateStr ? getSlotsForDate(activeHoverDateStr) : [];
   const isBookingDatePast = isPastDateKey(formData.date);
@@ -947,28 +947,27 @@ export const VisitCalendarPage = () => {
                     const dateKey = formatDateKey(dayNumber);
                     const slots = getSlotsForDate(dateKey);
                     const hasBookings = slots.length > 0;
-                    const isSelected =
-                      selectedDate &&
-                      selectedDate.getFullYear() === year &&
-                      selectedDate.getMonth() === month &&
-                      selectedDate.getDate() === dayNumber;
+                    const isSelected = selectedDateKey === dateKey;
 
                     return (
                       <div
                         key={`day-${dayNumber}`}
                         onClick={() => {
-                          const clicked = new Date(year, month, dayNumber);
-                          setSelectedDate(clicked);
+                          setSelectedDateKey(dateKey);
                           if (!isPastDateKey(dateKey)) {
                             setFormData((prev) => ({ ...prev, date: dateKey }));
                           }
                         }}
                         onMouseEnter={() => setHoveredDate(dayNumber)}
                         onMouseLeave={() => setHoveredDate(null)}
-                        className={`h-14 p-1.5 rounded-2xl border transition-colors duration-150 flex flex-col justify-between select-none relative ${isPastDateKey(dateKey) ? 'bg-slate-100/80 border-slate-200 text-slate-400 cursor-default' : 'cursor-pointer'} ${
-                          isSelected
-                            ? 'border-[#00adef] bg-blue-50/60 shadow-xs'
+                        className={`h-14 p-1.5 rounded-2xl border transition-colors duration-150 flex flex-col justify-between select-none relative cursor-pointer ${
+                          isPastDateKey(dateKey)
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-500'
                             : 'border-slate-100 hover:border-blue-300 hover:bg-slate-50'
+                        } ${
+                          isSelected
+                            ? 'border-[#00adef] bg-blue-50/70 shadow-xs ring-1 ring-[#00adef]'
+                            : ''
                         }`}
                       >
                         <span
@@ -981,14 +980,26 @@ export const VisitCalendarPage = () => {
 
                         {hasBookings ? (
                           <div className="flex items-center gap-1 pointer-events-none">
-                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                            <span className="text-[10px] font-bold text-red-600 truncate">
-                              {slots.length} Booked
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isPastDateKey(dateKey) ? 'bg-slate-400' : 'bg-red-500'
+                              }`}
+                            />
+                            <span
+                              className={`text-[10px] font-bold truncate ${
+                                isPastDateKey(dateKey) ? 'text-slate-600' : 'text-red-600'
+                              }`}
+                            >
+                              {slots.length} {isPastDateKey(dateKey) ? 'Held' : 'Booked'}
                             </span>
                           </div>
                         ) : (
-                          <span className={`text-[9px] font-medium pointer-events-none ${isPastDateKey(dateKey) ? 'text-slate-400' : 'text-emerald-600'}`}>
-                            {isPastDateKey(dateKey) ? 'Past date' : 'Available'}
+                          <span
+                            className={`text-[9px] font-medium pointer-events-none ${
+                              isPastDateKey(dateKey) ? 'text-slate-400' : 'text-emerald-600'
+                            }`}
+                          >
+                            {isPastDateKey(dateKey) ? 'No history' : 'Available'}
                           </span>
                         )}
                       </div>
@@ -1014,12 +1025,16 @@ export const VisitCalendarPage = () => {
                       </span>
                     </div>
                     {activeDateSlots.length > 0 ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
-                        {activeDateSlots.length} Booked {activeDateSlots.length === 1 ? 'Slot' : 'Slots'}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isPastDateKey(activeHoverDateStr) ? 'bg-slate-200 text-slate-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {activeDateSlots.length} {isPastDateKey(activeHoverDateStr) ? 'Past ' : ''}{activeDateSlots.length === 1 ? 'Booking' : 'Bookings'}
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">
-                        Open All Day
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isPastDateKey(activeHoverDateStr) ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {isPastDateKey(activeHoverDateStr) ? 'No Past Bookings' : 'Open All Day'}
                       </span>
                     )}
                   </div>
@@ -1031,13 +1046,30 @@ export const VisitCalendarPage = () => {
                         return (
                           <div
                             key={slot.id || slot.bookingCode}
-                            className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all hover:border-slate-300"
+                            className={`p-3 rounded-xl border shadow-xs flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 transition-all ${
+                              slot.status === 'COMPLETED' || isPastDateKey(slot.date)
+                                ? 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
+                            }`}
                           >
-                            <div className="space-y-1">
+                            <div className="space-y-1.5 flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="px-2 py-0.5 rounded-md bg-sky-50 text-[#00adef] border border-sky-200 text-[11px] font-bold font-mono">
                                   {slot.timeFormatted || 'Reserved'}
                                 </span>
+                                {slot.status === 'COMPLETED' || isPastDateKey(slot.date) ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold">
+                                    Completed (Past)
+                                  </span>
+                                ) : slot.status === 'CANCELLED' ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
+                                    Cancelled
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                                    Confirmed
+                                  </span>
+                                )}
                                 {slot.engagementType === 'EXTERNAL' ? (
                                   <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
                                     <Globe className="w-2.5 h-2.5" />
@@ -1049,7 +1081,7 @@ export const VisitCalendarPage = () => {
                                     <span>Internal Staff</span>
                                   </span>
                                 )}
-                                <span className="text-xs font-bold text-slate-800">
+                                <span className="text-xs font-bold text-slate-900">
                                   {slot.meetingTitle || 'Scheduled Meeting'}
                                 </span>
                                 {slot.bookingCode && (
@@ -1058,21 +1090,57 @@ export const VisitCalendarPage = () => {
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
-                                <span className="flex items-center gap-1">
-                                  <User className="w-3 h-3 text-slate-400" />
-                                  <span>{slot.bookedByName || 'Staff Member'}</span>
+
+                              {/* BOOKED BY & GUEST ROWS */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1 text-[11px]">
+                                {/* Staff Member who Booked */}
+                                <div className="flex items-center gap-1.5 text-slate-700 flex-wrap">
+                                  <span className="text-slate-400 font-semibold flex items-center gap-1">
+                                    <User className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>Booked By:</span>
+                                  </span>
+                                  <span className="font-bold text-slate-900">
+                                    {slot.bookedByName || 'Coop Staff Member'}
+                                  </span>
                                   {slot.hostDepartment && (
-                                    <span className="text-slate-400">({slot.hostDepartment})</span>
+                                    <span className="text-slate-500 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-medium">
+                                      {slot.hostDepartment}
+                                    </span>
                                   )}
-                                </span>
+                                </div>
+
+                                {/* Guest / Visitor if available */}
+                                {(slot.guestName || slot.guestOrganizationName) ? (
+                                  <div className="flex items-center gap-1.5 text-slate-700 flex-wrap">
+                                    <span className="text-slate-400 font-semibold flex items-center gap-1">
+                                      <Users className="w-3.5 h-3.5 text-[#00adef]" />
+                                      <span>Guest:</span>
+                                    </span>
+                                    <span className="font-bold text-slate-800">
+                                      {slot.guestName || slot.guestOrganizationName}
+                                    </span>
+                                    {slot.guestOrganizationName && slot.guestName && slot.guestName !== slot.guestOrganizationName && (
+                                      <span className="text-slate-500 text-[10px]">
+                                        ({slot.guestOrganizationName})
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-slate-400 text-[10px]">
+                                    <span>Internal Attendance</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* CONTACTS & DETAILS */}
+                              <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap pt-0.5">
                                 {showReserverContact && slot.bookedByPhone && (
                                   <a
                                     href={`tel:${slot.bookedByPhone}`}
                                     className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Phone className="w-3 h-3" />
+                                    <Phone className="w-3 h-3 text-emerald-600" />
                                     <span>{slot.bookedByPhone}</span>
                                   </a>
                                 )}
@@ -1082,12 +1150,13 @@ export const VisitCalendarPage = () => {
                                     className="flex items-center gap-1 text-sky-600 hover:text-sky-700 hover:underline font-medium"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Mail className="w-3 h-3" />
+                                    <Mail className="w-3 h-3 text-sky-600" />
                                     <span>{slot.bookedByEmail}</span>
                                   </a>
-                                )}                                {slot.expectedAttendees && (
-                                  <span className="flex items-center gap-1 text-slate-400">
-                                    <Users className="w-3 h-3" />
+                                )}
+                                {slot.expectedAttendees && (
+                                  <span className="flex items-center gap-1 text-slate-500">
+                                    <Users className="w-3 h-3 text-slate-400" />
                                     <span>{slot.expectedAttendees} attendees</span>
                                   </span>
                                 )}
@@ -1099,9 +1168,13 @@ export const VisitCalendarPage = () => {
                               </div>
                             </div>
 
-                            {/* In-Place Actions: Edit & Cancel (Strictly authorized) */}
-                            <div className="shrink-0 flex items-center gap-1.5">
-                              {canModify ? (
+                            {/* In-Place Actions: Edit & Cancel (Strictly authorized & only for active future/present bookings) */}
+                            <div className="shrink-0 flex items-center gap-1.5 self-center sm:self-auto">
+                              {slot.status === 'COMPLETED' || isPastDateKey(slot.date) ? (
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200">
+                                  Past Record
+                                </span>
+                              ) : canModify ? (
                                 <>
                                   <button
                                     type="button"
@@ -1121,7 +1194,7 @@ export const VisitCalendarPage = () => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setCancellationReason('');
-                                       setCancellingBooking(slot);
+                                      setCancellingBooking(slot);
                                     }}
                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                                     title="Cancel reservation directly from this schedule"
@@ -1140,9 +1213,13 @@ export const VisitCalendarPage = () => {
                         );
                       })
                     ) : (
-                      <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 flex items-center gap-2.5 text-xs font-medium">
-                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>This room has no bookings on this date. Full schedule is open for booking.</span>
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 flex items-center gap-2.5 text-xs font-medium">
+                        <Info className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>
+                          {isPastDateKey(activeHoverDateStr)
+                            ? 'No room bookings recorded for this date in history.'
+                            : 'This room has no bookings on this date. Full schedule is open for booking.'}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1335,10 +1412,7 @@ export const VisitCalendarPage = () => {
                           return;
                         }
                         setFormData((prev) => ({ ...prev, date: val }));
-                        const parts = val.split('-').map(Number);
-                        if (parts.length === 3) {
-                          setSelectedDate(new Date(parts[0], parts[1] - 1, parts[2]));
-                        }
+                        setSelectedDateKey(val);
                       }}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none cursor-pointer"
                     />
