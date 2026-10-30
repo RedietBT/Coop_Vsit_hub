@@ -12,6 +12,7 @@ import {
   Calendar,
   Building2,
   User,
+  Users,
   Clock,
   ChevronLeft,
   ChevronRight,

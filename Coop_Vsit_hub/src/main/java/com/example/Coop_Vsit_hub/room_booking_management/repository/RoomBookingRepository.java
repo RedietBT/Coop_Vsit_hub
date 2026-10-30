@@ -46,8 +46,8 @@ public interface RoomBookingRepository extends JpaRepository<RoomBooking, UUID>,
            " LOWER(b.roomName) LIKE LOWER(CONCAT('%', TRIM(:roomName), '%')) OR " +
            " LOWER(TRIM(:roomName)) LIKE LOWER(CONCAT('%', TRIM(b.roomName), '%'))) " +
            "AND (b.status IS NULL OR b.status != :cancelledStatus) " +
-           "AND (:fromDate IS NULL OR b.scheduledEndTime >= :fromDate) " +
-           "AND (:toDate IS NULL OR b.scheduledStartTime <= :toDate) " +
+           "AND b.scheduledStartTime <= :toDate " +
+           "AND b.scheduledEndTime >= :fromDate " +
            "ORDER BY b.scheduledStartTime ASC")
     List<RoomBooking> findActiveRoomSlots(
             @Param("roomName") String roomName,
