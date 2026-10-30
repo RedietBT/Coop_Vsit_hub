@@ -59,6 +59,13 @@ public class MeetingRoom {
     @Column(name = "contact_email", length = 200)
     private String contactEmail;
 
+    @Column(name = "refreshment_options", columnDefinition = "TEXT")
+    private String refreshmentOptions;
+
+    @Builder.Default
+    @Column(name = "refreshments_available", nullable = false)
+    private Boolean refreshmentsAvailable = false;
+
     @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

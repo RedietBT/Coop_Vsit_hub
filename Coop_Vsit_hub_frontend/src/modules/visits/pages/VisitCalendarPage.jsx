@@ -45,12 +45,11 @@ import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import { resolveImageUrl } from '@/core/utils/imageUtils';
 
-// Hospitality & Refreshments: Strictly set and authorized by Room Supervisor (not default on page)
-const SUPERVISOR_REFRESHMENT_ITEMS = [
-  '☕ Hot Coffee & Tea Station',
-  '🥐 Executive Refreshments & Pastries',
-  '💧 Bottled Mineral Water & Glasses',
-];
+const getRoomRefreshmentOptions = (room) =>
+  String(room?.refreshmentOptions || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 export const VisitCalendarPage = () => {
   const navigate = useNavigate();
@@ -178,7 +177,6 @@ export const VisitCalendarPage = () => {
     expectedAttendees: 2,
     meetingAgenda: '',
     requestedItems: '',
-    requestSupervisorRefreshments: false,
     engagementType: 'INTERNAL',
   });
 
@@ -193,7 +191,6 @@ export const VisitCalendarPage = () => {
     visitorCount: 2,
     visitObjective: '',
     requestedItems: '',
-    requestSupervisorRefreshments: false,
     engagementType: 'INTERNAL',
   });
 
@@ -308,6 +305,8 @@ export const VisitCalendarPage = () => {
   };
 
   const supervisorDetails = getRoomSupervisorDetails(selectedRoom);
+  const roomRefreshmentOptions = getRoomRefreshmentOptions(selectedRoom);
+  const hasRoomRefreshments = Boolean(selectedRoom?.refreshmentsAvailable && roomRefreshmentOptions.length);
 
   // Strictly enforce authorization: Only the person who booked it, the person in charge of that space, or super admin only!
   const checkCanModifyBooking = (booking) => {
@@ -509,7 +508,7 @@ export const VisitCalendarPage = () => {
       .filter(Boolean);
 
     const refreshments = rawItems.filter((i) =>
-      SUPERVISOR_REFRESHMENT_ITEMS.some(
+      roomRefreshmentOptions.some(
         (sr) => i.toLowerCase().includes(sr.toLowerCase()) || sr.toLowerCase().includes(i.toLowerCase())
       )
     );
@@ -535,7 +534,7 @@ export const VisitCalendarPage = () => {
       // Keep equipment items (projector, whiteboard, etc.)
       const equipmentOnly = rawExisting.filter(
         (i) =>
-          !SUPERVISOR_REFRESHMENT_ITEMS.some(
+          !roomRefreshmentOptions.some(
             (sr) => i.toLowerCase().includes(sr.toLowerCase()) || sr.toLowerCase().includes(i.toLowerCase())
           ) &&
           !i.toLowerCase().startsWith('note:') &&
@@ -1420,7 +1419,7 @@ export const VisitCalendarPage = () => {
 
                             {/* In-Place Actions: Edit & Cancel (Strictly authorized & only for active future/present bookings) */}
                             <div className="shrink-0 flex items-center gap-1.5 self-center sm:self-auto flex-wrap">
-                              {supervisorDetails.isSupervisor && slot.status !== 'COMPLETED' && !isPastDateKey(slot.date) && (
+                              {hasRoomRefreshments && supervisorDetails.isSupervisor && slot.status !== 'COMPLETED' && !isPastDateKey(slot.date) && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -1976,104 +1975,52 @@ export const VisitCalendarPage = () => {
                   />
                 </div>
 
-                {/* 2. Coffee & Refreshments - Strictly Set by Room Supervisor */}
-                <div className="pt-1">
-                  {supervisorDetails.isSupervisor ? (
-                    /* ROOM SUPERVISOR CONTROLS */
-                    <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                          <Coffee className="w-4 h-4 text-amber-600" />
-                          <span>Coffee & Hospitality (Room Supervisor Authorized)</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-900 flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3 text-amber-700" />
-                          <span>Supervisor Access</span>
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-amber-800 leading-relaxed">
-                        As the designated Room Supervisor for <strong>{selectedRoom.name}</strong>, you can authorize and allocate coffee, tea, and catering for this reservation.
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {SUPERVISOR_REFRESHMENT_ITEMS.map((item) => {
-                          const isSelected = (formData.requestedItems || '')
-                            .split(',')
-                            .map((s) => s.trim())
-                            .includes(item);
-                          return (
-                            <button
-                              key={item}
-                              type="button"
-                              onClick={() => {
-                                const list = formData.requestedItems
-                                  ? formData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
-                                  : [];
-                                const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
-                                setFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                  : 'bg-white text-amber-900 border-amber-200 hover:border-amber-400 hover:bg-amber-100/50'
-                              }`}
-                            >
-                              {item}
-                            </button>
-                          );
-                        })}
-                      </div>
+                {hasRoomRefreshments && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                      <Coffee className="w-4 h-4 text-amber-600" />
+                      <span>
+                        {supervisorDetails.isSupervisor
+                          ? 'Coffee & Hospitality (Room Supervisor)'
+                          : 'Refreshments Available'}
+                      </span>
                     </div>
-                  ) : (
-                    /* REGULAR STAFF NOTICE: NOT DEFAULT ON PAGE, MANAGED BY ROOM SUPERVISOR */
-                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                          <Coffee className="w-4 h-4 text-amber-600" />
-                          <span>Coffee & Refreshments</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                          Set by Room Supervisor
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        Coffee, tea, and refreshments are <strong>not included by default</strong>. Hospitality and catering must be arranged and authorized by the Room Supervisor for this space.
-                      </p>
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
-                        <div className="flex items-center gap-1.5 text-slate-700">
-                          <Shield className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span>Supervisor: <strong>{supervisorDetails.name}</strong></span>
-                          {supervisorDetails.email && (
-                            <span className="text-slate-400 truncate font-mono text-[10px]">({supervisorDetails.email})</span>
-                          )}
-                        </div>
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={formData.requestSupervisorRefreshments || false}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setFormData((prev) => {
-                                const curItems = prev.requestedItems
-                                  ? prev.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
-                                  : [];
-                                const tag = `☕ Requested via Room Supervisor (${supervisorDetails.name}): Coffee & Refreshments`;
-                                const filtered = curItems.filter((i) => !i.includes('Room Supervisor') && !i.includes('Coffee') && !i.includes('Refreshments'));
-                                const updated = checked ? [...filtered, tag] : filtered;
-                                return {
-                                  ...prev,
-                                  requestSupervisorRefreshments: checked,
-                                  requestedItems: updated.join(', '),
-                                };
-                              });
-                            }}
-                            className="rounded border-slate-300 text-[#00adef] focus:ring-[#00adef] w-4 h-4"
-                          />
-                          <span>Request Supervisor Arrangement</span>
-                        </label>
-                      </div>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Choose from refreshments listed by the room supervisor. Availability is limited to this room.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {roomRefreshmentOptions.map((item) => {
+                        const isSelected = (formData.requestedItems || '')
+                          .split(',')
+                          .map((value) => value.trim())
+                          .includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setFormData((prev) => {
+                              const items = (prev.requestedItems || '')
+                                .split(',')
+                                .map((value) => value.trim())
+                                .filter(Boolean);
+                              const updated = isSelected
+                                ? items.filter((value) => value !== item)
+                                : [...items, item];
+                              return { ...prev, requestedItems: updated.join(', ') };
+                            })}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                : 'bg-white text-amber-900 border-amber-200 hover:border-amber-400 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Info Notice */}
                 <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-xs text-blue-800 space-y-1">
@@ -2474,60 +2421,45 @@ export const VisitCalendarPage = () => {
                   />
                 </div>
 
-                {/* 2. Coffee & Refreshments - Strictly Set by Room Supervisor */}
-                <div className="pt-1">
-                  {supervisorDetails.isSupervisor ? (
-                    <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                          <Coffee className="w-4 h-4 text-amber-600" />
-                          <span>Coffee & Hospitality (Room Supervisor Authorized)</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
-                          Supervisor Access
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {SUPERVISOR_REFRESHMENT_ITEMS.map((item) => {
-                          const isSelected = (editFormData.requestedItems || '')
-                            .split(',')
-                            .map((s) => s.trim())
-                            .includes(item);
-                          return (
-                            <button
-                              key={item}
-                              type="button"
-                              onClick={() => {
-                                const list = editFormData.requestedItems
-                                  ? editFormData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
-                                  : [];
-                                const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
-                                setEditFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                  : 'bg-white text-amber-900 border-amber-200 hover:border-amber-400 hover:bg-amber-100/50'
-                              }`}
-                            >
-                              {item}
-                            </button>
-                          );
-                        })}
-                      </div>
+                {hasRoomRefreshments && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                      <Coffee className="w-4 h-4 text-amber-600" />
+                      <span>Refreshments Available</span>
                     </div>
-                  ) : (
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-700">
-                        <Coffee className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>Refreshments: Set by Room Supervisor ({supervisorDetails.name})</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-600">
-                        Managed by Supervisor
-                      </span>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {roomRefreshmentOptions.map((item) => {
+                        const isSelected = (editFormData.requestedItems || '')
+                          .split(',')
+                          .map((value) => value.trim())
+                          .includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setEditFormData((prev) => {
+                              const items = (prev.requestedItems || '')
+                                .split(',')
+                                .map((value) => value.trim())
+                                .filter(Boolean);
+                              const updated = isSelected
+                                ? items.filter((value) => value !== item)
+                                : [...items, item];
+                              return { ...prev, requestedItems: updated.join(', ') };
+                            })}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                : 'bg-white text-amber-900 border-amber-200 hover:border-amber-400 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-3">
                   <Button
@@ -2642,7 +2574,7 @@ export const VisitCalendarPage = () => {
                 Hospitality & Refreshments to Provide
               </label>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {SUPERVISOR_REFRESHMENT_ITEMS.map((item) => {
+                {roomRefreshmentOptions.map((item) => {
                   const isSelected = (supervisorRefreshmentItems || []).includes(item);
                   return (
                     <button
@@ -2664,6 +2596,11 @@ export const VisitCalendarPage = () => {
                   );
                 })}
               </div>
+              {!hasRoomRefreshments && (
+                <p className="text-xs text-slate-500">
+                  Refreshments are currently hidden or have not been configured for this room.
+                </p>
+              )}
             </div>
 
             <div>

@@ -41,4 +41,9 @@ public class CreateMeetingRoomRequest {
     @jakarta.validation.constraints.Email(message = "Contact email must be a valid email address.")
     @Size(max = 200, message = "Contact email cannot exceed 200 characters.")
     private String contactEmail;
+
+    private String refreshmentOptions;
+
+    @Builder.Default
+    private Boolean refreshmentsAvailable = false;
 }

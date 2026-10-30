@@ -252,6 +252,8 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .assignedUserId(assignedUserId)
                 .assignedUserName(assignedUserName)
                 .contactEmail(contactEmail)
+                .refreshmentOptions(request.getRefreshmentOptions())
+                .refreshmentsAvailable(Boolean.TRUE.equals(request.getRefreshmentsAvailable()))
                 .isActive(true)
                 .build();
 
@@ -340,6 +342,13 @@ public class MasterDataServiceImpl implements MasterDataService {
                     });
                 }
             }
+        }
+
+        if (request.getRefreshmentOptions() != null) {
+            room.setRefreshmentOptions(request.getRefreshmentOptions());
+        }
+        if (request.getRefreshmentsAvailable() != null) {
+            room.setRefreshmentsAvailable(request.getRefreshmentsAvailable());
         }
 
         if (request.getIsActive() != null) {

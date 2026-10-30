@@ -41,5 +41,9 @@ public class UpdateMeetingRoomRequest {
     @jakarta.validation.constraints.Size(max = 200, message = "Contact email cannot exceed 200 characters.")
     private String contactEmail;
 
+    private String refreshmentOptions;
+
+    private Boolean refreshmentsAvailable;
+
     private Boolean isActive;
 }

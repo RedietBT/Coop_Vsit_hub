@@ -24,6 +24,8 @@ public class MeetingRoomDto {
     private UUID assignedUserId;
     private String assignedUserName;
     private String contactEmail;
+    private String refreshmentOptions;
+    private Boolean refreshmentsAvailable;
     private Boolean isActive;
     private Instant createdAt;
 
@@ -40,6 +42,8 @@ public class MeetingRoomDto {
                 .assignedUserId(entity.getAssignedUserId())
                 .assignedUserName(entity.getAssignedUserName())
                 .contactEmail(entity.getContactEmail())
+                .refreshmentOptions(entity.getRefreshmentOptions())
+                .refreshmentsAvailable(entity.getRefreshmentsAvailable())
                 .isActive(entity.getIsActive())
                 .createdAt(entity.getCreatedAt())
                 .build();

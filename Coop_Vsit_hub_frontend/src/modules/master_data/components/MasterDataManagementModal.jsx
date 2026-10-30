@@ -53,6 +53,8 @@ export const MasterDataManagementModal = () => {
     capacity: 18,
     imageUrl: '',
     contactEmail: '',
+    refreshmentsAvailable: false,
+    refreshmentOptions: '',
   });
 
   const [newRoomImageFile, setNewRoomImageFile] = useState(null);
@@ -72,7 +74,7 @@ export const MasterDataManagementModal = () => {
     setEditingId(null);
     setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
     closeMasterModal();
   };
 
@@ -94,11 +96,16 @@ export const MasterDataManagementModal = () => {
   const handleSaveRoom = async (e) => {
     e.preventDefault();
     if (!roomForm.name.trim()) return;
+    if (roomForm.refreshmentsAvailable && !roomForm.refreshmentOptions.trim()) {
+      toast.error('List at least one available refreshment, or hide the refreshments section.');
+      return;
+    }
 
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
       contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
+      refreshmentOptions: roomForm.refreshmentOptions.trim(),
     };
 
     if (editingId) {
@@ -131,7 +138,7 @@ export const MasterDataManagementModal = () => {
       }
     }
     setNewRoomImageFile(null);
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -344,7 +351,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', capacity: 18, imageUrl: '', contactEmail: '' });
+                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -409,6 +416,37 @@ export const MasterDataManagementModal = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-3">
+                <label className="flex items-start gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(roomForm.refreshmentsAvailable)}
+                    onChange={(e) => setRoomForm({ ...roomForm, refreshmentsAvailable: e.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>
+                    Show refreshments on the room booking form
+                    <span className="block mt-0.5 text-[11px] font-normal text-slate-500">
+                      Turn this off when the room cannot provide refreshments. The section will be hidden from bookers.
+                    </span>
+                  </span>
+                </label>
+                {roomForm.refreshmentsAvailable && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Refreshments available (one per line)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={roomForm.refreshmentOptions}
+                      onChange={(e) => setRoomForm({ ...roomForm, refreshmentOptions: e.target.value })}
+                      placeholder={'Coffee\nTea\nBottled water'}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Designated Room Contact Email */}
@@ -552,6 +590,8 @@ export const MasterDataManagementModal = () => {
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
                                 contactEmail: r.contactEmail || '',
+                                refreshmentsAvailable: Boolean(r.refreshmentsAvailable),
+                                refreshmentOptions: r.refreshmentOptions || '',
                               });
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#00adef] hover:bg-sky-50 transition-colors cursor-pointer"
