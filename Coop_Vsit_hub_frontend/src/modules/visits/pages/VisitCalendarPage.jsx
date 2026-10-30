@@ -160,6 +160,7 @@ export const VisitCalendarPage = () => {
   const [hoveredDate, setHoveredDate] = useState(null);
   const [roomSlots, setRoomSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotLoadError, setSlotLoadError] = useState('');
   const [showReserverContact, setShowReserverContact] = useState(() => {
     try { return localStorage.getItem('visitHub.showReserverContact') !== 'false'; } catch { return true; }
   });
@@ -602,6 +603,7 @@ export const VisitCalendarPage = () => {
   const loadRoomSlots = async (roomName) => {
     if (!roomName) return;
     setIsLoadingSlots(true);
+    setSlotLoadError('');
     try {
       const slots = await roomBookingApi.getRoomSlots(roomName);
       const formatted = (Array.isArray(slots) ? slots : []).map((s) => {
@@ -637,6 +639,7 @@ export const VisitCalendarPage = () => {
     } catch (err) {
       console.warn('Failed to load room slots:', err);
       setRoomSlots([]);
+      setSlotLoadError(err?.response?.data?.message || 'Unable to load booking history. Please try again.');
     } finally {
       setIsLoadingSlots(false);
     }
@@ -1131,6 +1134,28 @@ export const VisitCalendarPage = () => {
                     </button>
                   </div>
                 </div>
+
+                {(isLoadingSlots || slotLoadError) && (
+                  <div
+                    role={slotLoadError ? 'alert' : 'status'}
+                    className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-medium ${
+                      slotLoadError
+                        ? 'border border-rose-200 bg-rose-50 text-rose-700'
+                        : 'border border-sky-200 bg-sky-50 text-sky-700'
+                    }`}
+                  >
+                    <span>{slotLoadError || 'Loading room bookings…'}</span>
+                    {slotLoadError && (
+                      <button
+                        type="button"
+                        onClick={() => loadRoomSlots(selectedRoom.name)}
+                        className="shrink-0 font-bold underline"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Day Names Grid */}
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 uppercase tracking-wider py-1">

@@ -89,15 +89,13 @@ public class RoomBookingController {
 
     @GetMapping("/slots")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get Room Reserved Slots", description = "Fetches booked time slots for an interactive calendar.")
+    @Operation(summary = "Get Room Reserved Slots", description = "Fetches booked time slots for an interactive calendar; optional date bounds can restrict the results.")
     public ResponseEntity<List<RoomBookingSlotResponse>> getRoomSlots(
             @RequestParam String roomName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate
     ) {
-        Instant start = fromDate != null ? fromDate : Instant.now().minusSeconds(86400L * 365 * 3);
-        Instant end = toDate != null ? toDate : Instant.now().plusSeconds(86400L * 365 * 2);
-        return ResponseEntity.ok(roomBookingService.getRoomSlots(roomName, start, end));
+        return ResponseEntity.ok(roomBookingService.getRoomSlots(roomName, fromDate, toDate));
     }
 
     @GetMapping("/date")

@@ -26,7 +26,7 @@ export const roomBookingApi = {
   },
 
   /**
-   * Get reserved time slots for a specific room across a date range.
+   * Get reserved time slots for a room, optionally limited to a date range.
    */
   getRoomSlots: async (roomName, fromDate, toDate) => {
     const response = await apiClient.get('/api/v1/room-bookings/slots', {
