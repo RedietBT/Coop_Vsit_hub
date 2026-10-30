@@ -582,7 +582,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Transactional(readOnly = true)
     public List<RoomBookingSlotResponse> getRoomSlots(String roomName, Instant fromDate, Instant toDate) {
         String cleanRoom = (roomName != null && !roomName.isBlank()) ? roomName.trim() : "";
-        List<RoomBooking> bookings = roomBookingRepository.findActiveRoomSlots(cleanRoom, RoomBookingStatus.CANCELLED, fromDate, toDate);
+        boolean hasDateRange = fromDate != null || toDate != null;
+        List<RoomBooking> bookings = hasDateRange
+                ? roomBookingRepository.findActiveRoomSlots(cleanRoom, RoomBookingStatus.CANCELLED, fromDate, toDate)
+                : roomBookingRepository.findActiveRoomSlotsForRoom(cleanRoom, RoomBookingStatus.CANCELLED);
         Set<UUID> linkedVisitIds = bookings.stream()
                 .map(RoomBooking::getLinkedVisitId)
                 .filter(Objects::nonNull)
@@ -613,8 +616,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         // Also incorporate any visits scheduled for this room that do not have a linked RoomBooking
         if (visitRepository != null) {
-            List<com.example.coop_vsit_hub.visit_management.model.Visit> unlinkedVisits = visitRepository
-                    .findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate).stream()
+            List<com.example.coop_vsit_hub.visit_management.model.Visit> roomVisits = hasDateRange
+                    ? visitRepository.findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate)
+                    : visitRepository.findAllRoomBookingsForAdminByRoom(cleanRoom);
+            List<com.example.coop_vsit_hub.visit_management.model.Visit> unlinkedVisits = roomVisits.stream()
                     .filter(v -> !linkedVisitIds.contains(v.getId()) && v.getLinkedBookingId() == null)
                     .toList();
 

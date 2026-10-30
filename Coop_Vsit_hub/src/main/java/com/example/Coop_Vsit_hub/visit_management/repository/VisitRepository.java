@@ -139,6 +139,17 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
             @Param("toDate") Instant toDate
     );
 
+    @Query("SELECT v FROM Visit v WHERE v.locationRoom IS NOT NULL AND TRIM(v.locationRoom) != '' " +
+           "AND v.status NOT IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.CANCELLED, " +
+           "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.REJECTED, " +
+           "                     com.example.coop_vsit_hub.visit_management.enums.VisitStatus.DRAFT) " +
+           "AND (:room IS NULL OR TRIM(:room) = '' OR " +
+           "     LOWER(TRIM(v.locationRoom)) = LOWER(TRIM(:room)) OR " +
+           "     LOWER(v.locationRoom) LIKE LOWER(CONCAT('%', TRIM(:room), '%')) OR " +
+           "     LOWER(TRIM(:room)) LIKE LOWER(CONCAT('%', TRIM(v.locationRoom), '%'))) " +
+           "ORDER BY v.scheduledStartTime DESC")
+    List<Visit> findAllRoomBookingsForAdminByRoom(@Param("room") String room);
+
     @Query("SELECT v FROM Visit v WHERE v.scheduledStartTime >= :fromDate AND v.scheduledStartTime <= :toDate")
     List<Visit> findVisitsInTimeWindow(@Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate);
 

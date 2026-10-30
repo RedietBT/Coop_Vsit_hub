@@ -45,14 +45,6 @@ import AdminRoomBookingsModal from '../components/AdminRoomBookingsModal';
 import MasterDataManagementModal from '@/modules/master_data/components/MasterDataManagementModal';
 import { resolveImageUrl } from '@/core/utils/imageUtils';
 
-// Standard equipment available for staff self-service selection
-const STANDARD_ROOM_EQUIPMENT = [
-  '📽️ Projector & Screen',
-  '📹 Video Conference Bar',
-  '📋 Whiteboard & Markers',
-  '🔌 HDMI & Display Cables',
-];
-
 // Hospitality & Refreshments: Strictly set and authorized by Room Supervisor (not default on page)
 const SUPERVISOR_REFRESHMENT_ITEMS = [
   '☕ Hot Coffee & Tea Station',
@@ -1975,37 +1967,9 @@ export const VisitCalendarPage = () => {
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Facility Equipment (Optional)
                   </label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {STANDARD_ROOM_EQUIPMENT.map((item) => {
-                      const isSelected = (formData.requestedItems || '')
-                        .split(',')
-                        .map((s) => s.trim())
-                        .includes(item);
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => {
-                            const list = formData.requestedItems
-                              ? formData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
-                              : [];
-                            const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
-                            setFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300 hover:bg-sky-50/50'
-                          }`}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
-                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. 📽️ Projector & Screen, 📹 Video Conference, HDMI cable..."
+                    placeholder="Write the equipment you need, e.g. projector, video conference system, HDMI cable..."
                     value={formData.requestedItems}
                     onChange={(e) => setFormData({ ...formData, requestedItems: e.target.value })}
                     className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
@@ -2501,37 +2465,9 @@ export const VisitCalendarPage = () => {
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
                     Facility Equipment (Optional)
                   </label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {STANDARD_ROOM_EQUIPMENT.map((item) => {
-                      const isSelected = (editFormData.requestedItems || '')
-                        .split(',')
-                        .map((s) => s.trim())
-                        .includes(item);
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => {
-                            const list = editFormData.requestedItems
-                              ? editFormData.requestedItems.split(',').map((s) => s.trim()).filter(Boolean)
-                              : [];
-                            const updated = isSelected ? list.filter((i) => i !== item) : [...list, item];
-                            setEditFormData((prev) => ({ ...prev, requestedItems: updated.join(', ') }));
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#00adef] text-white border-[#00adef] shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300 hover:bg-sky-50/50'
-                          }`}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
-                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. 📽️ Projector & Screen, HDMI adapter..."
+                    placeholder="Write the equipment you need, e.g. projector, video conference system, HDMI adapter..."
                     value={editFormData.requestedItems}
                     onChange={(e) => setEditFormData({ ...editFormData, requestedItems: e.target.value })}
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#00adef] text-slate-800"

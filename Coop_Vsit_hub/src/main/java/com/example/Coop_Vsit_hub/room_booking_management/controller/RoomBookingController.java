@@ -31,9 +31,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Tag(name = "Room Booking Management", description = "Dedicated Meeting Room & Boardroom Reservations API")
 public class RoomBookingController {
-    private static final Instant EARLIEST_BOOKING_DATE = Instant.parse("0001-01-01T00:00:00Z");
-    private static final Instant LATEST_BOOKING_DATE = Instant.parse("9999-12-31T23:59:59Z");
-
     private final RoomBookingService roomBookingService;
     private final UserRepository userRepository;
 
@@ -97,9 +94,7 @@ public class RoomBookingController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate
     ) {
-        Instant start = fromDate != null ? fromDate : EARLIEST_BOOKING_DATE;
-        Instant end = toDate != null ? toDate : LATEST_BOOKING_DATE;
-        return ResponseEntity.ok(roomBookingService.getRoomSlots(roomName, start, end));
+        return ResponseEntity.ok(roomBookingService.getRoomSlots(roomName, fromDate, toDate));
     }
 
     @GetMapping("/date")
