@@ -130,8 +130,8 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
            "     LOWER(TRIM(v.locationRoom)) = LOWER(TRIM(:room)) OR " +
            "     LOWER(v.locationRoom) LIKE LOWER(CONCAT('%', TRIM(:room), '%')) OR " +
            "     LOWER(TRIM(:room)) LIKE LOWER(CONCAT('%', TRIM(v.locationRoom), '%'))) " +
-           "AND (:fromDate IS NULL OR v.scheduledEndTime >= :fromDate) " +
-           "AND (:toDate IS NULL OR v.scheduledStartTime <= :toDate) " +
+           "AND v.scheduledEndTime >= :fromDate " +
+           "AND v.scheduledStartTime <= :toDate " +
            "ORDER BY v.scheduledStartTime DESC")
     List<Visit> findAllRoomBookingsForAdmin(
             @Param("room") String room,

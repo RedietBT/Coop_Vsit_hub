@@ -1067,7 +1067,9 @@ public class VisitServiceImpl implements VisitService {
     @Transactional(readOnly = true)
     public List<AdminRoomBookingResponse> getAdminRoomBookings(String roomName, Instant fromDate, Instant toDate) {
         String cleanRoom = (roomName != null && !roomName.isBlank()) ? roomName.trim() : null;
-        List<Visit> visits = visitRepository.findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate);
+        List<Visit> visits = (fromDate == null && toDate == null)
+                ? visitRepository.findAllRoomBookingsForAdminByRoom(cleanRoom)
+                : visitRepository.findAllRoomBookingsForAdmin(cleanRoom, fromDate != null ? fromDate : java.time.Instant.EPOCH, toDate != null ? toDate : java.time.Instant.ofEpochMilli(4102444800000L));
 
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm a").withZone(ZoneOffset.UTC);

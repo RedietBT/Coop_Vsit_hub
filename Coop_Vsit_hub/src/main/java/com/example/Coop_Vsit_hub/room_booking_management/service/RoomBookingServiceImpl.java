@@ -616,8 +616,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         // Also incorporate any visits scheduled for this room that do not have a linked RoomBooking
         if (visitRepository != null) {
+            Instant effFrom = fromDate != null ? fromDate : Instant.EPOCH;
+            Instant effTo = toDate != null ? toDate : Instant.ofEpochMilli(4102444800000L);
             List<com.example.coop_vsit_hub.visit_management.model.Visit> roomVisits = hasDateRange
-                    ? visitRepository.findAllRoomBookingsForAdmin(cleanRoom, fromDate, toDate)
+                    ? visitRepository.findAllRoomBookingsForAdmin(cleanRoom, effFrom, effTo)
                     : visitRepository.findAllRoomBookingsForAdminByRoom(cleanRoom);
             List<com.example.coop_vsit_hub.visit_management.model.Visit> unlinkedVisits = roomVisits.stream()
                     .filter(v -> !linkedVisitIds.contains(v.getId()) && v.getLinkedBookingId() == null)
@@ -629,7 +631,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         ? host.getFullName().trim()
                         : (host != null && StringUtils.hasText(host.getUsername())
                                 ? host.getUsername().trim()
-                                : (host != null && StringUtils.hasText(host.getEmail()) ? host.getEmail().trim() : "Coop Staff Member"));
+                                : (host != null && StringUtils.hasText(host.getEmail()) ? host.getEmail().trim() : null));
                 String hostEmail = host != null ? host.getEmail() : null;
                 String hostPhone = host != null ? host.getPhoneNumber() : null;
                 String hostDept = host != null && StringUtils.hasText(host.getDepartment()) ? host.getDepartment() : v.getRequestingDepartment();

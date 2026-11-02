@@ -199,6 +199,14 @@ export const LoginPage = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Session Expired Alert Banner */}
+          {new URLSearchParams(location.search).get('expired') === 'true' && !error && !isLockedOut && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Your session has expired. Please sign in again to continue.</span>
+            </div>
+          )}
+
           {/* Active Lockout Timer Banner */}
           {isLockedOut && (
             <LockoutCountdown
@@ -294,6 +302,20 @@ export const LoginPage = () => {
             {mode === 'STAFF' ? 'Sign In & Open Booking Calendar' : 'Sign In as System Admin'}
           </Button>
         </form>
+
+        {/* Live Meeting Room Schedule Display (No Sign-In Required) */}
+        <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+          <Link
+            to="/schedule"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#00adef] bg-slate-50 hover:bg-sky-50/80 border border-slate-200 hover:border-[#00adef]/40 transition-all shadow-sm group"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <span>Live Meeting Room Display Board</span>
+            <span className="text-[10px] text-slate-400 group-hover:text-sky-600 font-medium">
+              (No Sign-In Required) →
+            </span>
+          </Link>
+        </div>
       </div>
 
       {/* Mandatory First-Time Password Change Modal */}

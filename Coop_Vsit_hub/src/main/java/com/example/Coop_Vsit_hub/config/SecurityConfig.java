@@ -51,7 +51,7 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final SwaggerBasicAuthFilter swaggerBasicAuthFilter;
 
-    @Value("${coopbank.security.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*,http://visit-hub.coopbank.local,http://visit-hub.coopbank.local:*}")
+    @Value("${coopbank.security.cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*,http://visit-hub.coopbank.local,http://visit-hub.coopbank.local:*}")
     private String allowedOriginsConfig;
 
     /** Set HSTS_ENABLED=true in production (HTTPS). Keep false for local HTTP dev. */
@@ -70,6 +70,13 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"Session expired or invalid credentials. Please sign in again.\"}");
+                })
+            )
             .headers(headers -> {
                 // ── X-Frame-Options: SAMEORIGIN ───────────────────────────────────────
                 // Prevents clickjacking from external sites while allowing same-domain iframes
@@ -138,6 +145,7 @@ public class SecurityConfig {
                     "/api/v1/feedback/submit",
                     "/api/v1/meeting-rooms/images/**",
                     "/api/v1/files/**",
+                    "/api/v1/public/**",
                     "/uploads/**",
                     "/rooms/**"
                 ).permitAll()

@@ -1,15 +1,16 @@
 # =============================================================================
 # EXAMPLE CONFIGURATION TEMPLATE - TRACKED BY GIT
-# Copy this file to application.properties and customize secret keys and credentials.
+# Copy this file to application.properties or define variables in your .env file.
 # DO NOT COMMIT REAL SECRETS OR PASSWORDS TO GIT REPOSITORIES.
 # =============================================================================
 
 spring.application.name=Coop_Vsit_hub
+spring.config.import=optional:file:.env[.properties],optional:file:../.env[.properties]
 
 # Database Credentials
 spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/coop_visit_db}
-spring.datasource.username=${SPRING_DATASOURCE_USERNAME:coop_user}
-spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:coop_secure_pass}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:postgres}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 # JPA & Migration Settings
@@ -22,12 +23,12 @@ spring.flyway.baseline-version=0
 spring.flyway.validate-on-migrate=false
 spring.flyway.ignore-migration-patterns=*:*
 
-# Production SMTP Credentials (Coop Bank Internal Mail Relay)
-spring.mail.host=${SPRING_MAIL_HOST:10.12.150.151}
+# SMTP Credentials
+spring.mail.host=${SPRING_MAIL_HOST:smtp.example.com}
 spring.mail.port=${SPRING_MAIL_PORT:587}
-spring.mail.username=${SPRING_MAIL_USERNAME:noreply@coopbankoromiasc.com}
-spring.mail.password=${SPRING_MAIL_PASSWORD:N0rep1y7ujm<KI*}
-spring.mail.from=${SPRING_MAIL_FROM:noreply@coopbankoromiasc.com}
+spring.mail.username=${SPRING_MAIL_USERNAME:noreply@example.com}
+spring.mail.password=${SPRING_MAIL_PASSWORD}
+spring.mail.from=${SPRING_MAIL_FROM:noreply@example.com}
 spring.mail.properties.mail.smtp.auth=${SPRING_MAIL_AUTH:true}
 spring.mail.properties.mail.smtp.starttls.enable=${SPRING_MAIL_STARTTLS:true}
 spring.mail.properties.mail.smtp.starttls.required=${SPRING_MAIL_STARTTLS_REQUIRED:true}
@@ -38,25 +39,24 @@ spring.mail.properties.mail.smtp.ssl.checkserveridentity=${SPRING_MAIL_SSL_CHECK
 coopbank.app.base-url=${APP_BASE_URL:http://localhost:8080}
 
 # File Upload Directories (resolved to absolute path at startup)
-# Override via env variable for persistent volumes (e.g. Render mount)
 coopbank.files.upload-dir=${FILE_UPLOAD_DIR:uploads/attachments/}
 coopbank.rooms.upload-dir=${ROOMS_UPLOAD_DIR:uploads/rooms/}
 
-# File Limits (Increased to 15MB to support high-res camera photos)
+# File Limits
 spring.servlet.multipart.max-file-size=15MB
 spring.servlet.multipart.max-request-size=20MB
 
-# Security & Secret Keys (REPLACE WITH STRONG PRODUCTION RANDOM KEY)
-coopbank.security.jwt.secret=${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-coopbank.security.jwt.access-token-expiration-ms=900000
-coopbank.security.jwt.refresh-token-expiration-ms=604800000
+# Security & Secret Keys (Loaded from .env / Environment Variables)
+coopbank.security.jwt.secret=${JWT_SECRET}
+coopbank.security.jwt.access-token-expiration-ms=${JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
+coopbank.security.jwt.refresh-token-expiration-ms=${JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000}
 coopbank.security.brute-force.max-attempts=5
 coopbank.security.brute-force.lock-duration-minutes=15
 coopbank.security.rate-limit.requests-per-minute=60
 
 # Swagger UI Access Credentials
-coopbank.security.swagger.username=${SWAGGER_ADMIN_USER:coop_admin}
-coopbank.security.swagger.password=${SWAGGER_ADMIN_PASS:CoopBank#Secure2026!}
+coopbank.security.swagger.username=${SWAGGER_ADMIN_USER:admin}
+coopbank.security.swagger.password=${SWAGGER_ADMIN_PASS}
 
 # Springdoc OpenAPI / Swagger UI Settings
 springdoc.swagger-ui.path=/swagger-ui.html
@@ -66,24 +66,23 @@ springdoc.swagger-ui.display-request-duration=true
 springdoc.swagger-ui.doc-expansion=none
 springdoc.api-docs.path=/v3/api-docs
 
-# Server Port (Render injects dynamic PORT)
+# Server Port
 server.port=${PORT:8080}
 server.error.include-message=always
 server.error.include-binding-errors=always
 
 # Frontend Application URL for Guest Feedback & Redirects
-coopbank.app.frontend-url=${COOPBANK_APP_FRONTEND_URL:${FRONTEND_URL:https://coop-vsit-hub.vercel.app}}
-app.frontend.url=${APP_FRONTEND_URL:${FRONTEND_URL:https://coop-vsit-hub.vercel.app}}
+coopbank.app.frontend-url=${COOPBANK_APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:3000}}
+app.frontend.url=${APP_FRONTEND_URL:${FRONTEND_URL:http://localhost:3000}}
 
 # CORS Allowed Origins
-coopbank.security.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4173,https://coop-vsit-hub.vercel.app,https://*.vercel.app,http://10.8.101.150,http://10.8.101.150:*,http://visit-hub.coopbank.local,http://visit-hub.coopbank.local:*}
+coopbank.security.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:5173}
 
 # Active Directory (AD / LDAPS) Integration Settings
 coopbank.ad.enabled=${AD_ENABLED:false}
-coopbank.ad.domain=${AD_DOMAIN:coopbank.local}
-coopbank.ad.url=${AD_URL:ldaps://10.1.72.10:636}
-coopbank.ad.base-dn=${AD_BASE_DN:DC=coopbank,DC=local}
+coopbank.ad.domain=${AD_DOMAIN:example.local}
+coopbank.ad.url=${AD_URL:ldaps://ldap.example.com:636}
+coopbank.ad.base-dn=${AD_BASE_DN:DC=example,DC=local}
 coopbank.ad.username=${AD_USERNAME:}
 coopbank.ad.password=${AD_PASSWORD:}
 coopbank.ad.ssl.trust-all=${AD_SSL_TRUST_ALL:false}
-

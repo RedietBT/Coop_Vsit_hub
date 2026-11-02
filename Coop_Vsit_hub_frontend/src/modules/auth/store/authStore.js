@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import apiClient from '@/core/api/apiClient';
+import { recordUserActivity, isTokenExpired, triggerSessionLogout } from '@/core/auth/sessionManager';
 
 export const useAuthStore = create(
   persist(
@@ -25,6 +26,8 @@ export const useAuthStore = create(
 
           // Only store accessToken and user — refreshToken is in HttpOnly cookie
           const { accessToken, user } = response.data;
+
+          recordUserActivity();
 
           set({
             user,
@@ -63,6 +66,7 @@ export const useAuthStore = create(
       },
 
       setAuthSession: ({ accessToken, user }) => {
+        recordUserActivity();
         set((state) => ({
           accessToken: accessToken || state.accessToken,
           user: user || state.user,
@@ -73,14 +77,24 @@ export const useAuthStore = create(
       fetchCurrentUser: async () => {
         try {
           const token = get().accessToken;
-          if (!token) return null;
+          if (!token || isTokenExpired(token)) {
+            await get().logout();
+            triggerSessionLogout('expired');
+            return null;
+          }
+
           const response = await apiClient.get('/api/v1/auth/me');
           if (response?.data) {
+            recordUserActivity();
             set({ user: response.data, isAuthenticated: true });
             return response.data;
           }
         } catch (e) {
           console.warn('Failed to fetch current user profile:', e);
+          if (e.response?.status === 401 || e.response?.status === 403) {
+            await get().logout();
+            triggerSessionLogout('expired');
+          }
           return null;
         }
       },
@@ -103,6 +117,7 @@ export const useAuthStore = create(
             lockoutUntil: null,
           });
           localStorage.removeItem('coop_auth_state');
+          localStorage.removeItem('coop_last_activity');
         }
       },
 
@@ -139,7 +154,6 @@ export const useAuthStore = create(
     }),
     {
       name: 'coop_auth_state',
-      // Explicitly whitelist only safe, non-sensitive fields for localStorage
       partialize: (state) => ({
         accessToken: state.accessToken,
         user: state.user,
@@ -148,5 +162,29 @@ export const useAuthStore = create(
     }
   )
 );
+
+// Listen to session expired events from any part of the application
+if (typeof window !== 'undefined') {
+  window.addEventListener('coop_session_expired', () => {
+    useAuthStore.setState({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      error: null,
+      lockoutUntil: null,
+    });
+  });
+
+  // Cross-tab synchronization: if another tab logs out, sync immediately
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'coop_auth_state' && !event.newValue) {
+      useAuthStore.setState({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+      });
+    }
+  });
+}
 
 export default useAuthStore;

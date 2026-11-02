@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { triggerSessionLogout, recordUserActivity } from '@/core/auth/sessionManager';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -30,6 +31,9 @@ const processQueue = (error, token = null) => {
 // ─────────────────────────────────────────────────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
+    // Record user activity on API requests
+    recordUserActivity();
+
     const authData = localStorage.getItem('coop_auth_state');
     if (authData) {
       try {
@@ -50,19 +54,33 @@ apiClient.interceptors.request.use(
 // Response Interceptor: Silent Token Refresh via HttpOnly Cookie
 // When the access token expires (401), the browser automatically sends the
 // HttpOnly refresh cookie — no JavaScript needs to handle it.
+// If refresh fails or session has passed, force full logout.
 // ─────────────────────────────────────────────────────────────────────────────
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    recordUserActivity();
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
-    // Avoid infinite loops on auth endpoints
+    // If 401 on login endpoint, let the login form handle the invalid credentials error
+    if (error.response?.status === 401 && originalRequest?.url?.includes('/api/v1/auth/login')) {
+      return Promise.reject(error);
+    }
+
+    // If 401 on refresh endpoint or request already retried, session has passed!
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes('/api/v1/auth/login') &&
-      !originalRequest.url.includes('/api/v1/auth/refresh')
+      (originalRequest?._retry || originalRequest?.url?.includes('/api/v1/auth/refresh'))
     ) {
+      processQueue(error, null);
+      triggerSessionLogout('expired');
+      return Promise.reject(error);
+    }
+
+    // Attempt silent token refresh for standard expired 401s
+    if (error.response?.status === 401 && !originalRequest?._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -97,7 +115,7 @@ apiClient.interceptors.response.use(
           } catch (_) {}
         }
 
-        // Update localStorage — no refreshToken stored here anymore
+        // Update localStorage
         const updatedState = {
           state: {
             accessToken,
@@ -124,10 +142,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('coop_auth_state');
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login?expired=true';
-        }
+        triggerSessionLogout('expired');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

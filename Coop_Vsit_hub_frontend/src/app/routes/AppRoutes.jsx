@@ -18,6 +18,7 @@ import GuestsPage from '@/modules/guests/pages/GuestsPage';
 import UsersPage from '@/modules/users/pages/UsersPage';
 import AuditLogsPage from '@/modules/audit/pages/AuditLogsPage';
 import PublicSurveyPage from '@/modules/feedback/pages/PublicSurveyPage';
+import PublicRoomSchedulePage from '@/modules/booking/pages/PublicRoomSchedulePage';
 import StaffTrackerPage from '@/modules/staff/pages/StaffTrackerPage';
 
 import useAuthStore from '@/modules/auth/store/authStore';
@@ -41,6 +42,11 @@ export const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+
+      {/* Public Live Meeting Room Schedule & Kiosk Display (No login required) */}
+      <Route path="/schedule" element={<PublicRoomSchedulePage />} />
+      <Route path="/room-display" element={<PublicRoomSchedulePage />} />
+      <Route path="/public-schedule" element={<PublicRoomSchedulePage />} />
 
       {/* Public Post-Visit Customer Satisfaction (CSAT) Survey */}
       <Route path="/feedback/:token" element={<PublicSurveyPage />} />
