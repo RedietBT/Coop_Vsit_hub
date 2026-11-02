@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { User, Lock, ArrowRight, AlertCircle, Building2, ShieldCheck, KeyRound } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Building2, ShieldCheck, KeyRound, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthLayout from '@/core/layouts/AuthLayout';
 import Input from '@/shared/components/ui/Input';
@@ -104,38 +104,52 @@ export const LoginPage = () => {
 
   const isLockedOut = lockoutUntil && lockoutUntil > Date.now();
 
-  // Top-Right Corner Action Button (outside of the form card)
+  // Top-Right Corner Action Buttons (outside of the form card)
   const renderTopRightAction = () => {
-    if (mode === 'ADMIN') {
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            setMode('STAFF');
-            clearError();
-            reset();
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#00adef] hover:shadow-md text-slate-700 text-xs font-bold transition-all cursor-pointer"
-        >
-          <Building2 className="w-4 h-4 text-[#00adef]" />
-          <span>Switch to Staff Portal</span>
-        </button>
-      );
-    }
-
     return (
-      <button
-        type="button"
-        onClick={() => {
-          setMode('ADMIN');
-          clearError();
-          reset();
-        }}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#e38524] hover:shadow-md text-slate-700 text-xs font-bold transition-all cursor-pointer"
-      >
-        <KeyRound className="w-4 h-4 text-[#e38524]" />
-        <span>Admin Sign In</span>
-      </button>
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+        {/* Prominent Visible CTA: Live Schedule Display */}
+        <Link
+          to="/schedule"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#00adef] to-[#008ec5] hover:from-[#009cdb] hover:to-[#007ba8] text-white shadow-md shadow-[#00adef]/20 hover:shadow-lg hover:shadow-[#00adef]/35 text-xs font-bold transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-80" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+          </span>
+          <Calendar className="w-4 h-4 text-white" />
+          <span>Live Schedule Display</span>
+        </Link>
+
+        {/* Portal Switch Button */}
+        {mode === 'ADMIN' ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMode('STAFF');
+              clearError();
+              reset();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#00adef] hover:shadow-md text-slate-700 text-xs font-bold transition-all cursor-pointer"
+          >
+            <Building2 className="w-4 h-4 text-[#00adef]" />
+            <span>Switch to Staff Portal</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setMode('ADMIN');
+              clearError();
+              reset();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-[#e38524] hover:shadow-md text-slate-700 text-xs font-bold transition-all cursor-pointer"
+          >
+            <KeyRound className="w-4 h-4 text-[#e38524]" />
+            <span>Admin Sign In</span>
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -162,6 +176,35 @@ export const LoginPage = () => {
       topRightAction={renderTopRightAction()}
     >
       <div>
+        {/* Visible Top Call-to-Action for Live Schedule Display */}
+        <Link
+          to="/schedule"
+          className="flex items-center justify-between p-3 mb-5 rounded-2xl bg-gradient-to-r from-sky-50 via-cyan-50/50 to-white border border-sky-200/80 hover:border-[#00adef] shadow-xs hover:shadow-md transition-all group cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00adef] to-[#008ec5] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-extrabold text-slate-800 group-hover:text-[#00adef] transition-colors">
+                  Live Meeting Room Schedule
+                </span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">
+                Public display board for ongoing & upcoming sessions • No sign-in
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center text-xs font-bold text-[#00adef] group-hover:translate-x-1 transition-transform pl-1 shrink-0">
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </Link>
+
         {/* Mode Selector Tabs */}
         <div className="flex rounded-2xl bg-slate-100 p-1 mb-5 border border-slate-200/80">
           <button
@@ -307,7 +350,7 @@ export const LoginPage = () => {
         <div className="mt-5 pt-4 border-t border-slate-100 text-center">
           <Link
             to="/schedule"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#00adef] bg-slate-50 hover:bg-sky-50/80 border border-slate-200 hover:border-[#00adef]/40 transition-all shadow-sm group"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#00adef] bg-slate-50 hover:bg-sky-50/80 border border-slate-200 hover:border-[#00adef]/40 transition-all shadow-xs group"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             <span>Live Meeting Room Display Board</span>
