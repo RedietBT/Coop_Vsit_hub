@@ -271,8 +271,52 @@ export const PublicRoomSchedulePage = () => {
     }
   };
 
+  // Normalized bookings with robust fallback for Jackson boolean serialization and timestamp-based truth
+  const bookings = useMemo(() => {
+    const rawList = scheduleData?.bookings || [];
+    const nowMs = Date.now();
+
+    return rawList.map((b) => {
+      const startMs = b.scheduledStartTime ? new Date(b.scheduledStartTime).getTime() : null;
+      const endMs = b.scheduledEndTime ? new Date(b.scheduledEndTime).getTime() : null;
+
+      let isOngoing = Boolean(b.isOngoing ?? b.ongoing ?? (b.status === 'IN_PROGRESS'));
+      let isUpcoming = Boolean(b.isUpcoming ?? b.upcoming ?? (b.status === 'CONFIRMED' || b.status === 'UPCOMING'));
+      let isCompleted = Boolean(b.isCompleted ?? b.completed ?? (b.status === 'COMPLETED'));
+
+      // Strict timestamp-based validation
+      if (startMs && endMs) {
+        if (nowMs >= startMs && nowMs <= endMs) {
+          isOngoing = true;
+          isUpcoming = false;
+          isCompleted = false;
+        } else if (nowMs < startMs) {
+          isUpcoming = true;
+          isOngoing = false;
+          isCompleted = false;
+        } else if (nowMs > endMs) {
+          isCompleted = true;
+          isOngoing = false;
+          isUpcoming = false;
+        }
+      } else if (isOngoing) {
+        isUpcoming = false;
+        isCompleted = false;
+      } else if (isUpcoming) {
+        isCompleted = false;
+      }
+
+      return {
+        ...b,
+        isOngoing,
+        isUpcoming,
+        isCompleted,
+        status: isOngoing ? 'IN_PROGRESS' : (isUpcoming ? 'CONFIRMED' : 'COMPLETED'),
+      };
+    });
+  }, [scheduleData]);
+
   // Filtered bookings
-  const bookings = scheduleData?.bookings || [];
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       // Room match if a specific room is selected

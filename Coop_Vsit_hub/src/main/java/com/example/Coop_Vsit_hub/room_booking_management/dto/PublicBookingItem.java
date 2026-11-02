@@ -29,9 +29,8 @@ public class PublicBookingItem {
     private Instant scheduledStartTime;
     private Instant scheduledEndTime;
     private String status;
-    private boolean isOngoing;
-    private boolean isUpcoming;
-    private boolean isCompleted;
+    private boolean ongoing;
+    private boolean upcoming;
+    private boolean completed;
     private String engagementType;
 }
-

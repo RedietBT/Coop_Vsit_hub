@@ -84,9 +84,11 @@ public class PublicRoomScheduleController {
         List<PublicBookingItem> items = new ArrayList<>(slots.stream().map(s -> {
             boolean isOngoing = s.getScheduledStartTime() != null && s.getScheduledEndTime() != null
                     && now.isAfter(s.getScheduledStartTime()) && now.isBefore(s.getScheduledEndTime());
-            boolean isUpcoming = s.getScheduledStartTime() != null && now.isBefore(s.getScheduledStartTime());
-            boolean isCompleted = (s.getScheduledEndTime() != null && now.isAfter(s.getScheduledEndTime()))
-                    || (s.getStatus() != null && "COMPLETED".equalsIgnoreCase(s.getStatus().name()));
+            boolean isUpcoming = !isOngoing && s.getScheduledStartTime() != null && now.isBefore(s.getScheduledStartTime());
+            boolean isCompleted = !isOngoing && !isUpcoming && ((s.getScheduledEndTime() != null && now.isAfter(s.getScheduledEndTime()))
+                    || (s.getStatus() != null && "COMPLETED".equalsIgnoreCase(s.getStatus().name())));
+
+            String statusStr = isOngoing ? "IN_PROGRESS" : (isCompleted ? "COMPLETED" : "CONFIRMED");
 
             return PublicBookingItem.builder()
                     .id(s.getId())
@@ -104,10 +106,10 @@ public class PublicRoomScheduleController {
                     .requestedItems(s.getRequestedItems())
                     .scheduledStartTime(s.getScheduledStartTime())
                     .scheduledEndTime(s.getScheduledEndTime())
-                    .status(isOngoing ? "IN_PROGRESS" : (isCompleted ? "COMPLETED" : "CONFIRMED"))
-                    .isOngoing(isOngoing)
-                    .isUpcoming(isUpcoming)
-                    .isCompleted(isCompleted)
+                    .status(statusStr)
+                    .ongoing(isOngoing)
+                    .upcoming(isUpcoming)
+                    .completed(isCompleted)
                     .engagementType(s.getEngagementType())
                     .build();
         }).toList());
