@@ -1,7 +1,7 @@
 import React from 'react';
 import CoopLogo from '@/core/assets/CoopLogo';
 
-export const AuthLayout = ({ children, title, subtitle, topRightAction }) => {
+export const AuthLayout = ({ children, title, subtitle, topRightAction, hideLogo = false }) => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-8 pt-20 sm:pt-24 relative bg-slate-50">
       {/* Top Right Action Button outside the card */}
@@ -13,9 +13,11 @@ export const AuthLayout = ({ children, title, subtitle, topRightAction }) => {
 
       <div className="w-full max-w-md my-auto">
         {/* Brand Logo */}
-        <div className="mb-8 flex justify-center">
-          <CoopLogo size="md" />
-        </div>
+        {!hideLogo && (
+          <div className="mb-8 flex justify-center">
+            <CoopLogo size="md" />
+          </div>
+        )}
 
         {/* Header */}
         {(title || subtitle) && (

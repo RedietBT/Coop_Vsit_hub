@@ -174,6 +174,7 @@ export const LoginPage = () => {
       title={title}
       subtitle={subtitle}
       topRightAction={renderTopRightAction()}
+      hideLogo
     >
       <div>
         {/* Visible Top Call-to-Action for Live Schedule Display */}
