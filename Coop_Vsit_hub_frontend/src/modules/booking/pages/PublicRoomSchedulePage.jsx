@@ -30,6 +30,7 @@ import {
   Smile
 } from 'lucide-react';
 import publicRoomScheduleApi from '../api/publicRoomScheduleApi';
+import { CalendarDropdownPopover } from '../components/CalendarDropdownPopover';
 
 // Format time to 12-hour AM/PM in Africa/Addis_Ababa timezone
 const formatTime12Hr = (instantStr) => {
@@ -76,6 +77,25 @@ const getTodayIsoStr = () => {
     return formatter.format(new Date());
   } catch {
     return new Date().toISOString().split('T')[0];
+  }
+};
+
+// Get relative ISO date string (offset by days) in Addis Ababa timezone
+const getRelativeDateIsoStr = (offsetDays) => {
+  try {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Addis_Ababa',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(d);
+  } catch {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split('T')[0];
   }
 };
 
@@ -126,6 +146,15 @@ export const PublicRoomSchedulePage = () => {
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef(null);
+
+  // Date constants & comparison
+  const todayIsoStr = useMemo(() => getTodayIsoStr(), []);
+  const tomorrowIsoStr = useMemo(() => getRelativeDateIsoStr(1), []);
+  const yesterdayIsoStr = useMemo(() => getRelativeDateIsoStr(-1), []);
+
+  const isViewingToday = selectedDate === todayIsoStr;
+  const isViewingTomorrow = selectedDate === tomorrowIsoStr;
+  const isViewingYesterday = selectedDate === yesterdayIsoStr;
 
   // Live clock tick
   useEffect(() => {
@@ -290,8 +319,6 @@ export const PublicRoomSchedulePage = () => {
     );
   }, [rooms, selectedRoomName]);
 
-  // Is today being viewed?
-  const isViewingToday = selectedDate === getTodayIsoStr();
 
   // Rooms Occupancy Map for the "All Rooms" view
   const roomOccupancyMap = useMemo(() => {
@@ -519,7 +546,40 @@ export const PublicRoomSchedulePage = () => {
           </div>
 
           {/* Date Selector & Day Navigation */}
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+            {/* Quick Day Presets */}
+            <div className={`p-1 rounded-xl border flex items-center gap-1 ${
+              isDarkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100 border-slate-300'
+            }`}>
+              <button
+                type="button"
+                onClick={handleResetToday}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  isViewingToday
+                    ? 'bg-[#00adef] text-white shadow-sm'
+                    : isDarkMode
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(tomorrowIsoStr)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  isViewingTomorrow
+                    ? 'bg-[#00adef] text-white shadow-sm'
+                    : isDarkMode
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                }`}
+              >
+                Tomorrow
+              </button>
+            </div>
+
+            {/* Previous Day */}
             <button
               type="button"
               onClick={() => handleDateStep(-1)}
@@ -529,28 +589,20 @@ export const PublicRoomSchedulePage = () => {
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <div className={`px-4 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-bold relative ${
-              isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
-            }`}>
-              <Calendar className="w-3.5 h-3.5 text-[#00adef]" />
-              <span>{formatDateHeader(selectedDate)}</span>
-              {isViewingToday && (
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
-                  Today
-                </span>
-              )}
-              {/* Native Date Picker trigger */}
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                id="hidden-date-picker"
-                title="Choose Date"
-              />
-              <CalendarDays className="w-4 h-4 text-slate-400 hover:text-[#00adef] transition-colors ml-1" />
-            </div>
+            {/* Instant Clickable Calendar Dropdown Popover */}
+            <CalendarDropdownPopover
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              isDarkMode={isDarkMode}
+              formatDateHeader={formatDateHeader}
+              isViewingToday={isViewingToday}
+              isViewingTomorrow={isViewingTomorrow}
+              isViewingYesterday={isViewingYesterday}
+              label="Select"
+              align="right"
+            />
 
+            {/* Next Day */}
             <button
               type="button"
               onClick={() => handleDateStep(1)}
@@ -596,40 +648,46 @@ export const PublicRoomSchedulePage = () => {
 
         {/* ─── Summary Stat Cards (Live Operational Metrics) ─── */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Card 1: Total Meetings Today */}
+          {/* Card 1: Total Meetings */}
           <div className={`rounded-2xl p-4 border flex items-center gap-4 transition-all ${cardClass}`}>
             <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-[#00adef]">
               <Calendar className="w-6 h-6" />
             </div>
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Bookings Today</p>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>
+                {isViewingToday ? 'Bookings Today' : isViewingTomorrow ? 'Bookings Tomorrow' : isViewingYesterday ? 'Bookings Yesterday' : 'Scheduled Bookings'}
+              </p>
               <h3 className={`text-2xl font-black mt-0.5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 {scheduleData?.totalBookingsToday ?? filteredBookings.length}
               </h3>
             </div>
           </div>
 
-          {/* Card 2: Rooms In Use Right Now */}
+          {/* Card 2: Rooms in Use */}
           <div className={`rounded-2xl p-4 border flex items-center gap-4 transition-all ${cardClass}`}>
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 relative">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute top-2 right-2 animate-ping" />
+              {isViewingToday && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute top-2 right-2 animate-ping" />}
               <DoorOpen className="w-6 h-6" />
             </div>
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Rooms in Use</p>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>
+                {isViewingToday ? 'Rooms in Use' : 'Rooms Booked'}
+              </p>
               <h3 className="text-2xl font-black text-emerald-500 mt-0.5">
                 {scheduleData?.roomsInUse ?? 0}
               </h3>
             </div>
           </div>
 
-          {/* Card 3: Rooms Free Now */}
+          {/* Card 3: Rooms Free */}
           <div className={`rounded-2xl p-4 border flex items-center gap-4 transition-all ${cardClass}`}>
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Rooms Available</p>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>
+                {isViewingToday ? 'Rooms Available' : 'Rooms Free'}
+              </p>
               <h3 className={`text-2xl font-black mt-0.5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 {scheduleData?.roomsAvailable ?? rooms.length}
               </h3>
@@ -829,23 +887,96 @@ export const PublicRoomSchedulePage = () => {
         {/* ─── DAILY BOOKING SCHEDULE & TIMELINE TABLE ─── */}
         <section className={`rounded-3xl p-6 border space-y-5 transition-all ${cardClass}`}>
           {/* Schedule Header & Search / Filters */}
-          <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b ${
+          <div className={`space-y-4 pb-4 border-b ${
             isDarkMode ? 'border-slate-800' : 'border-slate-200'
           }`}>
-            <div>
-              <h3 className={`text-lg font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                <Clock className="w-5 h-5 text-[#00adef]" />
-                {selectedRoomName === 'all'
-                  ? "Today's Schedule Across All Meeting Rooms"
-                  : `Today's Schedule for ${selectedRoomName}`}
-              </h3>
-              <p className={`text-xs mt-0.5 ${textMuted}`}>
-                Showing {filteredBookings.length} reservation(s) from database on {formatDateHeader(selectedDate)}
-              </p>
+            {/* Row 1: Table Title & Dedicated Calendar Bar on Top of Table */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h3 className={`text-lg font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Clock className="w-5 h-5 text-[#00adef]" />
+                  {selectedRoomName === 'all'
+                    ? (isViewingToday ? "Today's Schedule Across All Meeting Rooms" : `Meeting Schedule for ${formatDateHeader(selectedDate)} (All Rooms)`)
+                    : (isViewingToday ? `Today's Schedule for ${selectedRoomName}` : `Schedule for ${selectedRoomName} on ${formatDateHeader(selectedDate)}`)}
+                </h3>
+                <p className={`text-xs mt-0.5 ${textMuted}`}>
+                  Showing {filteredBookings.length} reservation(s) from database for <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-800'}>{formatDateHeader(selectedDate)}</strong>
+                </p>
+              </div>
+
+              {/* ─── CALENDAR PICKER TOOLBAR ON TOP OF THE TABLE ─── */}
+              <div className={`p-1.5 rounded-2xl border flex flex-wrap items-center gap-1.5 shadow-sm ${
+                isDarkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100/90 border-slate-200'
+              }`}>
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleResetToday}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isViewingToday
+                        ? 'bg-[#00adef] text-white shadow-sm'
+                        : isDarkMode
+                        ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(tomorrowIsoStr)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isViewingTomorrow
+                        ? 'bg-[#00adef] text-white shadow-sm'
+                        : isDarkMode
+                        ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                    }`}
+                  >
+                    Tomorrow
+                  </button>
+                </div>
+
+                <div className={`h-4 w-px mx-0.5 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-300'}`} />
+
+                {/* Step backward */}
+                <button
+                  type="button"
+                  onClick={() => handleDateStep(-1)}
+                  className={`p-1.5 rounded-xl border transition-all ${buttonSecondaryClass}`}
+                  title="Previous Day"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* Instant Table Calendar Dropdown Popover */}
+                <CalendarDropdownPopover
+                  selectedDate={selectedDate}
+                  onSelectDate={setSelectedDate}
+                  isDarkMode={isDarkMode}
+                  formatDateHeader={formatDateHeader}
+                  isViewingToday={isViewingToday}
+                  isViewingTomorrow={isViewingTomorrow}
+                  isViewingYesterday={isViewingYesterday}
+                  label="Choose Day"
+                  align="right"
+                />
+
+                {/* Step forward */}
+                <button
+                  type="button"
+                  onClick={() => handleDateStep(1)}
+                  className={`p-1.5 rounded-xl border transition-all ${buttonSecondaryClass}`}
+                  title="Next Day"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Filter Pills & Search */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            {/* Row 2: Filter Pills & Search */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
               {/* Search input */}
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -926,8 +1057,8 @@ export const PublicRoomSchedulePage = () => {
                 </div>
                 <h4 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   {selectedRoomName !== 'all'
-                    ? `${selectedRoomName} is Free Today! 😊`
-                    : "Nothing scheduled today — It's completely free! 😊"}
+                    ? (isViewingToday ? `${selectedRoomName} is Free Today! 😊` : `${selectedRoomName} is Free on ${formatDateHeader(selectedDate)}! 😊`)
+                    : (isViewingToday ? "Nothing scheduled today — It's completely free! 😊" : `Nothing scheduled for ${formatDateHeader(selectedDate)} — It's completely free! 😊`)}
                 </h4>
                 <p className={`text-xs ${textMuted}`}>
                   {selectedRoomName !== 'all'

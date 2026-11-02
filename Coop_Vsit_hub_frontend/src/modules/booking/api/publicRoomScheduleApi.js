@@ -23,10 +23,15 @@ export const publicRoomScheduleApi = {
   },
 
   /**
-   * Fetches today's live room booking schedule, reserver info, and occupancy.
+   * Fetches the live room booking schedule for a given date, reserver info, and occupancy.
    * @param {Object} params - { roomName, date }
    */
   getTodaySchedule: async (params = {}) => {
+    const response = await publicClient.get('/api/v1/public/room-schedule/today', { params });
+    return response.data;
+  },
+
+  getRoomSchedule: async (params = {}) => {
     const response = await publicClient.get('/api/v1/public/room-schedule/today', { params });
     return response.data;
   },

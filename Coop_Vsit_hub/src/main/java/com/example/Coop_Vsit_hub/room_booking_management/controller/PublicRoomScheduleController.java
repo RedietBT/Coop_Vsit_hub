@@ -48,23 +48,25 @@ public class PublicRoomScheduleController {
         return ResponseEntity.ok(rooms.stream().map(MeetingRoomDto::from).toList());
     }
 
-    @GetMapping("/today")
-    @Operation(summary = "Live Daily Room Booking Schedule (Public)", description = "Returns today's confirmed room reservations with reserver info, room status, and occupancy counts.")
+    @GetMapping({"", "/", "/today"})
+    @Operation(summary = "Live Daily Room Booking Schedule (Public)", description = "Returns confirmed room reservations for a given date with reserver info, room status, and occupancy counts.")
     public ResponseEntity<PublicRoomScheduleResponse> getPublicDailySchedule(
             @RequestParam(required = false) String roomName,
             @RequestParam(required = false) String date
     ) {
+        LocalDate todayDate = LocalDate.now(EAT_ZONE);
         LocalDate targetDate;
         if (StringUtils.hasText(date)) {
             try {
                 targetDate = LocalDate.parse(date.trim());
             } catch (Exception e) {
-                targetDate = LocalDate.now(EAT_ZONE);
+                targetDate = todayDate;
             }
         } else {
-            targetDate = LocalDate.now(EAT_ZONE);
+            targetDate = todayDate;
         }
 
+        boolean isToday = targetDate.equals(todayDate);
         Instant fromDate = targetDate.atStartOfDay(EAT_ZONE).toInstant();
         Instant toDate = targetDate.plusDays(1).atStartOfDay(EAT_ZONE).toInstant();
         Instant now = Instant.now();
@@ -114,13 +116,23 @@ public class PublicRoomScheduleController {
         items.sort(Comparator.comparing(PublicBookingItem::getScheduledStartTime, Comparator.nullsLast(Comparator.naturalOrder())));
 
         // Calculate occupancy KPI summary
-        Set<String> occupiedRoomNames = items.stream()
-                .filter(PublicBookingItem::isOngoing)
-                .map(b -> b.getRoomName() != null ? b.getRoomName().trim().toLowerCase() : "")
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
+        Set<String> activeRoomNames;
+        if (isToday) {
+            // For today: rooms with ongoing meetings right now
+            activeRoomNames = items.stream()
+                    .filter(PublicBookingItem::isOngoing)
+                    .map(b -> b.getRoomName() != null ? b.getRoomName().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+        } else {
+            // For other dates: distinct rooms that have scheduled reservations
+            activeRoomNames = items.stream()
+                    .map(b -> b.getRoomName() != null ? b.getRoomName().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+        }
 
-        int roomsInUse = occupiedRoomNames.size();
+        int roomsInUse = activeRoomNames.size();
         int totalActiveRooms = allActiveRooms.size();
         int roomsAvailable = Math.max(0, totalActiveRooms - roomsInUse);
         int totalExpectedAttendees = items.stream()
