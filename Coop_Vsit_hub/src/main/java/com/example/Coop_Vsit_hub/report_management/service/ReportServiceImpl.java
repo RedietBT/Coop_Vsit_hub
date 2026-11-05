@@ -48,8 +48,8 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReportSummaryDto getReportSummary(Instant startDate, Instant endDate, String department) {
-        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department);
+    public ReportSummaryDto getReportSummary(Instant startDate, Instant endDate, String department, String engagementType) {
+        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department, engagementType);
         List<Visit> visits = visitRepository.findAll(spec);
 
         long totalVisitors = visits.stream().mapToInt(Visit::getVisitorCount).sum();
@@ -62,11 +62,21 @@ public class ReportServiceImpl implements ReportService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long activeCount = visits.stream()
-                .filter(v -> v.getStatus() == VisitStatus.IN_PROGRESS)
+                .filter(v -> {
+                    boolean isEnded = v.getStatus() == VisitStatus.COMPLETED
+                            || v.getActualCheckOutTime() != null
+                            || (v.getScheduledEndTime() != null && v.getScheduledEndTime().isBefore(Instant.now()));
+                    return !isEnded && v.getStatus() == VisitStatus.IN_PROGRESS;
+                })
                 .count();
 
         long completedCount = visits.stream()
-                .filter(v -> v.getStatus() == VisitStatus.COMPLETED)
+                .filter(v -> {
+                    return v.getStatus() == VisitStatus.COMPLETED
+                            || v.getActualCheckOutTime() != null
+                            || (v.getScheduledEndTime() != null && v.getScheduledEndTime().isBefore(Instant.now())
+                                && v.getStatus() != VisitStatus.CANCELLED && v.getStatus() != VisitStatus.REJECTED && v.getStatus() != VisitStatus.DRAFT);
+                })
                 .count();
 
         // Find top department
@@ -232,8 +242,8 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<VisitorReportItemDto> getDetailedReport(Instant startDate, Instant endDate, String department, int page, int size) {
-        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department);
+    public PageResponse<VisitorReportItemDto> getDetailedReport(Instant startDate, Instant endDate, String department, String engagementType, int page, int size) {
+        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department, engagementType);
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Visit> visitPage = visitRepository.findAll(spec, pageable);
 
@@ -243,16 +253,16 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<VisitorReportItemDto> getAllReportItems(Instant startDate, Instant endDate, String department) {
-        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department);
+    public List<VisitorReportItemDto> getAllReportItems(Instant startDate, Instant endDate, String department, String engagementType) {
+        Specification<Visit> spec = buildFilterSpec(startDate, endDate, department, engagementType);
         List<Visit> visits = visitRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
         return visits.stream().map(this::mapToReportItem).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportCsv(Instant startDate, Instant endDate, String department) {
-        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
+    public byte[] exportCsv(Instant startDate, Instant endDate, String department, String engagementType) {
+        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department, engagementType);
         StringBuilder sb = new StringBuilder();
 
         // 1. Write standard UTF-8 Byte Order Mark (BOM) so Excel opens UTF-8 directly without question marks or column merging
@@ -321,8 +331,8 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportExcel(Instant startDate, Instant endDate, String department) {
-        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
+    public byte[] exportExcel(Instant startDate, Instant endDate, String department, String engagementType) {
+        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department, engagementType);
         StringBuilder sb = new StringBuilder();
 
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -431,9 +441,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportPdf(Instant startDate, Instant endDate, String department) {
-        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department);
-        ReportSummaryDto summary = getReportSummary(startDate, endDate, department);
+    public byte[] exportPdf(Instant startDate, Instant endDate, String department, String engagementType) {
+        List<VisitorReportItemDto> items = getAllReportItems(startDate, endDate, department, engagementType);
+        ReportSummaryDto summary = getReportSummary(startDate, endDate, department, engagementType);
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4.rotate(), 20, 20, 30, 30);
@@ -567,18 +577,37 @@ public class ReportServiceImpl implements ReportService {
                 ? visit.getLocationRoom().trim()
                 : "—";
 
+        String status = visit.getStatus() != null ? visit.getStatus().name() : "SUBMITTED";
+        if (visit.getActualCheckOutTime() != null) {
+            status = "COMPLETED";
+        } else if (linkedBooking.isPresent() && linkedBooking.get().getStatus() == com.example.coop_vsit_hub.room_booking_management.enums.RoomBookingStatus.COMPLETED) {
+            status = "COMPLETED";
+        } else if (visit.getScheduledEndTime() != null && visit.getScheduledEndTime().isBefore(Instant.now())
+                && visit.getStatus() != VisitStatus.CANCELLED && visit.getStatus() != VisitStatus.REJECTED && visit.getStatus() != VisitStatus.DRAFT) {
+            status = "COMPLETED";
+        }
+
         String duration = "—";
         if (visit.getActualCheckInTime() != null) {
             Instant end = visit.getActualCheckOutTime() != null ? visit.getActualCheckOutTime() : Instant.now();
             long mins = Math.max(1, Duration.between(visit.getActualCheckInTime(), end).toMinutes());
-            if (mins < 60) {
-                duration = mins + "m";
-            } else {
-                duration = (mins / 60) + "h " + (mins % 60) + "m";
-            }
+            duration = mins < 60 ? (mins + "m") : ((mins / 60) + "h " + (mins % 60) + "m");
+        } else if (visit.getScheduledStartTime() != null && visit.getScheduledEndTime() != null) {
+            long mins = Math.max(1, Duration.between(visit.getScheduledStartTime(), visit.getScheduledEndTime()).toMinutes());
+            duration = mins < 60 ? (mins + "m") : ((mins / 60) + "h " + (mins % 60) + "m");
         }
 
-        String feedback = "In Progress";
+        String feedback = "Pending Feedback";
+        if ("IN_PROGRESS".equalsIgnoreCase(status)) {
+            feedback = "In Progress";
+        } else if ("CANCELLED".equalsIgnoreCase(status)) {
+            feedback = "Cancelled";
+        } else if ("SCHEDULED".equalsIgnoreCase(status) || "APPROVED".equalsIgnoreCase(status)) {
+            feedback = "Scheduled";
+        } else if ("COMPLETED".equalsIgnoreCase(status)) {
+            feedback = "Not Rated";
+        }
+
         Optional<VisitFeedback> fb = feedbackRepository.findByVisitId(visit.getId());
         if (fb.isPresent() && fb.get().isSubmitted()) {
             VisitFeedback f = fb.get();
@@ -616,7 +645,7 @@ public class ReportServiceImpl implements ReportService {
                 .visitorCount(visit.getVisitorCount())
                 .duration(duration)
                 .feedback(feedback)
-                .status(visit.getStatus() != null ? visit.getStatus().name() : "SUBMITTED")
+                .status(status)
                 .cancellationReason(cancellationReason)
                 .cancelledBy(cancelledBy)
                 .engagementType(visit.getVisitType() != null ? visit.getVisitType().name() : (linkedBooking.isPresent() && linkedBooking.get().getEngagementType() != null ? linkedBooking.get().getEngagementType().name() : "INTERNAL"))
@@ -625,7 +654,7 @@ public class ReportServiceImpl implements ReportService {
                 .build();
     }
 
-    private Specification<Visit> buildFilterSpec(Instant startDate, Instant endDate, String department) {
+    private Specification<Visit> buildFilterSpec(Instant startDate, Instant endDate, String department, String engagementType) {
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (startDate != null) {
@@ -636,6 +665,16 @@ public class ReportServiceImpl implements ReportService {
             }
             if (department != null && !department.isBlank() && !"All Departments".equalsIgnoreCase(department)) {
                 predicates.add(cb.equal(root.get("requestingDepartment"), department.trim()));
+            }
+            if (engagementType != null && !engagementType.isBlank() && !"ALL".equalsIgnoreCase(engagementType)) {
+                if ("INTERNAL".equalsIgnoreCase(engagementType)) {
+                    predicates.add(cb.equal(root.get("visitType"), com.example.coop_vsit_hub.visit_management.enums.VisitType.INTERNAL));
+                } else if ("EXTERNAL".equalsIgnoreCase(engagementType)) {
+                    predicates.add(root.get("visitType").in(
+                            com.example.coop_vsit_hub.visit_management.enums.VisitType.EXTERNAL,
+                            com.example.coop_vsit_hub.visit_management.enums.VisitType.VIP_DELEGATION
+                    ));
+                }
             }
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };

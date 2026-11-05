@@ -5,7 +5,7 @@ import soundPlayer from '@/core/utils/soundPlayer';
 export const Button = ({
   children,
   type = 'button',
-  variant = 'orange', // 'orange' | 'cyan' | 'black' | 'outline-cyan' | 'outline-orange' | 'ghost' | 'danger'
+  variant = 'orange', // 'orange' | 'cyan' | 'primary' | 'black' | 'outline' | 'outline-cyan' | 'outline-orange' | 'emerald' | 'ghost' | 'danger'
   size = 'md', // 'sm' | 'md' | 'lg'
   isLoading = false,
   disabled = false,
@@ -32,10 +32,16 @@ export const Button = ({
       'bg-[#e38524] hover:bg-[#c9721b] text-white shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/35 focus:ring-[#e38524] font-bold',
     cyan:
       'bg-[#00adef] hover:bg-[#0098d3] text-white shadow-md shadow-sky-500/25 hover:shadow-lg hover:shadow-sky-500/35 focus:ring-[#00adef] font-bold',
+    primary:
+      'bg-[#00adef] hover:bg-[#0098d3] text-white shadow-md shadow-sky-500/25 hover:shadow-lg hover:shadow-sky-500/35 focus:ring-[#00adef] font-bold',
     navy: // backward compatibility mapping to black / dark cyan
       'bg-[#000000] hover:bg-slate-800 text-white shadow-md shadow-slate-900/20 hover:shadow-lg focus:ring-black',
     black:
       'bg-[#000000] hover:bg-slate-800 text-white shadow-md shadow-slate-900/20 hover:shadow-lg focus:ring-black',
+    emerald:
+      'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-emerald-600/35 focus:ring-emerald-500 font-bold',
+    outline:
+      'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs focus:ring-slate-300 font-semibold',
     'outline-cyan':
       'border-2 border-[#00adef] text-[#00adef] hover:bg-[#00adef]/10 focus:ring-[#00adef] bg-transparent font-semibold',
     'outline-orange':

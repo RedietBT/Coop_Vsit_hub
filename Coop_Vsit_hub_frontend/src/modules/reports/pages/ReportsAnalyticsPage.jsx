@@ -68,8 +68,14 @@ export const ReportsAnalyticsPage = () => {
       startDate: localStart,
       endDate: localEnd,
       department: localDept,
+      engagementType: localEngagement,
     });
-    fetchReportData();
+    fetchReportData({
+      startDate: localStart,
+      endDate: localEnd,
+      department: localDept,
+      engagementType: localEngagement,
+    });
   };
 
   const handleResetFilter = () => {
@@ -81,8 +87,41 @@ export const ReportsAnalyticsPage = () => {
       startDate: '',
       endDate: '',
       department: 'All Departments',
+      engagementType: 'ALL',
     });
-    fetchReportData();
+    fetchReportData({
+      startDate: '',
+      endDate: '',
+      department: 'All Departments',
+      engagementType: 'ALL',
+    });
+  };
+
+  const handleExportExcel = () => {
+    exportExcel({
+      startDate: localStart,
+      endDate: localEnd,
+      department: localDept,
+      engagementType: localEngagement,
+    });
+  };
+
+  const handleExportCsv = () => {
+    exportCsv({
+      startDate: localStart,
+      endDate: localEnd,
+      department: localDept,
+      engagementType: localEngagement,
+    });
+  };
+
+  const handleExportPdf = () => {
+    exportPdf({
+      startDate: localStart,
+      endDate: localEnd,
+      department: localDept,
+      engagementType: localEngagement,
+    });
   };
 
   const filteredReportItems = React.useMemo(() => {
@@ -124,14 +163,14 @@ export const ReportsAnalyticsPage = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Button
-            variant="outline"
+            variant="emerald"
             size="sm"
-            onClick={exportExcel}
+            onClick={handleExportExcel}
             disabled={isExporting}
             icon={FileSpreadsheet}
-            className="border-emerald-300 text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 hover:border-emerald-400 font-bold"
+            className="shadow-sm hover:shadow font-bold text-xs"
           >
             Export Excel
           </Button>
@@ -139,10 +178,10 @@ export const ReportsAnalyticsPage = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportCsv}
+            onClick={handleExportCsv}
             disabled={isExporting}
             icon={FileSpreadsheet}
-            className="border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium"
+            className="text-slate-700 hover:text-slate-900 border-slate-300 font-semibold text-xs"
           >
             Export CSV
           </Button>
@@ -150,20 +189,21 @@ export const ReportsAnalyticsPage = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportPdf}
+            onClick={handleExportPdf}
             disabled={isExporting}
             icon={FileText}
-            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300 font-medium"
+            className="border-rose-300 bg-rose-50/70 hover:bg-rose-100 text-rose-800 font-bold text-xs"
           >
             Export PDF
           </Button>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={fetchReportData}
+            onClick={() => fetchReportData()}
             disabled={isLoading}
             icon={RotateCcw}
+            className="border-slate-200 text-slate-700 hover:text-slate-900 font-medium text-xs"
           >
             Refresh
           </Button>
@@ -584,24 +624,36 @@ export const ReportsAnalyticsPage = () => {
                           </span>
                         </td>
 
-                        {/* Feedback Rating or In Progress */}
+                        {/* Feedback Rating / Completion Feedback */}
                         <td className="py-3.5 px-4">
                           {isSubmitted ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shadow-2xs">
                               <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                               <span>{item.feedback}</span>
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/70">
-                              <Clock className="w-3 h-3 text-slate-400" />
+                          ) : item.status === 'IN_PROGRESS' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                              <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
                               <span>In Progress</span>
+                            </span>
+                          ) : item.status === 'CANCELLED' ? (
+                            <span className="text-slate-400 italic text-[11px]">N/A</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                              <span>{item.feedback || 'Not Rated'}</span>
                             </span>
                           )}
                         </td>
 
-                        {/* Status */}
+                        {/* Status Badge */}
                         <td className="py-3.5 pr-6 text-right">
-                          <Badge status={item.status} />
+                          <Badge
+                            variant={item.status ? item.status.toLowerCase() : 'completed'}
+                            pulse={item.status === 'IN_PROGRESS'}
+                            size="sm"
+                          >
+                            {item.status ? item.status.replace(/_/g, ' ') : 'COMPLETED'}
+                          </Badge>
                         </td>
                       </tr>
                     );

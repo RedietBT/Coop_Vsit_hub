@@ -1,6 +1,31 @@
-# Target directories
+# Node & Dependencies
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build and Distribution
+dist/
+**/dist/
+dist-ssr/
+build/
+**/build/
+out/
+**/out/
+
+# Target directories (Maven / Java)
 target/
 **/target/
+*.class
+
+# Test outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Environment and Secret Property Files (Security Policy: Never commit secrets)
 .env
@@ -11,11 +36,16 @@ application.yml
 *.properties
 !application.properties.example
 
-# IDE Files
+# IDE & Editor Files
 .idea/
 *.iml
 .vscode/
 *.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # OS Files
 .DS_Store

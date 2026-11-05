@@ -60,6 +60,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (updated > 0) {
             log.info("Automatically marked {} expired room booking(s) as COMPLETED.", updated);
         }
+        int updatedVisits = visitRepository.markExpiredVisitsCompleted(Instant.now());
+        if (updatedVisits > 0) {
+            log.info("Automatically marked {} expired visit(s) as COMPLETED.", updatedVisits);
+        }
     }
     @Override
     @Transactional

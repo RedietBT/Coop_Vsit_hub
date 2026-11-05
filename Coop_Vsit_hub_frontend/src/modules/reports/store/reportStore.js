@@ -17,7 +17,8 @@ export const useReportStore = create((set, get) => ({
   startDate: '',
   endDate: '',
   department: '',
-  activeTab: 'detailed', // 'detailed' | 'departments' | 'financials'
+  engagementType: 'ALL',
+  activeTab: 'detailed', // 'detailed' | 'rooms' | 'financials'
 
   setFilters: (filters) => set({ ...filters, page: 0 }),
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -26,16 +27,32 @@ export const useReportStore = create((set, get) => ({
     get().fetchDetailedReport();
   },
 
-  fetchReportData: async () => {
+  buildParams: (override = {}) => {
+    const { startDate, endDate, department, engagementType } = { ...get(), ...override };
+    const params = {};
+    if (startDate) {
+      params.startDate = new Date(startDate.includes('T') ? startDate : startDate + 'T00:00:00').toISOString();
+    }
+    if (endDate) {
+      params.endDate = new Date(endDate.includes('T') ? endDate : endDate + 'T23:59:59').toISOString();
+    }
+    if (department && department !== 'All Departments') {
+      params.department = department;
+    }
+    if (engagementType && engagementType !== 'ALL') {
+      params.engagementType = engagementType;
+    }
+    return params;
+  },
+
+  fetchReportData: async (overrideFilters = {}) => {
     set({ isLoading: true, error: null });
-    const { startDate, endDate, department, page, size } = get();
+    const { page, size } = get();
     const params = {
       page,
       size,
+      ...get().buildParams(overrideFilters),
     };
-    if (startDate) params.startDate = new Date(startDate).toISOString();
-    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
-    if (department && department !== 'All Departments') params.department = department;
 
     try {
       const [summaryData, tableData] = await Promise.all([
@@ -57,12 +74,13 @@ export const useReportStore = create((set, get) => ({
     }
   },
 
-  fetchDetailedReport: async () => {
-    const { startDate, endDate, department, page, size } = get();
-    const params = { page, size };
-    if (startDate) params.startDate = new Date(startDate).toISOString();
-    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
-    if (department && department !== 'All Departments') params.department = department;
+  fetchDetailedReport: async (overrideFilters = {}) => {
+    const { page, size } = get();
+    const params = {
+      page,
+      size,
+      ...get().buildParams(overrideFilters),
+    };
 
     try {
       const tableData = await reportApi.getDetailedReport(params);
@@ -76,56 +94,46 @@ export const useReportStore = create((set, get) => ({
     }
   },
 
-  exportCsv: async () => {
-    const { startDate, endDate, department } = get();
-    const params = {};
-    if (startDate) params.startDate = new Date(startDate).toISOString();
-    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
-    if (department && department !== 'All Departments') params.department = department;
+  exportCsv: async (overrideFilters = {}) => {
+    const params = get().buildParams(overrideFilters);
 
     set({ isExporting: true });
     try {
       await reportApi.exportCsv(params);
       toast.success('CSV Report downloaded successfully!');
     } catch (err) {
-      toast.error('Failed to export CSV report.');
+      const msg = err.message || err.response?.data?.message || 'Failed to export CSV report.';
+      toast.error(msg);
     } finally {
       set({ isExporting: false });
     }
   },
 
-  exportExcel: async () => {
-    const { startDate, endDate, department } = get();
-    const params = {};
-    if (startDate) params.startDate = new Date(startDate).toISOString();
-    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
-    if (department && department !== 'All Departments') params.department = department;
+  exportExcel: async (overrideFilters = {}) => {
+    const params = get().buildParams(overrideFilters);
 
     set({ isExporting: true });
     try {
       await reportApi.exportExcel(params);
       toast.success('Excel Spreadsheet downloaded successfully!');
     } catch (err) {
-      toast.error('Failed to export Excel report.');
+      const msg = err.message || err.response?.data?.message || 'Failed to export Excel report.';
+      toast.error(msg);
     } finally {
       set({ isExporting: false });
     }
   },
 
-
-  exportPdf: async () => {
-    const { startDate, endDate, department } = get();
-    const params = {};
-    if (startDate) params.startDate = new Date(startDate).toISOString();
-    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
-    if (department && department !== 'All Departments') params.department = department;
+  exportPdf: async (overrideFilters = {}) => {
+    const params = get().buildParams(overrideFilters);
 
     set({ isExporting: true });
     try {
       await reportApi.exportPdf(params);
       toast.success('Executive PDF Report downloaded successfully!');
     } catch (err) {
-      toast.error('Failed to export PDF report.');
+      const msg = err.message || err.response?.data?.message || 'Failed to export PDF report.';
+      toast.error(msg);
     } finally {
       set({ isExporting: false });
     }

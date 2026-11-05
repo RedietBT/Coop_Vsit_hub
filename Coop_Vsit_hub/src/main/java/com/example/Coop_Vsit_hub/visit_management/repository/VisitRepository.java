@@ -5,6 +5,7 @@ import com.example.coop_vsit_hub.visit_management.enums.VisitStatus;
 import com.example.coop_vsit_hub.visit_management.model.Visit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -156,4 +157,12 @@ public interface VisitRepository extends JpaRepository<Visit, UUID>, JpaSpecific
     List<Visit> findByRequester_UsernameIgnoreCaseOrSponsor_UsernameIgnoreCase(String requesterUsername, String sponsorUsername);
 
     List<Visit> findByRequester_IdOrSponsor_Id(UUID requesterId, UUID sponsorId);
+
+    @Modifying
+    @Query("UPDATE Visit v SET v.status = com.example.coop_vsit_hub.visit_management.enums.VisitStatus.COMPLETED " +
+           "WHERE v.status IN (com.example.coop_vsit_hub.visit_management.enums.VisitStatus.IN_PROGRESS, " +
+           "                   com.example.coop_vsit_hub.visit_management.enums.VisitStatus.APPROVED, " +
+           "                   com.example.coop_vsit_hub.visit_management.enums.VisitStatus.SCHEDULED) " +
+           "AND v.scheduledEndTime IS NOT NULL AND v.scheduledEndTime <= :now")
+    int markExpiredVisitsCompleted(@Param("now") Instant now);
 }

@@ -39,9 +39,10 @@ public class ReportController {
     public ResponseEntity<ReportSummaryDto> getReportSummary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
-            @RequestParam(required = false) String department
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String engagementType
     ) {
-        return ResponseEntity.ok(reportService.getReportSummary(startDate, endDate, department));
+        return ResponseEntity.ok(reportService.getReportSummary(startDate, endDate, department, engagementType));
     }
 
     @GetMapping("/detailed")
@@ -50,10 +51,11 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
             @RequestParam(required = false) String department,
+            @RequestParam(required = false) String engagementType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ResponseEntity.ok(reportService.getDetailedReport(startDate, endDate, department, page, size));
+        return ResponseEntity.ok(reportService.getDetailedReport(startDate, endDate, department, engagementType, page, size));
     }
 
     @GetMapping("/export-csv")
@@ -61,9 +63,10 @@ public class ReportController {
     public ResponseEntity<byte[]> exportCsv(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
-            @RequestParam(required = false) String department
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String engagementType
     ) {
-        byte[] csvData = reportService.exportCsv(startDate, endDate, department);
+        byte[] csvData = reportService.exportCsv(startDate, endDate, department, engagementType);
         String filename = "Visitor_Report_" + System.currentTimeMillis() + ".csv";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -76,9 +79,10 @@ public class ReportController {
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
-            @RequestParam(required = false) String department
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String engagementType
     ) {
-        byte[] excelData = reportService.exportExcel(startDate, endDate, department);
+        byte[] excelData = reportService.exportExcel(startDate, endDate, department, engagementType);
         String filename = "Visitor_Report_" + System.currentTimeMillis() + ".xls";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -91,9 +95,10 @@ public class ReportController {
     public ResponseEntity<byte[]> exportPdf(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate,
-            @RequestParam(required = false) String department
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String engagementType
     ) {
-        byte[] pdfData = reportService.exportPdf(startDate, endDate, department);
+        byte[] pdfData = reportService.exportPdf(startDate, endDate, department, engagementType);
         String filename = "Visitor_Report_" + System.currentTimeMillis() + ".pdf";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -101,4 +106,3 @@ public class ReportController {
                 .body(pdfData);
     }
 }
-
