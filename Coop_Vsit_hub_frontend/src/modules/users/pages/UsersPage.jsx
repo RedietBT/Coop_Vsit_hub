@@ -26,7 +26,6 @@ const ROLES = [
   { label: 'Executive Director', value: 'ROLE_DIRECTOR' },
   { label: 'Department Secretary', value: 'ROLE_SECRETARY' },
   { label: 'Relationship Manager', value: 'ROLE_RELATIONSHIP_MANAGER' },
-  { label: 'Approver', value: 'ROLE_APPROVER' },
   { label: 'Front Desk Reception', value: 'ROLE_SECURITY_DESK' },
 ];
 

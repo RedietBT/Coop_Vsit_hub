@@ -110,11 +110,6 @@ const AVAILABLE_ROLES = [
     desc: 'Creates & hosts delegation visits, manages corporate partners & VIPs',
   },
   {
-    id: 'ROLE_APPROVER',
-    label: 'Executive Approver',
-    desc: 'Authorizes, approves, or rejects visit requests',
-  },
-  {
     id: 'ROLE_SECURITY_DESK',
     label: 'Front Desk Reception',
     desc: 'Visitor check-in, ID verification, badge issuance (COOPV), check-out',

@@ -24,19 +24,19 @@ const NAV_ITEMS = [
     name: 'Executive Analytics',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['ROLE_ADMIN', 'ROLE_APPROVER'],
+    roles: ['ROLE_ADMIN', 'ROLE_DIRECTOR'],
   },
   {
     name: 'My Meetings & Guests',
     path: '/my-tracking',
     icon: Sparkles,
-    roles: ['ROLE_DIRECTOR', 'ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER', 'ROLE_SECURITY_DESK'],
+    roles: ['ROLE_DIRECTOR', 'ROLE_ADMIN', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_SECURITY_DESK'],
   },
   {
     name: 'Booking Calendar',
     path: '/visits/calendar',
     icon: CalendarDays,
-    roles: ['ROLE_ADMIN', 'ROLE_DIRECTOR', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER', 'ROLE_APPROVER'],
+    roles: ['ROLE_ADMIN', 'ROLE_DIRECTOR', 'ROLE_SECRETARY', 'ROLE_RELATIONSHIP_MANAGER'],
   },
   {
     name: 'Visits Management',

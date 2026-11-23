@@ -56,7 +56,7 @@ export const VisitTable = () => {
   const [editingVisitor, setEditingVisitor] = useState(null);
   const dropdownRef = useRef(null);
 
-  const isApprover = hasAnyRole(['ROLE_APPROVER', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
+  const isApprover = hasAnyRole(['ROLE_DIRECTOR', 'ROLE_ADMIN', 'ROLE_BUSINESS_SPONSOR']);
   const isSecurity = hasAnyRole(['ROLE_SECURITY_DESK', 'ROLE_ADMIN']);
   const isAdmin = hasRole('ROLE_ADMIN');
   const isRoomSupervisor = hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETARY']);
