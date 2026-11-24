@@ -197,6 +197,12 @@ export const VisitCalendarPage = () => {
   // Invited guests (name + email) who receive the reservation / cancellation emails
   const [guests, setGuests] = useState([]);
   const [notifyGuests, setNotifyGuests] = useState(true);
+
+  // Guests on the booking being edited. `existing` were already invited; `added` are new.
+  const [editExistingGuests, setEditExistingGuests] = useState([]);
+  const [editAddedGuests, setEditAddedGuests] = useState([]);
+  const [editNotify, setEditNotify] = useState(true);
+  const [editGuestsLoaded, setEditGuestsLoaded] = useState(false);
   const updateGuest = (i, field, value) =>
     setGuests((prev) => prev.map((g, idx) => (idx === i ? { ...g, [field]: value } : g)));
 
@@ -393,6 +399,22 @@ export const VisitCalendarPage = () => {
       engagementType: booking.engagementType || 'INTERNAL',
     });
     setEditingBooking(booking);
+
+    // Load the current guest list so more guests can be added from here
+    setEditExistingGuests([]);
+    setEditAddedGuests([]);
+    setEditNotify(true);
+    setEditGuestsLoaded(false);
+    roomBookingApi
+      .getBookingById(booking.id)
+      .then((full) => {
+        setEditExistingGuests(Array.isArray(full?.guests) ? full.guests : []);
+        setEditNotify(full?.notifyGuests !== false);
+        setEditGuestsLoaded(true);
+      })
+      .catch(() => {
+        toast.warning('Could not load the guest list for this booking.');
+      });
   };
 
   // Confirm and execute edit/rescheduling
@@ -466,6 +488,20 @@ export const VisitCalendarPage = () => {
         requestedItems: editFormData.requestedItems?.trim() || null,
         engagementType: editFormData.engagementType || 'INTERNAL',
       };
+
+      if (editGuestsLoaded) {
+        const added = editAddedGuests
+          .map((g) => ({ name: g.name.trim(), email: g.email.trim() }))
+          .filter((g) => g.name || g.email);
+        const bad = added.find((g) => !g.name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(g.email));
+        if (bad) {
+          toast.error('Each new guest needs a name and a valid email address.');
+          setIsUpdating(false);
+          return;
+        }
+        payload.guests = [...editExistingGuests, ...added];
+        payload.notifyGuests = editNotify;
+      }
 
       await roomBookingApi.updateBooking(editingBooking.id, payload);
       soundPlayer.playNotificationChime();
@@ -2545,6 +2581,91 @@ export const VisitCalendarPage = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Guests: see who was invited and add anyone who was forgotten */}
+                <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">Guests</label>
+                    <button
+                      type="button"
+                      disabled={!editGuestsLoaded}
+                      onClick={() => setEditAddedGuests((prev) => [...prev, { name: '', email: '' }])}
+                      className="text-[11px] font-bold text-[#00adef] hover:underline cursor-pointer disabled:opacity-40"
+                    >
+                      + Add guest
+                    </button>
+                  </div>
+
+                  {!editGuestsLoaded ? (
+                    <p className="text-[11px] text-slate-500">Loading guest list...</p>
+                  ) : editExistingGuests.length === 0 && editAddedGuests.length === 0 ? (
+                    <p className="text-[11px] text-slate-500">No guests on this booking yet.</p>
+                  ) : null}
+
+                  {editExistingGuests.map((g, i) => (
+                    <div key={`ex-${g.email}`} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{g.name}</p>
+                        <p className="text-slate-500 font-mono truncate">{g.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Invited</span>
+                        <button
+                          type="button"
+                          title="Remove guest (they will be told they were removed)"
+                          onClick={() => setEditExistingGuests((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="text-slate-400 hover:text-rose-600 text-sm cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {editAddedGuests.map((g, i) => (
+                    <div key={`new-${i}`} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Guest name"
+                        value={g.name}
+                        onChange={(e) => setEditAddedGuests((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-sky-300 bg-white focus:outline-none"
+                      />
+                      <input
+                        type="email"
+                        placeholder="guest@email.com"
+                        value={g.email}
+                        onChange={(e) => setEditAddedGuests((prev) => prev.map((x, idx) => (idx === i ? { ...x, email: e.target.value } : x)))}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-sky-300 bg-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditAddedGuests((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="px-2 text-slate-400 hover:text-rose-600 text-sm cursor-pointer"
+                        title="Remove"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {(editExistingGuests.length > 0 || editAddedGuests.length > 0) && (
+                    <label className="flex items-start gap-2 pt-1 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editNotify}
+                        onChange={(e) => setEditNotify(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      <span>
+                        Email guests the booking details and calendar invite
+                        <span className="block font-normal text-slate-500">
+                          Only newly added guests get the invitation. Guests who were already invited are not emailed again (unless the time changes).
+                        </span>
+                      </span>
+                    </label>
+                  )}
+                </div>
 
                 <div className="flex items-center justify-end gap-3 pt-3">
                   <Button

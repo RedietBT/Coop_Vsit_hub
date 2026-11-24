@@ -21,4 +21,8 @@ public class UpdateRoomBookingRequest {
     private String guestName;
     private String requestedItems;
     private String engagementType;
+    /** Full desired guest list. null = leave guests unchanged. Only new emails are notified. */
+    private java.util.List<BookingGuestDto> guests;
+    /** Optional: switch guest emails on/off for this booking. */
+    private Boolean notifyGuests;
 }

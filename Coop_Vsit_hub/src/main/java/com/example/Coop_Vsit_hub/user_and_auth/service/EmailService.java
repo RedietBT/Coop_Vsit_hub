@@ -364,4 +364,9 @@ public interface EmailService {
     ) {
         return false;
     }
+
+    /** Error text from the last failed guest email on this thread (null if none). */
+    default String consumeLastGuestEmailError() {
+        return null;
+    }
 }

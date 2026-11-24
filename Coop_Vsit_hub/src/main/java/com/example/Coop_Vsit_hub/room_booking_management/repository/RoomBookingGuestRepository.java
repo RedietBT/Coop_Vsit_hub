@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface RoomBookingGuestRepository extends JpaRepository<RoomBookingGuest, UUID> {
     List<RoomBookingGuest> findByBookingIdOrderByCreatedAtAsc(UUID bookingId);
+
+    void deleteByBookingIdAndGuestEmailIgnoreCase(UUID bookingId, String guestEmail);
 }

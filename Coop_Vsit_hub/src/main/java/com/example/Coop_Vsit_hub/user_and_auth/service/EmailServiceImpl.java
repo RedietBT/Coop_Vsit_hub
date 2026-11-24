@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import com.example.coop_vsit_hub.notification_management.service.EmailTemplateService;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+    private final com.example.coop_vsit_hub.notification_management.service.EmailTemplateService emailTemplateService;
+    private final ThreadLocal<String> lastGuestEmailError = new ThreadLocal<>();
 
     @Value("${spring.mail.from:no-reply@coopbank.com.et}")
     private String fromEmail;
@@ -763,6 +766,26 @@ public class EmailServiceImpl implements EmailService {
     ) {
         if (guestEmail == null || guestEmail.isBlank()) return false;
         try {
+            boolean isReschedule = !isCancellation && previousStartTime != null;
+            String key = isCancellation ? EmailTemplateService.CANCEL
+                    : (isReschedule ? EmailTemplateService.RESCHEDULE : EmailTemplateService.INVITE);
+
+            java.util.Map<String, String> values = new java.util.HashMap<>();
+            values.put("guestName", guestName != null && !guestName.isBlank() ? guestName.trim() : "Guest");
+            values.put("hostName", hostName != null ? hostName : "");
+            values.put("hostDept", hostDept != null ? hostDept : "");
+            values.put("hostEmail", hostEmail != null ? hostEmail : "");
+            values.put("hostPhone", hostPhone != null ? hostPhone : "");
+            values.put("meetingTitle", meetingTitle != null ? meetingTitle : "Meeting");
+            values.put("roomName", roomName != null ? roomName : "");
+            values.put("location", location != null ? location : "");
+            values.put("startTime", formatEmailDate(startTime));
+            values.put("endTime", formatEmailDate(endTime));
+            values.put("previousStartTime", previousStartTime != null ? formatEmailDate(previousStartTime) : "");
+            values.put("bookingCode", bookingCode != null ? bookingCode : "");
+            values.put("reason", cancellationReason != null ? cancellationReason : "");
+            EmailTemplateService.Rendered tpl = emailTemplateService.render(key, values);
+
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             try {
@@ -771,24 +794,9 @@ public class EmailServiceImpl implements EmailService {
                 helper.setFrom(fromEmail);
             }
             helper.setTo(guestEmail.trim());
-            String subjectTitle = meetingTitle != null ? meetingTitle : "Meeting";
-            boolean isReschedule = !isCancellation && previousStartTime != null;
-            helper.setSubject((isCancellation ? "Meeting Cancelled: " : (isReschedule ? "Meeting Rescheduled: " : "Meeting Invitation: ")) + subjectTitle
-                    + " | " + formatEmailDate(startTime));
+            helper.setSubject(tpl.subject());
 
-            String accent = isCancellation ? "#b91c1c" : "#00adef";
-            String headline = isCancellation ? "Meeting Cancelled" : (isReschedule ? "Meeting Rescheduled" : "Meeting Invitation");
-            String greetingName = (guestName != null && !guestName.isBlank()) ? esc(guestName) : "Guest";
-            String intro = isCancellation
-                    ? "We regret to inform you that the meeting below has been <strong>cancelled</strong>. "
-                      + "The calendar entry attached to this email will remove it from your calendar."
-                    : isReschedule
-                    ? "The time of your meeting at Cooperative Bank of Oromia has <strong>changed</strong>. "
-                      + "Please note the new time below. The attached calendar file will update the existing entry in your calendar."
-                    : "You have been invited to a meeting by <strong>" + esc(hostName) + "</strong>"
-                      + (hostDept != null && !hostDept.isBlank() ? " from <strong>" + esc(hostDept) + "</strong>" : "")
-                      + " at Cooperative Bank of Oromia. The details are below. "
-                      + "Open the attached calendar file to add it to your calendar.";
+            String accent = tpl.accentColor();
 
             java.util.List<EmailField> rows = new java.util.ArrayList<>();
             rows.add(new EmailField("Meeting", esc(meetingTitle)));
@@ -804,7 +812,7 @@ public class EmailServiceImpl implements EmailService {
                 String locHtml = (location != null && !location.isBlank()) ? esc(location) : "";
                 if (hasMap) {
                     locHtml += (locHtml.isEmpty() ? "" : "<br/>")
-                            + "<a href='" + esc(mapUrl) + "' style='color:#00adef;font-weight:600;text-decoration:none;'>View on Google Maps &rarr;</a>";
+                            + "<a href='" + esc(mapUrl) + "' style='color:" + accent + ";font-weight:600;text-decoration:none;'>View on Google Maps &rarr;</a>";
                 }
                 rows.add(new EmailField("Location", locHtml));
             }
@@ -819,12 +827,16 @@ public class EmailServiceImpl implements EmailService {
             StringBuilder h = new StringBuilder();
             h.append("<div style='background:#f3f4f6;padding:28px 12px;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;'>");
             h.append("<div style='max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;'>");
+            if (tpl.logoUrl() != null) {
+                h.append("<div style='background:#ffffff;padding:18px 24px 6px;text-align:left;'><img src='").append(esc(tpl.logoUrl()))
+                        .append("' alt='Cooperative Bank of Oromia' style='max-height:48px;max-width:220px;display:block;border:0;'/></div>");
+            }
             h.append("<div style='background:").append(accent).append(";padding:22px 24px;'>");
             h.append("<div style='color:#e0f2fe;font-size:12px;letter-spacing:1px;text-transform:uppercase;'>Cooperative Bank of Oromia</div>");
-            h.append("<div style='color:#ffffff;font-size:22px;font-weight:700;margin-top:4px;'>").append(headline).append("</div></div>");
+            h.append("<div style='color:#ffffff;font-size:22px;font-weight:700;margin-top:4px;'>").append(tpl.headline().replace("<", "&lt;")).append("</div></div>");
             h.append("<div style='padding:24px;color:#374151;font-size:14px;line-height:1.6;'>");
-            h.append("<p style='margin:0 0 6px 0;'>Dear ").append(greetingName).append(",</p>");
-            h.append("<p style='margin:0 0 18px 0;'>").append(intro).append("</p>");
+            h.append("<p style='margin:0 0 6px 0;'>Dear ").append(esc(values.get("guestName"))).append(",</p>");
+            h.append("<p style='margin:0 0 18px 0;'>").append(tpl.introHtml()).append("</p>");
             h.append("<table cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;font-size:13.5px;'>");
             for (EmailField f : rows) {
                 h.append("<tr><td style='width:30%;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-weight:700;color:#1f2937;vertical-align:top;'>")
@@ -832,17 +844,11 @@ public class EmailServiceImpl implements EmailService {
                         .append(f.value).append("</td></tr>");
             }
             h.append("</table>");
-            if (!isCancellation) {
-                h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>Please arrive 10 minutes early and bring a valid ID; "
-                        + "you will be registered at the front desk on arrival.</p>");
-            } else {
-                h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>We apologise for any inconvenience. "
-                        + "Please contact your host if you would like to reschedule.</p>");
-            }
+            h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>").append(tpl.footerHtml()).append("</p>");
             h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>Visit us at <a href='").append(websiteUrl)
-                    .append("' style='color:#00adef;text-decoration:none;font-weight:600;'>CoopBank's website</a> or <a href='https://dxvalley.com' style='color:#00adef;text-decoration:none;font-weight:600;'>https://dxvalley.com</a>.</p>");
-            h.append("<p style='margin:22px 0 0 0;'>Kind regards,<br/><strong>Cooperative Bank of Oromia</strong><br/>"
-                    + "<span style='color:#6b7280;'>Executive Visit Hub</span></p>");
+                    .append("' style='color:").append(accent).append(";text-decoration:none;font-weight:600;'>CoopBank's website</a> or <a href='https://dxvalley.com' style='color:")
+                    .append(accent).append(";text-decoration:none;font-weight:600;'>https://dxvalley.com</a>.</p>");
+            h.append("<p style='margin:22px 0 0 0;color:#374151;'>").append(tpl.signatureHtml()).append("</p>");
             h.append("</div></div>");
             h.append("<p style='max-width:600px;margin:16px auto 0;text-align:center;font-size:11.5px;color:#9ca3af;'>"
                     + "This is an automated message. Please do not reply to this email.</p></div>");
@@ -860,7 +866,15 @@ public class EmailServiceImpl implements EmailService {
             return true;
         } catch (Exception e) {
             log.error("Failed to send guest email to {}: {}", guestEmail, e.getMessage(), e);
+            lastGuestEmailError.set(e.getClass().getSimpleName() + ": " + e.getMessage());
             return false;
         }
+    }
+
+    @Override
+    public String consumeLastGuestEmailError() {
+        String e = lastGuestEmailError.get();
+        lastGuestEmailError.remove();
+        return e;
     }
 }

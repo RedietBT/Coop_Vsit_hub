@@ -21,8 +21,11 @@ import roomBookingApi from '@/modules/booking/api/roomBookingApi';
 import soundPlayer from '@/core/utils/soundPlayer';
 import Button from '@/shared/components/ui/Button';
 import Badge from '@/shared/components/ui/Badge';
+import EmailLogPanel from './EmailLogPanel';
+import EmailTemplatesPanel from './EmailTemplatesPanel';
 
 export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
+  const [tab, setTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -132,6 +135,30 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="px-6 pt-3 border-b border-slate-100 bg-white flex gap-1">
+          {[
+            ['bookings', 'Reservations'],
+            ['emailLog', 'Email Log'],
+            ['emailContent', 'Email Content'],
+          ].map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-colors cursor-pointer ${
+                tab === k ? 'border-[#00adef] text-[#00adef]' : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'emailLog' && <EmailLogPanel />}
+        {tab === 'emailContent' && <EmailTemplatesPanel />}
+
+        {tab === 'bookings' && (<>
         {/* Filter Toolbar */}
         <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
@@ -329,10 +356,16 @@ export const AdminRoomBookingsModal = ({ isOpen, onClose }) => {
           )}
         </div>
 
+        </>)}
+
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
           <p>
-            Showing <strong>{filteredBookings.length}</strong> of <strong>{bookings.length}</strong> total room reservations.
+            {tab === 'bookings' ? (
+              <>Showing <strong>{filteredBookings.length}</strong> of <strong>{bookings.length}</strong> total room reservations.</>
+            ) : (
+              'Guest email tools — visible to administrators only.'
+            )}
           </p>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close Window

@@ -52,6 +52,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     private final com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
     private final com.example.coop_vsit_hub.user_and_auth.repository.UserRepository userRepository;
     private final AuditLoggerService auditLoggerService;
+    private final com.example.coop_vsit_hub.notification_management.service.EmailLogService emailLogService;
     private final com.example.coop_vsit_hub.visit_management.repository.VisitRepository visitRepository;
 
     @org.springframework.beans.factory.annotation.Value("${coopbank.app.admin-email:}")
@@ -1072,6 +1073,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             } catch (IllegalArgumentException ignored) {}
         }
 
+        boolean wasNotify = !Boolean.FALSE.equals(booking.getNotifyGuests());
+        if (request.getNotifyGuests() != null) {
+            booking.setNotifyGuests(request.getNotifyGuests());
+        }
+        List<BookingGuestDto> desiredGuests = request.getGuests() != null ? normalizeGuests(request.getGuests()) : null;
+
         RoomBooking updated = roomBookingRepository.save(booking);
 
         // Dispatch email and in-app notification to the designated room contact/custodian upon reservation update/reschedule
@@ -1156,9 +1163,46 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             log.warn("Failed to dispatch update notifications for booking {}: {}", bookingId, e.getMessage(), e);
         }
 
-        // Time changed: tell invited guests the new time (updates their calendar entry)
-        if (!oldStart.equals(updated.getScheduledStartTime()) || !oldEnd.equals(updated.getScheduledEndTime())) {
-            notifyGuests(updated, loadGuests(updated.getId()), false, null, currentUser, oldStart, oldEnd);
+        // Guests: apply additions / removals, then email ONLY what is new
+        List<BookingGuestDto> before = loadGuests(updated.getId());
+        List<BookingGuestDto> current = before;
+        List<BookingGuestDto> added = new ArrayList<>();
+        List<BookingGuestDto> removed = new ArrayList<>();
+        if (desiredGuests != null) {
+            Set<String> beforeEmails = before.stream().map(g -> g.getEmail().toLowerCase()).collect(Collectors.toSet());
+            Set<String> desiredEmails = desiredGuests.stream().map(g -> g.getEmail().toLowerCase()).collect(Collectors.toSet());
+            for (BookingGuestDto g : before) {
+                if (!desiredEmails.contains(g.getEmail().toLowerCase())) {
+                    removed.add(g);
+                    roomBookingGuestRepository.deleteByBookingIdAndGuestEmailIgnoreCase(updated.getId(), g.getEmail());
+                }
+            }
+            for (BookingGuestDto g : desiredGuests) {
+                if (!beforeEmails.contains(g.getEmail().toLowerCase())) {
+                    added.add(g);
+                    roomBookingGuestRepository.save(RoomBookingGuest.builder()
+                            .bookingId(updated.getId()).guestName(g.getName()).guestEmail(g.getEmail()).build());
+                }
+            }
+            current = desiredGuests;
+        }
+
+        boolean timeChanged = !oldStart.equals(updated.getScheduledStartTime()) || !oldEnd.equals(updated.getScheduledEndTime());
+        if (!Boolean.FALSE.equals(updated.getNotifyGuests())) {
+            // If emails were just switched on, nobody has been emailed yet, so everyone is "new".
+            List<BookingGuestDto> invite = wasNotify ? added : current;
+            Set<String> inviteEmails = invite.stream().map(g -> g.getEmail().toLowerCase()).collect(Collectors.toSet());
+            List<BookingGuestDto> existing = current.stream()
+                    .filter(g -> !inviteEmails.contains(g.getEmail().toLowerCase())).collect(Collectors.toList());
+
+            notifyGuests(updated, invite, false, null, currentUser);
+            if (timeChanged) {
+                notifyGuests(updated, existing, false, null, currentUser, oldStart, oldEnd);
+            }
+            if (wasNotify && !removed.isEmpty()) {
+                notifyGuests(updated, removed, true,
+                        "You have been removed from this meeting. No action is needed on your side.", currentUser);
+            }
         }
 
         auditLoggerService.logEvent(
@@ -1415,6 +1459,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             } catch (Exception e) {
                 log.warn("Guest email failed for {} ({}): {}", g.getEmail(), booking.getBookingCode(), e.getMessage());
             }
+            String sendError = sent ? null : emailService.consumeLastGuestEmailError();
+            emailLogService.record(
+                    booking.getBookingCode(), booking.getRoomName(), booking.getMeetingTitle(),
+                    g.getName(), g.getEmail(),
+                    cancellation ? "CANCELLATION" : (previousStart != null ? "RESCHEDULE" : "INVITATION"),
+                    sent, sendError != null ? sendError : "Mail server rejected or could not be reached (see server log).",
+                    actor != null ? actor.getUsername() : booking.getBookedByUsername());
             AuditEventType type = !sent ? AuditEventType.ROOM_GUEST_EMAIL_FAILED
                     : (cancellation ? AuditEventType.ROOM_GUEST_CANCEL_SENT
                     : (previousStart != null ? AuditEventType.ROOM_GUEST_RESCHEDULE_SENT : AuditEventType.ROOM_GUEST_INVITE_SENT));
