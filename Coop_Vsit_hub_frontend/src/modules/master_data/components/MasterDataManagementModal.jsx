@@ -122,7 +122,14 @@ export const MasterDataManagementModal = () => {
   // --- Meeting Room handlers ---
   const handleSaveRoom = async (e) => {
     e.preventDefault();
-    if (!roomForm.name.trim()) return;
+    if (!roomForm.name.trim()) {
+      toast.error('Room name is required.');
+      return;
+    }
+    if (!isSecretary && !roomForm.department) {
+      toast.error('Please select a managing department.');
+      return;
+    }
     if (roomForm.refreshmentsAvailable && !roomForm.refreshmentOptions.trim()) {
       toast.error('List at least one available refreshment, or hide the refreshments section.');
       return;
