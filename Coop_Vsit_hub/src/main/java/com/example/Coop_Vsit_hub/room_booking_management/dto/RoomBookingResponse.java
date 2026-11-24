@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -42,6 +43,8 @@ public class RoomBookingResponse {
     private String roomAssignedUserName;
     private String roomContactEmail;
     private String engagementType;
+    private List<BookingGuestDto> guests;
+    private Boolean notifyGuests;
     private Instant createdAt;
     private Instant updatedAt;
 }

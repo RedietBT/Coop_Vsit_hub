@@ -97,6 +97,10 @@ public class RoomBooking {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    @Builder.Default
+    @Column(name = "notify_guests", nullable = false)
+    private Boolean notifyGuests = true;
+
     @Column(name = "linked_visit_id")
     private UUID linkedVisitId;
 

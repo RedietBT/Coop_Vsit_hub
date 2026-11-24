@@ -3,7 +3,10 @@ package com.example.coop_vsit_hub.room_booking_management.service;
 import com.example.coop_vsit_hub.user_and_auth.model.User;
 import com.example.coop_vsit_hub.notification_management.enums.NotificationType;
 import com.example.coop_vsit_hub.notification_management.service.NotificationService;
+import com.example.coop_vsit_hub.room_booking_management.dto.BookingGuestDto;
 import com.example.coop_vsit_hub.room_booking_management.dto.CreateRoomBookingRequest;
+import com.example.coop_vsit_hub.room_booking_management.model.RoomBookingGuest;
+import com.example.coop_vsit_hub.room_booking_management.repository.RoomBookingGuestRepository;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingResponse;
 import com.example.coop_vsit_hub.room_booking_management.dto.RoomBookingSlotResponse;
 import com.example.coop_vsit_hub.room_booking_management.dto.UpdateRoomBookingRequest;
@@ -43,6 +46,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Africa/Addis_Ababa");
 
     private final RoomBookingRepository roomBookingRepository;
+    private final RoomBookingGuestRepository roomBookingGuestRepository;
     private final com.example.coop_vsit_hub.master_data.repository.MeetingRoomRepository meetingRoomRepository;
     private final NotificationService notificationService;
     private final com.example.coop_vsit_hub.user_and_auth.service.EmailService emailService;
@@ -118,6 +122,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             ));
         }
 
+        List<BookingGuestDto> guestList = normalizeGuests(request.getGuests());
+
         String bookingCode = generateBookingCode();
 
         // Populate staff data directly from Active Directory / Authenticated User with request fallbacks
@@ -170,6 +176,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .scheduledStartTime(startTime)
                 .scheduledEndTime(endTime)
                 .engagementType(engagementType)
+                .notifyGuests(!Boolean.FALSE.equals(request.getNotifyGuests()))
                 .status(RoomBookingStatus.CONFIRMED)
                 .build();
 
@@ -183,6 +190,16 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                     "Meeting room '%s' is already booked for the selected time window. Please choose another slot.",
                     roomName), ex);
         }
+
+        // Persist invited guests and email them the reservation with a calendar invite
+        for (BookingGuestDto g : guestList) {
+            roomBookingGuestRepository.save(RoomBookingGuest.builder()
+                    .bookingId(saved.getId())
+                    .guestName(g.getName())
+                    .guestEmail(g.getEmail())
+                    .build());
+        }
+        notifyGuests(saved, guestList, false, null, currentUser);
 
         // Auto-register corresponding Visit so it immediately displays in Visits Lifecycle Management & Front Desk
         try {
@@ -962,6 +979,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             log.warn("Failed to dispatch cancellation notifications for booking {}: {}", bookingId, e.getMessage(), e);
         }
 
+        // Tell invited guests the meeting is cancelled (calendar entry is removed too)
+        notifyGuests(updated, loadGuests(updated.getId()), true, reason, currentUser);
+
         // Security Audit Log
         auditLoggerService.logEvent(
                 currentUser,
@@ -1134,6 +1154,11 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             }
         } catch (Exception e) {
             log.warn("Failed to dispatch update notifications for booking {}: {}", bookingId, e.getMessage(), e);
+        }
+
+        // Time changed: tell invited guests the new time (updates their calendar entry)
+        if (!oldStart.equals(updated.getScheduledStartTime()) || !oldEnd.equals(updated.getScheduledEndTime())) {
+            notifyGuests(updated, loadGuests(updated.getId()), false, null, currentUser, oldStart, oldEnd);
         }
 
         auditLoggerService.logEvent(
@@ -1321,6 +1346,94 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return b.getHostDepartment();
     }
 
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9._%+\\-']+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}$");
+
+    /** Trims, validates and de-duplicates (by email) the guests supplied with a booking. */
+    private List<BookingGuestDto> normalizeGuests(List<BookingGuestDto> raw) {
+        List<BookingGuestDto> result = new ArrayList<>();
+        if (raw == null) return result;
+        Set<String> seen = new HashSet<>();
+        for (BookingGuestDto g : raw) {
+            if (g == null) continue;
+            String name = g.getName() != null ? g.getName().trim() : "";
+            String email = g.getEmail() != null ? g.getEmail().trim() : "";
+            if (name.isEmpty() && email.isEmpty()) continue;
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("Guest name is required for " + email + ".");
+            }
+            if (!EMAIL_PATTERN.matcher(email).matches()) {
+                throw new IllegalArgumentException("Guest '" + name + "' has an invalid email address.");
+            }
+            if (name.length() > 150 || email.length() > 200) {
+                throw new IllegalArgumentException("Guest name or email is too long.");
+            }
+            if (seen.add(email.toLowerCase())) {
+                result.add(BookingGuestDto.builder().name(name).email(email).build());
+            }
+        }
+        if (result.size() > 50) {
+            throw new IllegalArgumentException("A booking can have at most 50 guests.");
+        }
+        return result;
+    }
+
+    private List<BookingGuestDto> loadGuests(UUID bookingId) {
+        if (bookingId == null) return List.of();
+        return roomBookingGuestRepository.findByBookingIdOrderByCreatedAtAsc(bookingId).stream()
+                .map(g -> BookingGuestDto.builder().name(g.getGuestName()).email(g.getGuestEmail()).build())
+                .collect(Collectors.toList());
+    }
+
+    /** Emails every guest (reservation or cancellation + .ics) and records each attempt in the audit log. */
+    private void notifyGuests(RoomBooking booking, List<BookingGuestDto> guests, boolean cancellation,
+                              String reason, User actor) {
+        notifyGuests(booking, guests, cancellation, reason, actor, null, null);
+    }
+
+    private void notifyGuests(RoomBooking booking, List<BookingGuestDto> guests, boolean cancellation,
+                              String reason, User actor, Instant previousStart, Instant previousEnd) {
+        if (guests == null || guests.isEmpty() || emailService == null) return;
+        if (Boolean.FALSE.equals(booking.getNotifyGuests())) {
+            log.info("Guest emails disabled for booking {}; skipping.", booking.getBookingCode());
+            return;
+        }
+        String location = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName())
+                .map(MeetingRoom::getFloorLocation).orElse(null);
+        for (BookingGuestDto g : guests) {
+            boolean sent = false;
+            try {
+                sent = emailService.sendRoomBookingGuestEmail(
+                        g.getEmail(), g.getName(), booking.getRoomName(), location, booking.getBookingCode(),
+                        booking.getMeetingTitle(), booking.getScheduledStartTime(), booking.getScheduledEndTime(),
+                        booking.getBookedByName(), booking.getHostDepartment(), booking.getBookedByEmail(),
+                        booking.getBookedByPhone(), booking.getMeetingAgenda(), cancellation, reason,
+                        // iCalendar SEQUENCE must grow with every change so clients replace the old entry
+                        (cancellation || previousStart != null) ? (int) Instant.now().getEpochSecond() : 0,
+                        previousStart, previousEnd);
+            } catch (Exception e) {
+                log.warn("Guest email failed for {} ({}): {}", g.getEmail(), booking.getBookingCode(), e.getMessage());
+            }
+            AuditEventType type = !sent ? AuditEventType.ROOM_GUEST_EMAIL_FAILED
+                    : (cancellation ? AuditEventType.ROOM_GUEST_CANCEL_SENT
+                    : (previousStart != null ? AuditEventType.ROOM_GUEST_RESCHEDULE_SENT : AuditEventType.ROOM_GUEST_INVITE_SENT));
+            auditLoggerService.logEvent(
+                    actor,
+                    actor != null ? actor.getUsername() : (booking.getBookedByUsername() != null ? booking.getBookedByUsername() : "system"),
+                    type,
+                    sent ? AuditStatus.SUCCESS : AuditStatus.FAILURE,
+                    null,
+                    null,
+                    String.format("%s email %s guest %s <%s> for booking '%s' (room '%s', %s)",
+                            cancellation ? "Cancellation" : (previousStart != null ? "Reschedule" : "Reservation"),
+                            sent ? "sent to" : "FAILED for",
+                            g.getName(), g.getEmail(), booking.getBookingCode(), booking.getRoomName(),
+                            DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a").withZone(DEFAULT_ZONE)
+                                    .format(booking.getScheduledStartTime()))
+            );
+        }
+    }
+
     private RoomBookingResponse mapToResponse(RoomBooking b) {
         var roomOpt = meetingRoomRepository.findByNameIgnoreCase(b.getRoomName());
         UUID roomAssignedUserId = roomOpt.map(MeetingRoom::getAssignedUserId).orElse(null);
@@ -1354,6 +1467,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .roomAssignedUserName(roomAssignedUserName)
                 .roomContactEmail(roomContactEmail)
                 .engagementType(b.getEngagementType() != null ? b.getEngagementType().name() : "INTERNAL")
+                .guests(loadGuests(b.getId()))
+                .notifyGuests(!Boolean.FALSE.equals(b.getNotifyGuests()))
                 .createdAt(b.getCreatedAt())
                 .updatedAt(b.getUpdatedAt())
                 .build();

@@ -678,4 +678,175 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to send room booking updated contact notification to {}: {}", contactEmail, e.getMessage(), e);
         }
     }
+
+    // ---------------------------------------------------------------------
+    // Guest reservation / cancellation emails (with calendar attachment)
+    // ---------------------------------------------------------------------
+
+    private static String esc(String v) {
+        return v == null ? "" : org.springframework.web.util.HtmlUtils.htmlEscape(v.trim());
+    }
+
+    private static String icsEscape(String v) {
+        if (v == null) return "";
+        return v.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,")
+                .replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "");
+    }
+
+    private static String icsFold(String line) {
+        StringBuilder out = new StringBuilder();
+        int count = 0;
+        for (char c : line.toCharArray()) {
+            if (count >= 70) {
+                out.append("\r\n ");
+                count = 1;
+            }
+            out.append(c);
+            count++;
+        }
+        return out.toString();
+    }
+
+    private String buildGuestIcs(String guestEmail, String guestName, String roomName, String location,
+                                 String bookingCode, String meetingTitle, Instant start, Instant end,
+                                 String hostName, String agenda, boolean cancel, int sequence) {
+        DateTimeFormatter utc = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneId.of("UTC"));
+        String where = (location != null && !location.isBlank()) ? roomName + " - " + location : roomName;
+        StringBuilder desc = new StringBuilder();
+        desc.append("Hosted by ").append(hostName != null ? hostName : "Cooperative Bank of Oromia");
+        desc.append("\nReference: ").append(bookingCode);
+        if (agenda != null && !agenda.isBlank()) desc.append("\nAgenda: ").append(agenda);
+        if (cancel) desc.append("\nThis meeting has been cancelled.");
+
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        lines.add("BEGIN:VCALENDAR");
+        lines.add("PRODID:-//Cooperative Bank of Oromia//Visit Hub//EN");
+        lines.add("VERSION:2.0");
+        lines.add("CALSCALE:GREGORIAN");
+        lines.add("METHOD:" + (cancel ? "CANCEL" : "REQUEST"));
+        lines.add("BEGIN:VEVENT");
+        lines.add("UID:" + bookingCode + "@visithub.coopbank");
+        lines.add("DTSTAMP:" + utc.format(Instant.now()));
+        lines.add("DTSTART:" + utc.format(start));
+        lines.add("DTEND:" + utc.format(end));
+        lines.add("SEQUENCE:" + sequence);
+        lines.add("SUMMARY:" + icsEscape(meetingTitle));
+        lines.add("LOCATION:" + icsEscape(where));
+        lines.add("DESCRIPTION:" + icsEscape(desc.toString()));
+        lines.add("STATUS:" + (cancel ? "CANCELLED" : "CONFIRMED"));
+        lines.add("ORGANIZER;CN=" + icsEscape("Cooperative Bank of Oromia") + ":mailto:" + fromEmail);
+        lines.add("ATTENDEE;CN=" + icsEscape(guestName != null ? guestName : guestEmail)
+                + ";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:" + guestEmail);
+        if (!cancel) {
+            lines.add("BEGIN:VALARM");
+            lines.add("TRIGGER:-PT30M");
+            lines.add("ACTION:DISPLAY");
+            lines.add("DESCRIPTION:Reminder");
+            lines.add("END:VALARM");
+        }
+        lines.add("END:VEVENT");
+        lines.add("END:VCALENDAR");
+        StringBuilder sb = new StringBuilder();
+        for (String l : lines) sb.append(icsFold(l)).append("\r\n");
+        return sb.toString();
+    }
+
+    @Override
+    public boolean sendRoomBookingGuestEmail(
+            String guestEmail, String guestName, String roomName, String location, String bookingCode,
+            String meetingTitle, Instant startTime, Instant endTime, String hostName, String hostDept,
+            String hostEmail, String hostPhone, String agenda, boolean isCancellation,
+            String cancellationReason, int sequence, Instant previousStartTime, Instant previousEndTime
+    ) {
+        if (guestEmail == null || guestEmail.isBlank()) return false;
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            try {
+                helper.setFrom(fromEmail, "Cooperative Bank of Oromia");
+            } catch (Exception ignored) {
+                helper.setFrom(fromEmail);
+            }
+            helper.setTo(guestEmail.trim());
+            String subjectTitle = meetingTitle != null ? meetingTitle : "Meeting";
+            boolean isReschedule = !isCancellation && previousStartTime != null;
+            helper.setSubject((isCancellation ? "Meeting Cancelled: " : (isReschedule ? "Meeting Rescheduled: " : "Meeting Invitation: ")) + subjectTitle
+                    + " | " + formatEmailDate(startTime));
+
+            String accent = isCancellation ? "#b91c1c" : "#0088cc";
+            String headline = isCancellation ? "Meeting Cancelled" : (isReschedule ? "Meeting Rescheduled" : "Your Meeting Is Confirmed");
+            String greetingName = (guestName != null && !guestName.isBlank()) ? esc(guestName) : "Guest";
+            String intro = isCancellation
+                    ? "We regret to inform you that the meeting below has been <strong>cancelled</strong>. "
+                      + "The calendar entry attached to this email will remove it from your calendar."
+                    : isReschedule
+                    ? "The time of your meeting at Cooperative Bank of Oromia has <strong>changed</strong>. "
+                      + "Please note the new time below. The attached calendar file will update the existing entry in your calendar."
+                    : "You have been invited to a meeting at Cooperative Bank of Oromia. "
+                      + "Your visit has been reserved, and the details are below. "
+                      + "Open the attached calendar file to add it to your calendar.";
+
+            java.util.List<EmailField> rows = new java.util.ArrayList<>();
+            rows.add(new EmailField("Meeting", esc(meetingTitle)));
+            if (isReschedule) {
+                rows.add(new EmailField("Previous Time", "<span style='color:#b91c1c;text-decoration:line-through;'>"
+                        + esc(formatEmailDate(previousStartTime)) + "</span>"));
+            }
+            rows.add(new EmailField(isReschedule ? "New Date & Time" : "Date & Time", esc(formatEmailDate(startTime)) + "<br/><span style='color:#6b7280;'>until "
+                    + esc(formatEmailDate(endTime)) + "</span>"));
+            rows.add(new EmailField("Venue", esc(roomName)));
+            if (location != null && !location.isBlank()) rows.add(new EmailField("Location", esc(location)));
+            rows.add(new EmailField("Hosted by", esc(hostName) + (hostDept != null && !hostDept.isBlank() ? " &middot; " + esc(hostDept) : "")));
+            if (hostPhone != null && !hostPhone.isBlank()) rows.add(new EmailField("Host Phone", esc(hostPhone)));
+            if (hostEmail != null && !hostEmail.isBlank()) rows.add(new EmailField("Host Email", esc(hostEmail)));
+            if (agenda != null && !agenda.isBlank() && !isCancellation) rows.add(new EmailField("Agenda", esc(agenda)));
+            if (isCancellation && cancellationReason != null && !cancellationReason.isBlank())
+                rows.add(new EmailField("Reason", esc(cancellationReason)));
+            rows.add(new EmailField("Reference", esc(bookingCode)));
+
+            StringBuilder h = new StringBuilder();
+            h.append("<div style='background:#f3f4f6;padding:28px 12px;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;'>");
+            h.append("<div style='max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;'>");
+            h.append("<div style='background:").append(accent).append(";padding:22px 24px;'>");
+            h.append("<div style='color:#e0f2fe;font-size:12px;letter-spacing:1px;text-transform:uppercase;'>Cooperative Bank of Oromia</div>");
+            h.append("<div style='color:#ffffff;font-size:22px;font-weight:700;margin-top:4px;'>").append(headline).append("</div></div>");
+            h.append("<div style='padding:24px;color:#374151;font-size:14px;line-height:1.6;'>");
+            h.append("<p style='margin:0 0 6px 0;'>Dear ").append(greetingName).append(",</p>");
+            h.append("<p style='margin:0 0 18px 0;'>").append(intro).append("</p>");
+            h.append("<table cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;font-size:13.5px;'>");
+            for (EmailField f : rows) {
+                h.append("<tr><td style='width:30%;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-weight:700;color:#1f2937;vertical-align:top;'>")
+                        .append(f.label).append("</td><td style='padding:10px 12px;border:1px solid #e5e7eb;vertical-align:top;'>")
+                        .append(f.value).append("</td></tr>");
+            }
+            h.append("</table>");
+            if (!isCancellation) {
+                h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>Please arrive 10 minutes early and bring a valid ID; "
+                        + "you will be registered at the front desk on arrival.</p>");
+            } else {
+                h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>We apologise for any inconvenience. "
+                        + "Please contact your host if you would like to reschedule.</p>");
+            }
+            h.append("<p style='margin:22px 0 0 0;'>Kind regards,<br/><strong>Cooperative Bank of Oromia</strong><br/>"
+                    + "<span style='color:#6b7280;'>Executive Visit Hub</span></p>");
+            h.append("</div></div>");
+            h.append("<p style='max-width:600px;margin:16px auto 0;text-align:center;font-size:11.5px;color:#9ca3af;'>"
+                    + "This is an automated message. Please do not reply to this email.</p></div>");
+
+            helper.setText(h.toString(), true);
+
+            String ics = buildGuestIcs(guestEmail.trim(), guestName, roomName, location, bookingCode, meetingTitle,
+                    startTime, endTime, hostName, agenda, isCancellation, sequence);
+            helper.addAttachment(isCancellation ? "meeting-cancelled.ics" : "meeting-invite.ics",
+                    new jakarta.mail.util.ByteArrayDataSource(ics.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            "text/calendar; method=" + (isCancellation ? "CANCEL" : "REQUEST") + "; charset=UTF-8"));
+
+            mailSender.send(message);
+            log.info("Guest {} email sent to '{}' for booking '{}'", isCancellation ? "cancellation" : "invitation", guestEmail, bookingCode);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send guest email to {}: {}", guestEmail, e.getMessage(), e);
+            return false;
+        }
+    }
 }

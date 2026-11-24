@@ -336,4 +336,31 @@ public interface EmailService {
             String updatedBy,
             String requestedItems
     );
+
+    /**
+     * Professional reservation / cancellation email to an invited guest, with a calendar (.ics) attachment.
+     * @return true if the message was handed to the mail server.
+     */
+    default boolean sendRoomBookingGuestEmail(
+            String guestEmail,
+            String guestName,
+            String roomName,
+            String location,
+            String bookingCode,
+            String meetingTitle,
+            Instant startTime,
+            Instant endTime,
+            String hostName,
+            String hostDept,
+            String hostEmail,
+            String hostPhone,
+            String agenda,
+            boolean isCancellation,
+            String cancellationReason,
+            int sequence,
+            Instant previousStartTime,
+            Instant previousEndTime
+    ) {
+        return false;
+    }
 }

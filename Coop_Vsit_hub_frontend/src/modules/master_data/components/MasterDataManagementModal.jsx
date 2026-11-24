@@ -49,6 +49,7 @@ export const MasterDataManagementModal = () => {
   const [deptForm, setDeptForm] = useState({ name: '', code: '', description: '' });
   const [roomForm, setRoomForm] = useState({
     name: '',
+    floorLocation: '',
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
@@ -101,7 +102,7 @@ export const MasterDataManagementModal = () => {
     setEditingId(null);
     setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
     closeMasterModal();
   };
 
@@ -138,6 +139,7 @@ export const MasterDataManagementModal = () => {
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
+      floorLocation: roomForm.floorLocation && roomForm.floorLocation.trim() ? roomForm.floorLocation.trim() : null,
       assignedUserId: roomForm.assignedUserId || null,
       assignedUserName: roomForm.assignedUserName || null,
       contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
@@ -174,7 +176,7 @@ export const MasterDataManagementModal = () => {
       }
     }
     setNewRoomImageFile(null);
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -387,7 +389,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+                      setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -452,6 +454,18 @@ export const MasterDataManagementModal = () => {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Written location (shown in guest emails & calendar invites) */}
+              <div className="p-3 bg-white rounded-xl border border-emerald-100">
+                <Input
+                  label="Location"
+                  placeholder="e.g. Head Office, 4th Floor, Block B - next to the lifts"
+                  maxLength={100}
+                  value={roomForm.floorLocation || ''}
+                  onChange={(e) => setRoomForm({ ...roomForm, floorLocation: e.target.value })}
+                  helperText="Where to find this room. Included in guest emails and calendar invites."
+                />
               </div>
 
               <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-3">
@@ -595,6 +609,7 @@ export const MasterDataManagementModal = () => {
                   <tr className="border-b border-slate-100 bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
                     <th className="py-2.5 pl-4">Photo</th>
                     <th className="py-2.5 px-3">Room Name & Floor</th>
+                    <th className="py-2.5 px-3">Location</th>
                     <th className="py-2.5 px-3">Managing Department</th>
                     <th className="py-2.5 px-3">Contact Email</th>
                     <th className="py-2.5 px-3 text-center">Capacity</th>
@@ -622,6 +637,7 @@ export const MasterDataManagementModal = () => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 font-bold text-[#000000]">{r.name}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{r.floorLocation || <span className="text-slate-400 italic">Not set</span>}</td>
                       <td className="py-2.5 px-3">
                         <span className="px-2 py-0.5 rounded-md bg-sky-50 text-[#00adef] font-bold text-[11px]">
                           {r.department || 'General Facility'}
@@ -655,6 +671,7 @@ export const MasterDataManagementModal = () => {
                               setEditingId(r.id);
                               setRoomForm({
                                 name: r.name,
+                                floorLocation: r.floorLocation || '',
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',

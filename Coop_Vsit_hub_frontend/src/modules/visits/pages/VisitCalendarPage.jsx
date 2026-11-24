@@ -194,6 +194,12 @@ export const VisitCalendarPage = () => {
     engagementType: 'INTERNAL',
   });
 
+  // Invited guests (name + email) who receive the reservation / cancellation emails
+  const [guests, setGuests] = useState([]);
+  const [notifyGuests, setNotifyGuests] = useState(true);
+  const updateGuest = (i, field, value) =>
+    setGuests((prev) => prev.map((g, idx) => (idx === i ? { ...g, [field]: value } : g)));
+
   // Room Supervisor Refreshment Management Modal State
   const [refreshmentModalBooking, setRefreshmentModalBooking] = useState(null);
   const [supervisorRefreshmentItems, setSupervisorRefreshmentItems] = useState([]);
@@ -809,7 +815,20 @@ export const VisitCalendarPage = () => {
         guestName: formData.guestName?.trim() || null,
         requestedItems: formData.requestedItems?.trim() || null,
         engagementType: formData.engagementType || 'INTERNAL',
+        guests: guests
+          .map((g) => ({ name: g.name.trim(), email: g.email.trim() }))
+          .filter((g) => g.name || g.email),
+        notifyGuests,
       };
+
+      const badGuest = payload.guests.find(
+        (g) => !g.name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(g.email)
+      );
+      if (badGuest) {
+        toast.error('Each guest needs a name and a valid email address.');
+        setIsSubmitting(false);
+        return;
+      }
 
       const result = await roomBookingApi.createBooking(payload);
       soundPlayer.playNotificationChime();
@@ -858,6 +877,8 @@ export const VisitCalendarPage = () => {
         requestedItems: '',
         engagementType: 'INTERNAL',
       }));
+      setGuests([]);
+      setNotifyGuests(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to book meeting room.');
     } finally {
@@ -1940,6 +1961,70 @@ export const VisitCalendarPage = () => {
                     }
                     className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none"
                   />
+                </div>
+
+                {/* Invited Guests (name + email) */}
+                <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Guests to notify <span className="text-slate-400 font-normal">(optional)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setGuests((prev) => [...prev, { name: '', email: '' }])}
+                      className="text-[11px] font-bold text-[#00adef] hover:underline cursor-pointer"
+                    >
+                      + Add guest
+                    </button>
+                  </div>
+                  {guests.length === 0 ? (
+                    <p className="text-[11px] text-slate-500">
+                      Add guests and they will get a professional email with a calendar invite now, and a notice if the meeting is cancelled.
+                    </p>
+                  ) : (
+                    guests.map((g, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Guest name"
+                          value={g.name}
+                          onChange={(e) => updateGuest(i, 'name', e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none"
+                        />
+                        <input
+                          type="email"
+                          placeholder="guest@email.com"
+                          value={g.email}
+                          onChange={(e) => updateGuest(i, 'email', e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setGuests((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="px-2 text-slate-400 hover:text-rose-600 text-sm cursor-pointer"
+                          title="Remove guest"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  {guests.length > 0 && (
+                    <label className="flex items-start gap-2 pt-1 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifyGuests}
+                        onChange={(e) => setNotifyGuests(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-[#00adef] focus:ring-[#00adef]"
+                      />
+                      <span>
+                        Email the guests the booking details and calendar invite
+                        <span className="block font-normal text-slate-500">
+                          Also applies to later reschedule and cancellation notices. Untick to save guests without emailing them.
+                        </span>
+                      </span>
+                    </label>
+                  )}
                 </div>
 
                 {/* Meeting Agenda / Purpose */}

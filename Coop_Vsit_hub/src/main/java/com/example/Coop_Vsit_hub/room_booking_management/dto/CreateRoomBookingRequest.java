@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -28,4 +29,8 @@ public class CreateRoomBookingRequest {
     private String bookedByPhone;
     private String requestedItems;
     private String engagementType;
+    /** Guests (name + email) who receive the reservation / cancellation emails. */
+    private List<BookingGuestDto> guests;
+    /** When false, guests are recorded but never emailed. Defaults to true. */
+    private Boolean notifyGuests;
 }

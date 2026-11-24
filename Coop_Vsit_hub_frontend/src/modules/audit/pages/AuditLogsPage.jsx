@@ -31,6 +31,12 @@ const EVENT_TYPES = [
   { label: 'Visitor Checked In', value: 'VISITOR_CHECKED_IN' },
   { label: 'Visitor Checked Out', value: 'VISITOR_CHECKED_OUT' },
   { label: 'Feedback Submitted', value: 'FEEDBACK_SUBMITTED' },
+  { label: 'Room Booked', value: 'ROOM_BOOKING_CREATED' },
+  { label: 'Room Booking Cancelled', value: 'ROOM_BOOKING_CANCELLED' },
+  { label: 'Guest Invitation Sent', value: 'ROOM_GUEST_INVITE_SENT' },
+  { label: 'Guest Reschedule Sent', value: 'ROOM_GUEST_RESCHEDULE_SENT' },
+  { label: 'Guest Cancellation Sent', value: 'ROOM_GUEST_CANCEL_SENT' },
+  { label: 'Guest Email Failed', value: 'ROOM_GUEST_EMAIL_FAILED' },
 ];
 
 export const AuditLogsPage = () => {

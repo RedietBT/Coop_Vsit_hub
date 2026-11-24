@@ -1241,6 +1241,7 @@ export const BookingManagementPage = () => {
           })}
         </div>
       )}
+    </>)}
 
       {/* ========================================================================= */}
       {/* 5. ROOM REGISTRATION & EDIT MODAL (WITH PERSON IN CHARGE PRIORITY)         */}
@@ -1575,7 +1576,6 @@ export const BookingManagementPage = () => {
           </div>
         </Modal>
       )}
-    </>)}
     </div>
   );
 };
