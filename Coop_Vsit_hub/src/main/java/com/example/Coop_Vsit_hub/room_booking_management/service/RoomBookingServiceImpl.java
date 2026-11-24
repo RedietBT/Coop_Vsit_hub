@@ -1398,13 +1398,14 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             log.info("Guest emails disabled for booking {}; skipping.", booking.getBookingCode());
             return;
         }
-        String location = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName())
-                .map(MeetingRoom::getFloorLocation).orElse(null);
+        var guestRoom = meetingRoomRepository.findByNameIgnoreCase(booking.getRoomName());
+        String location = guestRoom.map(MeetingRoom::getFloorLocation).orElse(null);
+        String mapUrl = guestRoom.map(MeetingRoom::getMapUrl).orElse(null);
         for (BookingGuestDto g : guests) {
             boolean sent = false;
             try {
                 sent = emailService.sendRoomBookingGuestEmail(
-                        g.getEmail(), g.getName(), booking.getRoomName(), location, booking.getBookingCode(),
+                        g.getEmail(), g.getName(), booking.getRoomName(), location, mapUrl, booking.getBookingCode(),
                         booking.getMeetingTitle(), booking.getScheduledStartTime(), booking.getScheduledEndTime(),
                         booking.getBookedByName(), booking.getHostDepartment(), booking.getBookedByEmail(),
                         booking.getBookedByPhone(), booking.getMeetingAgenda(), cancellation, reason,

@@ -346,6 +346,7 @@ public interface EmailService {
             String guestName,
             String roomName,
             String location,
+            String mapUrl,
             String bookingCode,
             String meetingTitle,
             Instant startTime,

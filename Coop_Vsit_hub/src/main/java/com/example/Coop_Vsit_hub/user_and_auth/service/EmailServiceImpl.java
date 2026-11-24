@@ -26,6 +26,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${coopbank.app.frontend-url:https://coop-vsit-hub.vercel.app}")
     private String frontendUrl;
 
+    @Value("${coopbank.app.website-url:https://coopbankoromia.com.et}")
+    private String websiteUrl;
+
     private static final DateTimeFormatter EMAIL_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy 'at' hh:mm a")
             .withZone(ZoneId.of("Africa/Addis_Ababa"));
 
@@ -753,7 +756,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public boolean sendRoomBookingGuestEmail(
-            String guestEmail, String guestName, String roomName, String location, String bookingCode,
+            String guestEmail, String guestName, String roomName, String location, String mapUrl, String bookingCode,
             String meetingTitle, Instant startTime, Instant endTime, String hostName, String hostDept,
             String hostEmail, String hostPhone, String agenda, boolean isCancellation,
             String cancellationReason, int sequence, Instant previousStartTime, Instant previousEndTime
@@ -773,8 +776,8 @@ public class EmailServiceImpl implements EmailService {
             helper.setSubject((isCancellation ? "Meeting Cancelled: " : (isReschedule ? "Meeting Rescheduled: " : "Meeting Invitation: ")) + subjectTitle
                     + " | " + formatEmailDate(startTime));
 
-            String accent = isCancellation ? "#b91c1c" : "#0088cc";
-            String headline = isCancellation ? "Meeting Cancelled" : (isReschedule ? "Meeting Rescheduled" : "Your Meeting Is Confirmed");
+            String accent = isCancellation ? "#b91c1c" : "#00adef";
+            String headline = isCancellation ? "Meeting Cancelled" : (isReschedule ? "Meeting Rescheduled" : "Meeting Invitation");
             String greetingName = (guestName != null && !guestName.isBlank()) ? esc(guestName) : "Guest";
             String intro = isCancellation
                     ? "We regret to inform you that the meeting below has been <strong>cancelled</strong>. "
@@ -782,8 +785,9 @@ public class EmailServiceImpl implements EmailService {
                     : isReschedule
                     ? "The time of your meeting at Cooperative Bank of Oromia has <strong>changed</strong>. "
                       + "Please note the new time below. The attached calendar file will update the existing entry in your calendar."
-                    : "You have been invited to a meeting at Cooperative Bank of Oromia. "
-                      + "Your visit has been reserved, and the details are below. "
+                    : "You have been invited to a meeting by <strong>" + esc(hostName) + "</strong>"
+                      + (hostDept != null && !hostDept.isBlank() ? " from <strong>" + esc(hostDept) + "</strong>" : "")
+                      + " at Cooperative Bank of Oromia. The details are below. "
                       + "Open the attached calendar file to add it to your calendar.";
 
             java.util.List<EmailField> rows = new java.util.ArrayList<>();
@@ -795,7 +799,15 @@ public class EmailServiceImpl implements EmailService {
             rows.add(new EmailField(isReschedule ? "New Date & Time" : "Date & Time", esc(formatEmailDate(startTime)) + "<br/><span style='color:#6b7280;'>until "
                     + esc(formatEmailDate(endTime)) + "</span>"));
             rows.add(new EmailField("Venue", esc(roomName)));
-            if (location != null && !location.isBlank()) rows.add(new EmailField("Location", esc(location)));
+            boolean hasMap = mapUrl != null && (mapUrl.trim().toLowerCase().startsWith("https://") || mapUrl.trim().toLowerCase().startsWith("http://"));
+            if ((location != null && !location.isBlank()) || hasMap) {
+                String locHtml = (location != null && !location.isBlank()) ? esc(location) : "";
+                if (hasMap) {
+                    locHtml += (locHtml.isEmpty() ? "" : "<br/>")
+                            + "<a href='" + esc(mapUrl) + "' style='color:#00adef;font-weight:600;text-decoration:none;'>View on Google Maps &rarr;</a>";
+                }
+                rows.add(new EmailField("Location", locHtml));
+            }
             rows.add(new EmailField("Hosted by", esc(hostName) + (hostDept != null && !hostDept.isBlank() ? " &middot; " + esc(hostDept) : "")));
             if (hostPhone != null && !hostPhone.isBlank()) rows.add(new EmailField("Host Phone", esc(hostPhone)));
             if (hostEmail != null && !hostEmail.isBlank()) rows.add(new EmailField("Host Email", esc(hostEmail)));
@@ -827,6 +839,8 @@ public class EmailServiceImpl implements EmailService {
                 h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>We apologise for any inconvenience. "
                         + "Please contact your host if you would like to reschedule.</p>");
             }
+            h.append("<p style='margin:18px 0 0 0;font-size:13px;color:#4b5563;'>Visit us at <a href='").append(websiteUrl)
+                    .append("' style='color:#00adef;text-decoration:none;font-weight:600;'>CoopBank's website</a> or <a href='https://dxvalley.com' style='color:#00adef;text-decoration:none;font-weight:600;'>https://dxvalley.com</a>.</p>");
             h.append("<p style='margin:22px 0 0 0;'>Kind regards,<br/><strong>Cooperative Bank of Oromia</strong><br/>"
                     + "<span style='color:#6b7280;'>Executive Visit Hub</span></p>");
             h.append("</div></div>");

@@ -42,6 +42,9 @@ public class CreateMeetingRoomRequest {
     @Size(max = 200, message = "Contact email cannot exceed 200 characters.")
     private String contactEmail;
 
+    @Size(max = 500, message = "Map link cannot exceed 500 characters.")
+    private String mapUrl;
+
     private String refreshmentOptions;
 
     @Builder.Default

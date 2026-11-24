@@ -41,6 +41,9 @@ public class UpdateMeetingRoomRequest {
     @jakarta.validation.constraints.Size(max = 200, message = "Contact email cannot exceed 200 characters.")
     private String contactEmail;
 
+    @jakarta.validation.constraints.Size(max = 500, message = "Map link cannot exceed 500 characters.")
+    private String mapUrl;
+
     private String refreshmentOptions;
 
     private Boolean refreshmentsAvailable;

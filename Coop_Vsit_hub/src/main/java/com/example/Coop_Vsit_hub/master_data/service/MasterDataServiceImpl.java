@@ -252,6 +252,7 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .assignedUserId(assignedUserId)
                 .assignedUserName(assignedUserName)
                 .contactEmail(contactEmail)
+                .mapUrl(cleanMapUrl(request.getMapUrl()))
                 .refreshmentOptions(request.getRefreshmentOptions())
                 .refreshmentsAvailable(Boolean.TRUE.equals(request.getRefreshmentsAvailable()))
                 .isActive(true)
@@ -304,6 +305,7 @@ public class MasterDataServiceImpl implements MasterDataService {
             room.setImageUrl(request.getImageUrl());
         }
         room.setDescription(request.getDescription());
+        room.setMapUrl(cleanMapUrl(request.getMapUrl()));
 
         // Handle assigned custodian & contact email
         if (request.getAssignedUserId() != null) {
@@ -507,6 +509,17 @@ public class MasterDataServiceImpl implements MasterDataService {
                 .toList();
 
         return users.stream().map(UserDetailResponse::from).toList();
+    }
+
+    /** Accepts only http(s) links so a map link can never carry a script. */
+    private String cleanMapUrl(String url) {
+        if (url == null || url.isBlank()) return null;
+        String u = url.trim();
+        String lower = u.toLowerCase();
+        if (!(lower.startsWith("https://") || lower.startsWith("http://"))) {
+            throw new IllegalArgumentException("Map link must start with http:// or https://");
+        }
+        return u;
     }
 
     private boolean isSecretary(User user) {

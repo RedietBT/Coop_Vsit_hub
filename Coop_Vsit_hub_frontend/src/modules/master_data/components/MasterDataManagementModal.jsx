@@ -50,6 +50,7 @@ export const MasterDataManagementModal = () => {
   const [roomForm, setRoomForm] = useState({
     name: '',
     floorLocation: '',
+    mapUrl: '',
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
@@ -102,7 +103,7 @@ export const MasterDataManagementModal = () => {
     setEditingId(null);
     setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', floorLocation: '', mapUrl: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
     closeMasterModal();
   };
 
@@ -140,6 +141,7 @@ export const MasterDataManagementModal = () => {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
       floorLocation: roomForm.floorLocation && roomForm.floorLocation.trim() ? roomForm.floorLocation.trim() : null,
+      mapUrl: roomForm.mapUrl && roomForm.mapUrl.trim() ? roomForm.mapUrl.trim() : null,
       assignedUserId: roomForm.assignedUserId || null,
       assignedUserName: roomForm.assignedUserName || null,
       contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
@@ -176,7 +178,7 @@ export const MasterDataManagementModal = () => {
       }
     }
     setNewRoomImageFile(null);
-    setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', floorLocation: '', mapUrl: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -389,7 +391,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', floorLocation: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+                      setRoomForm({ name: '', floorLocation: '', mapUrl: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -464,8 +466,18 @@ export const MasterDataManagementModal = () => {
                   maxLength={100}
                   value={roomForm.floorLocation || ''}
                   onChange={(e) => setRoomForm({ ...roomForm, floorLocation: e.target.value })}
-                  helperText="Where to find this room. Included in guest emails and calendar invites."
+                  helperText="Where to find this room, e.g. THQ, 4th Floor. Included in guest emails and calendar invites."
                 />
+                <div className="mt-3">
+                  <Input
+                    label="Google Maps Link (optional)"
+                    type="url"
+                    placeholder="https://maps.app.goo.gl/..."
+                    value={roomForm.mapUrl || ''}
+                    onChange={(e) => setRoomForm({ ...roomForm, mapUrl: e.target.value })}
+                    helperText="Guests get a 'View on Google Maps' link in their email."
+                  />
+                </div>
               </div>
 
               <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-3">
@@ -672,6 +684,7 @@ export const MasterDataManagementModal = () => {
                               setRoomForm({
                                 name: r.name,
                                 floorLocation: r.floorLocation || '',
+                                mapUrl: r.mapUrl || '',
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',

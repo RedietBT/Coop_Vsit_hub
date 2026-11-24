@@ -107,6 +107,7 @@ export const BookingManagementPage = () => {
   const initialFormState = {
     name: '',
     floorLocation: '',
+    mapUrl: '',
     department: isSecretary ? userDept : '',
     capacity: 12,
     imageUrl: '',
@@ -536,6 +537,7 @@ export const BookingManagementPage = () => {
     setFormData({
       name: room.name || '',
       floorLocation: room.floorLocation || '',
+      mapUrl: room.mapUrl || '',
       department: isSecretary ? userDept : room.department || '',
       capacity: room.capacity || 12,
       imageUrl: room.imageUrl || '',
@@ -572,6 +574,7 @@ export const BookingManagementPage = () => {
       const payload = {
         name: formData.name.trim(),
         floorLocation: formData.floorLocation.trim() || null,
+        mapUrl: formData.mapUrl?.trim() || null,
         department: isSecretary ? userDept : (formData.department?.trim() || null),
         capacity: parseInt(formData.capacity, 10) || 1,
         imageUrl: formData.imageUrl?.trim() || null,
@@ -1281,7 +1284,7 @@ export const BookingManagementPage = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Floor Location / Wing
+                  Location (e.g. THQ, 5th Floor - Executive Wing)
                 </label>
                 <input
                   type="text"
@@ -1291,6 +1294,20 @@ export const BookingManagementPage = () => {
                   className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef] focus:outline-none"
                 />
               </div>
+            </div>
+
+            {/* Optional Google Maps link */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Google Maps Link <span className="text-slate-400 font-normal">(optional - shown in guest emails)</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://maps.app.goo.gl/..."
+                value={formData.mapUrl || ''}
+                onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#00adef] focus:outline-none"
+              />
             </div>
 
             {/* Managing Department & Seating Capacity */}

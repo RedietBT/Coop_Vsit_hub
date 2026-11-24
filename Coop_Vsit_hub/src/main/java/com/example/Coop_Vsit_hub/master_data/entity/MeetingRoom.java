@@ -56,6 +56,10 @@ public class MeetingRoom {
      * Designated department contact who receives booking/cancellation notifications
      * for this room and has authority to cancel meetings.
      */
+    /** Optional Google Maps link to the room / building. */
+    @Column(name = "map_url", columnDefinition = "TEXT")
+    private String mapUrl;
+
     @Column(name = "contact_email", length = 200)
     private String contactEmail;
 
