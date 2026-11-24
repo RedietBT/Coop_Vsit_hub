@@ -52,10 +52,37 @@ export const MasterDataManagementModal = () => {
     department: isSecretary ? userDept : '',
     capacity: 18,
     imageUrl: '',
+    assignedUserId: null,
+    assignedUserName: '',
     contactEmail: '',
     refreshmentsAvailable: false,
     refreshmentOptions: '',
   });
+
+  const [custodians, setCustodians] = useState([]);
+  const [isLoadingCustodians, setIsLoadingCustodians] = useState(false);
+
+  // Load registered staff for the "designated person" dropdown
+  useEffect(() => {
+    if (!isMasterModalOpen || activeTab !== 'rooms') return;
+    let cancelled = false;
+    const dept = (isSecretary ? userDept : roomForm.department) || undefined;
+    setIsLoadingCustodians(true);
+    masterDataApi
+      .getCustodians(dept)
+      .then((data) => {
+        if (!cancelled) setCustodians(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCustodians([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingCustodians(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMasterModalOpen, activeTab, isSecretary, userDept, roomForm.department]);
 
   const [newRoomImageFile, setNewRoomImageFile] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -74,7 +101,7 @@ export const MasterDataManagementModal = () => {
     setEditingId(null);
     setNewRoomImageFile(null);
     setDeptForm({ name: '', code: '', description: '' });
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
     closeMasterModal();
   };
 
@@ -104,8 +131,10 @@ export const MasterDataManagementModal = () => {
     const payload = {
       ...roomForm,
       department: isSecretary ? userDept : roomForm.department,
+      assignedUserId: roomForm.assignedUserId || null,
+      assignedUserName: roomForm.assignedUserName || null,
       contactEmail: roomForm.contactEmail && roomForm.contactEmail.trim() ? roomForm.contactEmail.trim() : null,
-      refreshmentOptions: roomForm.refreshmentOptions.trim(),
+      refreshmentOptions: (roomForm.refreshmentOptions || '').trim(),
     };
 
     if (editingId) {
@@ -138,7 +167,7 @@ export const MasterDataManagementModal = () => {
       }
     }
     setNewRoomImageFile(null);
-    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+    setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
   };
 
   const handleRoomImageUpload = async (e, roomId) => {
@@ -351,7 +380,7 @@ export const MasterDataManagementModal = () => {
                     type="button"
                     onClick={() => {
                       setEditingId(null);
-                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
+                      setRoomForm({ name: '', department: isSecretary ? userDept : '', capacity: 18, imageUrl: '', assignedUserId: null, assignedUserName: '', contactEmail: '', refreshmentsAvailable: false, refreshmentOptions: '' });
                     }}
                     className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
                   >
@@ -449,16 +478,49 @@ export const MasterDataManagementModal = () => {
                 )}
               </div>
 
-              {/* Designated Room Contact Email */}
+              {/* Designated Person (select from registered users) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-emerald-100">
                 <div>
-                  <Input
-                    label="Designated Room Contact Email"
-                    type="email"
-                    placeholder="e.g. dept.secretary@coopbankoromia.com.et"
-                    value={roomForm.contactEmail || ''}
-                    onChange={(e) => setRoomForm({ ...roomForm, contactEmail: e.target.value })}
-                  />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Designated Person
+                  </label>
+                  <select
+                    value={roomForm.assignedUserId || ''}
+                    disabled={isLoadingCustodians}
+                    onChange={(e) => {
+                      const selId = e.target.value;
+                      if (!selId) {
+                        setRoomForm({ ...roomForm, assignedUserId: null, assignedUserName: '', contactEmail: '' });
+                        return;
+                      }
+                      const u = custodians.find((c) => String(c.id) === String(selId));
+                      if (u) {
+                        setRoomForm({
+                          ...roomForm,
+                          assignedUserId: u.id,
+                          assignedUserName: u.fullName || u.username,
+                          contactEmail: u.email || '',
+                        });
+                      }
+                    }}
+                    className="w-full h-[42px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00adef]"
+                  >
+                    <option value="">
+                      {isLoadingCustodians ? 'Loading staff...' : '-- Select designated person --'}
+                    </option>
+                    {roomForm.assignedUserId &&
+                      !custodians.some((c) => String(c.id) === String(roomForm.assignedUserId)) && (
+                        <option value={roomForm.assignedUserId}>{roomForm.assignedUserName}</option>
+                      )}
+                    {custodians.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {(u.fullName || u.username)}{u.department ? ` • ${u.department}` : ''}{u.email ? ` — ${u.email}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {roomForm.contactEmail && (
+                    <p className="mt-1 text-[11px] text-slate-500 font-mono truncate">{roomForm.contactEmail}</p>
+                  )}
                 </div>
                 <div className="flex items-center text-[11px] text-slate-500 pt-3 sm:pt-0">
                   <div className="bg-sky-50 border border-sky-200 rounded-lg p-2.5 flex items-start gap-2">
@@ -589,6 +651,8 @@ export const MasterDataManagementModal = () => {
                                 department: r.department || '',
                                 capacity: r.capacity || 18,
                                 imageUrl: r.imageUrl || '',
+                                assignedUserId: r.assignedUserId || null,
+                                assignedUserName: r.assignedUserName || '',
                                 contactEmail: r.contactEmail || '',
                                 refreshmentsAvailable: Boolean(r.refreshmentsAvailable),
                                 refreshmentOptions: r.refreshmentOptions || '',
