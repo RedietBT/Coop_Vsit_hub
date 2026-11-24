@@ -689,7 +689,7 @@ public class EmailServiceImpl implements EmailService {
 
     private static String icsEscape(String v) {
         if (v == null) return "";
-        return v.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,")
+        return v.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
                 .replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "");
     }
 
